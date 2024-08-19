@@ -1,3 +1,4 @@
 paho-mqtt
+pigpio
 pytest
 setuptools
