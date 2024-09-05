@@ -220,7 +220,7 @@ class Socat(BackgroundProcess):
         self.patterns = {
             pty_path_regex: None
         }
-        cmd_line = f"/usr/bin/socat -dd TCP:{hostname}:4901,nodelay PTY,rawer,b115200,sane"
+        cmd_line = f"/usr/bin/socat -x -v -dd TCP:{hostname}:4901,nodelay PTY,rawer,b115200,sane"
         super().__init__('socat', cmd_line, self.patterns)
         if self.patterns[pty_path_regex] is not None:
             self.pty_path = self.patterns[pty_path_regex].groupdict()['pty']
