@@ -1,6 +1,6 @@
 from typing import List, Dict
 
-from zwave_silabs import DevZwaveGwZpc, DevZwaveDoorLockKeypad, DevZwaveLedBulb, DevZwaveMultilevelSensor, DevZwavePowerStrip, DevZwaveSensorPIR, DevZwaveSwitchOnOff, DevZwaveWallController
+from z_wave_ts_silabs import DevZwaveGwZpc, DevZwaveDoorLockKeypad, DevZwaveLedBulb, DevZwaveMultilevelSensor, DevZwavePowerStrip, DevZwaveSensorPIR, DevZwaveSwitchOnOff, DevZwaveWallController
 
 
 def test_door_lock_keypad_basic_set(get_wpks_from_cluster):

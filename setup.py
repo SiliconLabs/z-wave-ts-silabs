@@ -5,8 +5,8 @@ import os
 
 from setuptools import setup, find_packages
 
-NAME = "zwave-silabs"
-VERSION = "0.1.1"
+NAME = "z_wave_ts_silabs"
+VERSION = "0.1.2"
 
 # To install the library, run the following
 #

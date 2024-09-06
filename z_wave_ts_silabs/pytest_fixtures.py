@@ -1,8 +1,8 @@
 import os
 import pytest
 
-from zwave_silabs import config
-from zwave_silabs import Cluster, DevWpk, BackgroundProcess
+from z_wave_ts_silabs import config
+from z_wave_ts_silabs import Cluster, DevWpk, BackgroundProcess
 
 logger = config.LOGGER.getChild(__name__)
 
