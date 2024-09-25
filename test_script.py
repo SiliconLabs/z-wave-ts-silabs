@@ -8,6 +8,11 @@ def test_door_lock_keypad_basic_set(get_wpks_from_cluster):
     zpc = DevZwaveGwZpc('zpc', wpks[-1], 'REGION_EU')
     end_device_1 = DevZwaveDoorLockKeypad('end_device_1', wpks[0], 'REGION_EU')
 
+    zpc.start_zlf_capture()
+    zpc.start_log_capture()
+    end_device_1.start_zlf_capture()
+    end_device_1.start_log_capture()
+
     # secure inclusion
     zpc.add_node(end_device_1.get_dsk())
     end_device_1.set_learn_mode()
@@ -15,6 +20,11 @@ def test_door_lock_keypad_basic_set(get_wpks_from_cluster):
 
     #TODO: check that Node was securely included
     # https://stash.silabs.com/projects/Z-WAVE/repos/zw-sqa-tools/browse/ZATS/TestCases/DoorLock/Security2_TC/TC02132.cs#10
+
+    zpc.stop_zlf_capture()
+    zpc.stop_log_capture()
+    end_device_1.stop_zlf_capture()
+    end_device_1.stop_log_capture()
 
     zpc.stop()
 
@@ -24,10 +34,20 @@ def test_led_buld_inclusion(get_wpks_from_cluster):
     zpc = DevZwaveGwZpc('zpc', wpks[-1], 'REGION_EU')
     end_device_1 = DevZwaveLedBulb('end_device_1', wpks[0], 'REGION_EU')
 
+    zpc.start_zlf_capture()
+    zpc.start_log_capture()
+    end_device_1.start_zlf_capture()
+    end_device_1.start_log_capture()
+
     # secure inclusion
     zpc.add_node(end_device_1.get_dsk())
     end_device_1.set_learn_mode()
     zpc.wait_for_node_connection(end_device_1)
+
+    zpc.stop_zlf_capture()
+    zpc.stop_log_capture()
+    end_device_1.stop_zlf_capture()
+    end_device_1.stop_log_capture()
 
     zpc.stop()
 
@@ -37,10 +57,20 @@ def test_multilevel_sensor_inclusion(get_wpks_from_cluster):
     zpc = DevZwaveGwZpc('zpc', wpks[-1], 'REGION_EU')
     end_device_1 = DevZwaveMultilevelSensor('end_device_1', wpks[0], 'REGION_EU')
 
+    zpc.start_zlf_capture()
+    zpc.start_log_capture()
+    end_device_1.start_zlf_capture()
+    end_device_1.start_log_capture()
+
     # secure inclusion
     zpc.add_node(end_device_1.get_dsk())
     end_device_1.set_learn_mode()
     zpc.wait_for_node_connection(end_device_1)
+
+    zpc.stop_zlf_capture()
+    zpc.stop_log_capture()
+    end_device_1.stop_zlf_capture()
+    end_device_1.stop_log_capture()
 
     zpc.stop()
 
@@ -50,6 +80,11 @@ def test_power_strip_inclusion_and_control(get_wpks_from_cluster):
     zpc = DevZwaveGwZpc('zpc', wpks[-1], 'REGION_EU')
     end_device_1 = DevZwavePowerStrip('end_device_1', wpks[0], 'REGION_EU')
 
+    zpc.start_zlf_capture()
+    zpc.start_log_capture()
+    end_device_1.start_zlf_capture()
+    end_device_1.start_log_capture()
+
     # secure inclusion
     zpc.add_node(end_device_1.get_dsk())
     end_device_1.set_learn_mode()
@@ -58,6 +93,11 @@ def test_power_strip_inclusion_and_control(get_wpks_from_cluster):
     #TODO: implement the rest of the 
     # https://stash.silabs.com/projects/Z-WAVE/repos/zw-sqa-tools/browse/ZATS/TestCases/PowerStrip/Non_Secure/TC03408.cs#11
 
+    zpc.stop_zlf_capture()
+    zpc.stop_log_capture()
+    end_device_1.stop_zlf_capture()
+    end_device_1.stop_log_capture()
+
     zpc.stop()
 
 
@@ -65,6 +105,11 @@ def test_sensor_pir_battery_report(get_wpks_from_cluster):
     wpks = get_wpks_from_cluster('stdv1-1')
     zpc = DevZwaveGwZpc('zpc', wpks[-1], 'REGION_EU')
     end_device_1 = DevZwaveSensorPIR('end_device_1', wpks[0], 'REGION_EU')
+
+    zpc.start_zlf_capture()
+    zpc.start_log_capture()
+    end_device_1.start_zlf_capture()
+    end_device_1.start_log_capture()
 
     # secure inclusion
     zpc.add_node(end_device_1.get_dsk())
@@ -78,6 +123,11 @@ def test_sensor_pir_battery_report(get_wpks_from_cluster):
     end_device_1.battery_report()
     #TODO: check battery_report
 
+    zpc.stop_zlf_capture()
+    zpc.stop_log_capture()
+    end_device_1.stop_zlf_capture()
+    end_device_1.stop_log_capture()
+
     zpc.stop()
 
 
@@ -87,12 +137,22 @@ def test_serial_api_controller_otw_update(get_wpks_from_cluster):
     zpc = DevZwaveGwZpc('zpc', wpks[-1], 'REGION_EU', update=True)
     end_device_1 = DevZwaveSwitchOnOff('end_device_1', wpks[0], 'REGION_EU')
 
+    zpc.start_zlf_capture()
+    zpc.start_log_capture()
+    end_device_1.start_zlf_capture()
+    end_device_1.start_log_capture()
+
     # unsecure inclusion
     zpc.add_node()
     end_device_1.set_learn_mode()
     zpc.wait_for_node_connection(end_device_1)
 
     #TODO: basic set just to be sure
+
+    zpc.stop_zlf_capture()
+    zpc.stop_log_capture()
+    end_device_1.stop_zlf_capture()
+    end_device_1.stop_log_capture()
 
     zpc.stop()
 
@@ -101,6 +161,11 @@ def test_switch_on_off_secure_inclusion_exclusion(get_wpks_from_cluster):
     wpks = get_wpks_from_cluster('stdv1-1')
     zpc = DevZwaveGwZpc('zpc', wpks[-1], 'EU')
     end_device_1 = DevZwaveSwitchOnOff('end_device_1', wpks[0], 'REGION_EU')
+
+    zpc.start_zlf_capture()
+    zpc.start_log_capture()
+    end_device_1.start_zlf_capture()
+    end_device_1.start_log_capture()
 
     # secure inclusion
     zpc.add_node(end_device_1.get_dsk())
@@ -114,6 +179,11 @@ def test_switch_on_off_secure_inclusion_exclusion(get_wpks_from_cluster):
     end_device_1.set_learn_mode()
     zpc.wait_for_node_disconnection(end_device_1)
 
+    zpc.stop_zlf_capture()
+    zpc.stop_log_capture()
+    end_device_1.stop_zlf_capture()
+    end_device_1.stop_log_capture()
+
     zpc.stop()
 
 
@@ -122,7 +192,10 @@ def test_switch_on_off_secure_ota(get_wpks_from_cluster):
     zpc = DevZwaveGwZpc('zpc', wpks[-1], 'REGION_EU')
     end_device_1 = DevZwaveSwitchOnOff('end_device_1', wpks[0], 'REGION_EU')
 
-    # TODO: open rtt and pti logger/stream here
+    zpc.start_zlf_capture()
+    zpc.start_log_capture()
+    end_device_1.start_zlf_capture()
+    end_device_1.start_log_capture()
 
     # secure inclusion
     zpc.add_node(end_device_1.get_dsk())
@@ -131,6 +204,11 @@ def test_switch_on_off_secure_ota(get_wpks_from_cluster):
 
     zpc.start_uic_image_updater( [ end_device_1 ] )
     zpc.wait_for_ota_update_to_finish(end_device_1)
+
+    zpc.stop_zlf_capture()
+    zpc.stop_log_capture()
+    end_device_1.stop_zlf_capture()
+    end_device_1.stop_log_capture()
    
     zpc.stop_uic_image_updater()
     zpc.stop()
@@ -141,6 +219,11 @@ def test_switch_on_off_unsecure_inclusion_exclusion(get_wpks_from_cluster):
     zpc = DevZwaveGwZpc('zpc', wpks[-1], 'REGION_EU')
     end_device_1 = DevZwaveSwitchOnOff('end_device_1', wpks[0], 'REGION_EU')
 
+    zpc.start_zlf_capture()
+    zpc.start_log_capture()
+    end_device_1.start_zlf_capture()
+    end_device_1.start_log_capture()
+
     # unsecure inclusion
     zpc.add_node()
     end_device_1.set_learn_mode()
@@ -153,6 +236,11 @@ def test_switch_on_off_unsecure_inclusion_exclusion(get_wpks_from_cluster):
     end_device_1.set_learn_mode()
     zpc.wait_for_node_disconnection(end_device_1)
 
+    zpc.stop_zlf_capture()
+    zpc.stop_log_capture()
+    end_device_1.stop_zlf_capture()
+    end_device_1.stop_log_capture()
+
     zpc.stop()
 
 
@@ -161,7 +249,10 @@ def test_switch_on_off_unsecure_ota(get_wpks_from_cluster):
     zpc = DevZwaveGwZpc('zpc', wpks[-1], 'REGION_EU')
     end_device_1 = DevZwaveSwitchOnOff('end_device_1', wpks[0], 'REGION_EU')
 
-    # TODO: open rtt and pti logger/stream here
+    zpc.start_zlf_capture()
+    zpc.start_log_capture()
+    end_device_1.start_zlf_capture()
+    end_device_1.start_log_capture()
 
     # unsecure inclusion
     zpc.add_node()
@@ -170,7 +261,12 @@ def test_switch_on_off_unsecure_ota(get_wpks_from_cluster):
 
     zpc.start_uic_image_updater( [ end_device_1 ] )
     zpc.wait_for_ota_update_to_finish(end_device_1)
-   
+
+    zpc.stop_zlf_capture()
+    zpc.stop_log_capture()
+    end_device_1.stop_zlf_capture()
+    end_device_1.stop_log_capture()
+
     zpc.stop_uic_image_updater()
     zpc.stop()
 
@@ -214,11 +310,21 @@ def test_wall_controller_basic_set(get_wpks_from_cluster):
     zpc = DevZwaveGwZpc('zpc', wpks[-1], 'REGION_EU')
     end_device_1 = DevZwaveWallController('end_device_1', wpks[0], 'REGION_EU')
 
+    zpc.start_zlf_capture()
+    zpc.start_log_capture()
+    end_device_1.start_zlf_capture()
+    end_device_1.start_log_capture()
+
     # secure inclusion
     zpc.add_node(end_device_1.get_dsk())
     end_device_1.set_learn_mode()
     zpc.wait_for_node_connection(end_device_1)
 
     #TODO: test a cli command for this app
+
+    zpc.stop_zlf_capture()
+    zpc.stop_log_capture()
+    end_device_1.stop_zlf_capture()
+    end_device_1.stop_log_capture()
 
     zpc.stop()
