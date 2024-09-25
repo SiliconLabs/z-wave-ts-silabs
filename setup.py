@@ -30,7 +30,7 @@ setup(
     author="Luis Thomas",
     author_email="luis.thomas@silabs.com",
     license="Copyright 2024 Silicon Laboratories Inc. www.silabs.com",
-    url="https://stash.silabs.com/projects/SADDLE/repos/z_wave_ts_silabs",
+    url="https://github.com/SiliconLabs/z-wave-ts-silabs",
     keywords=["Z-Wave"],
     install_requires=REQUIRES,
     packages=find_packages(),

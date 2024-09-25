@@ -1,9 +1,6 @@
-# z_wave_ts_silabs, controlling some Z-Wave device with a simple Python module
+# z_wave_ts_silabs
 
-## Quickstart
-
-First download and decompress a build_archive from Artifactory:
-https://artifactory.silabs.net/ui/native/zwave-gen/zw-protocol-multibranch/
+## Setup
 
 ```bash
 virtualenv .venv # or: python -m venv .venv
@@ -11,24 +8,14 @@ virtualenv .venv # or: python -m venv .venv
 ./run_tests.sh
 ```
 
-## Presentation
-
-[z_wave_ts_silabs](https://stash.silabs.com/projects/SADDLE/repos/z_wave_ts_silabs/browse) is inspired by [witef-wisun](https://stash.silabs.com/projects/SADDLE/repos/witef-wisun/browse), taking only what was necessary to run Z-Wave smoke tests using [ZPC](https://stash.silabs.com/projects/UIC/repos/uic/browse/applications/zpc) and the cli functionnality of Z-Wave [apps](https://stash.silabs.com/projects/Z-WAVE/repos/zw-protocol/browse/Apps).
-Unlike witef-wisun it's not using [witef-core](https://stash.silabs.com/projects/SADDLE/repos/witef-core/browse), see witef-core [README](https://stash.silabs.com/projects/SADDLE/repos/witef-core/browse/README.md) for more information on Witef.
-
 ## Use of Simplicity Commander
 
 The `DevWpk` class uses commander-cli to interact with WPKs and radio boards
 
-https://confluence.silabs.com/display/HWTOOLS/Simplicity+Commander
-
-v1.16.10:  https://artifactory.silabs.net/ui/native/hwtools-releases/Software/Simplicity-Commander/1v16p10/
-
-```
-wget https://artifactory.silabs.net/artifactory/hwtools-releases/Software/Simplicity-Commander/1v16p10/Commander-cli_linux_x86_64_1v16p10b1648.tar.bz
-tar xvf Commander-cli_linux_x86_64_1v16p10b1648.tar.bz
-rm -rf Commander-cli_linux_x86_64_1v16p10b1648.tar.bz
-```
+it can be downloaded for Linux, MacOS and Windows:
+- https://www.silabs.com/documents/public/software/SimplicityCommander-Linux.zip
+- https://www.silabs.com/documents/public/software/SimplicityCommander-Mac.zip
+- https://www.silabs.com/documents/public/software/SimplicityCommander-Windows.zip
 
 ## ZPC
 
@@ -78,6 +65,6 @@ NOTE: we could run ZPC directly on the Pi as executors as well, using socat.
 
 ## Troubleshooting
 
-If for any reason a test was interupted by a signal during a call to commander-cli.
+If for any reason a test was interrupted by a signal during a call to commander-cli.
 then there might a hanging process in the background and the target board might be
 inaccessible until it's been reset.
