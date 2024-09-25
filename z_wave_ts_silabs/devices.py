@@ -1,12 +1,24 @@
 import os
 import re
+import time
+import socket
+import threading
 from typing import Literal
 from pathlib import Path
+from datetime import datetime
 from dataclasses import dataclass
 
 from . import telnetlib, config
 from .processes import CommanderCli
 from .utils import ZwaveAppProductType, ZwaveRegion, ZwaveApp
+
+# ZLF is used by Zniffer and Zniffer is a C# app thus:
+# https://learn.microsoft.com/en-us/dotnet/api/system.datetime.ticks?view=net-8.0#remarks
+# since C# stores ticks and a tick occurs every 100ns according to the above link,
+# we need to offset each timestamp with the base unix timestamp,
+# which should be equal to: January 1, 1970 12:00:00 AM (or 00:00:00 in 24h format)
+BASE_UNIX_TIMESTAMP_IN_TICKS = int((datetime.fromtimestamp(0) - datetime.min).total_seconds() * 10_000_000)
+
 
 @dataclass
 class TargetDevInfo:
@@ -26,14 +38,10 @@ class DevWpk(object):
     ADMIN_PORT_OFFSET = 2
     DCH_PORT_OFFSET = 5
 
-    def __init__(self, ):
-        pass
-
     def __init__(self, serial_no: int, hostname: str = None, vuart_port: int = 4900):
         """Initializes the WPK board.
         :param serial_no: J-Link serial number
         :param hostname: Device's IP address or hostname
-        :param chip_name: Chip name
         :param vuart_port: VUART port number (VCOM, admin and DCH port numbers are offsets)
         """
         self.serial_no = serial_no
@@ -48,6 +56,17 @@ class DevWpk(object):
         self.target_dsk = None
         self.logger = config.LOGGER.getChild(f"wpk_{self.serial_no}")
         self.tty = f"/dev/serial/by-id/usb-Silicon_Labs_J-Link_Pro_OB_000{self.serial_no}-if00"
+        self._pti_thread: threading.Thread | None = None
+        self._pti_thread_running: bool = False
+        self._rtt_thread: threading.Thread | None = None
+        self._rtt_thread_running: bool = False
+
+        # set dch version to 2 for ZLF
+        if self.dch_message_version != 2:
+            self.dch_message_version = 2
+
+        # reset the WPK just in case
+        self.reset()
 
     @property
     def vcom_port(self) -> int:
@@ -92,7 +111,7 @@ class DevWpk(object):
         self._run_admin("target reset 1")
 
     @property
-    def radio_board(self) -> str | None:
+    def radio_board(self) -> str:
         """Gets the radio board name (e.g.brd4170a)
         :return: The radio board name
         """
@@ -102,10 +121,11 @@ class DevWpk(object):
           )
         if match:
             return match.groupdict()['boardid']
-        return None
+        raise Exception("Could not get radio board name")
 
     def _get_target_devinfo(self) -> TargetDevInfo:
         device_info_output = self.commander_cli.device_info()
+        part_number = flash_size = sram_size = eui64 = ''
         for line in device_info_output.splitlines():
             if 'Part Number' in line:
                 part_number = line.split(':')[1].strip()
@@ -126,6 +146,21 @@ class DevWpk(object):
             self._target_devinfo = self._get_target_devinfo()
         return self._target_devinfo
 
+    @property
+    def dch_message_version(self) -> int:
+        match = re.search(
+            r'Message protocol version : (?P<dch_version>\d)',
+            self._run_admin("dch message version")
+        )
+        if match:
+            return int(match.groupdict()['dch_version'])
+        raise Exception("Could not get DCH version")
+
+    @dch_message_version.setter
+    def dch_message_version(self, version: int):
+        #TODO: check result
+        self._run_admin(f"dch message version {version}")
+
     # does more than flashing
     def flash_target(self, firmware_path: str, signing_key_path: str = None, encrypt_key_path: str = None):
         # Z-Wave devices require all of this
@@ -139,6 +174,76 @@ class DevWpk(object):
         qr_code = re.search(r'[0-9]{90,}', cmd_output.splitlines()[0])
         if qr_code:
             self.target_dsk = qr_code.group()[12:53]
+
+    @staticmethod
+    def _create_zlf_file(filename: str) -> None:
+        """Creates a new zlf file.
+        :param filename: File path
+        """
+        with open(filename, "wb") as file:
+            file.write(bytes([104]))  # ZLF_VERSION
+            file.write(bytes([0x00] * (2048 - 3)))
+            file.write(bytes([0x23, 0x12]))
+
+    @staticmethod
+    def _dump_to_zlf_file(filename: str, dch_packet: bytes) -> None:
+        """Dumps frame to ZLF file.
+        :param filename: File path
+        :param dch_packet: DCH packet directly from WSTK/WPK/TB
+        """
+        # Hacky timestamp stuff from C# datetime format. a Datetime format is made of a kind part on 2 bits
+        # and a tick part on the remainder 62 bits.
+
+        # convert nanoseconds to ticks.
+        zlf_timestamp = time.time_ns() // 100
+        # set the kind to: UTC https://learn.microsoft.com/en-us/dotnet/api/system.datetimekind?view=net-8.0#fields
+        zlf_timestamp |= (1 << 63)
+        # add base unix timestamp in tick to current
+        zlf_timestamp += BASE_UNIX_TIMESTAMP_IN_TICKS
+        with open(filename, "ab") as file:
+            data_chunk = bytearray()
+            data_chunk.extend(zlf_timestamp.to_bytes(8, 'little'))
+            # properties: 0x00 is RX | 0x01 is TX (but we set it to 0x00 all the time)
+            data_chunk.append(0x00)
+            data_chunk.extend((len(dch_packet)).to_bytes(4, 'little'))
+            data_chunk.extend(dch_packet)
+            # api_type: some value in Zniffer, it has to be there.
+            data_chunk.append(0xF5)
+            file.write(data_chunk)
+
+    def _pti_logger_thread(self, logger_name: str) -> bool:
+        filename = f"{config.LOGDIR_CURRENT_TEST}/{logger_name}.zlf"
+        # get sub logger here from self, and re-direct output in file.
+        # redirect output from port 4905.
+        DevWpk._create_zlf_file(filename)
+        s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        s.connect((self.hostname, self.dch_port))
+
+        while self._pti_thread_running:
+            dch_packet = s.recv(2048)
+            if dch_packet == b'':
+                raise Exception('DCH socket connection broken')
+            self._dump_to_zlf_file(filename, dch_packet)
+
+        return self._pti_thread_running
+
+    def start_pti_logger(self, logger_name: str) -> None:
+        self._pti_thread = threading.Thread(target=self._pti_logger_thread, args=(logger_name,))
+        self._pti_thread.daemon = True
+        # TODO: check that the thread is running
+        self._pti_thread_running = True
+
+        self._pti_thread.start()
+
+    def stop_pti_logger(self):
+        self._pti_thread_running = False
+        self._pti_thread.join()  # TODO: check if still running and set timeout
+
+    def start_rtt_logger(self, logger_name: str) -> None:
+        self.commander_cli.spawn_rtt_logger_background_process(logger_name)
+
+    def stop_rtt_logger(self):
+        self.commander_cli.kill_rtt_logger_background_process()
 
 
 class ZwaveDevBase(object):
@@ -205,3 +310,15 @@ class ZwaveDevBase(object):
         if self.home_id is None or self.node_id is None:
             return None
         return f"zw-{self.home_id}-{self.node_id:04}"
+
+    def start_zlf_capture(self) -> None:
+        self.wpk.start_pti_logger(self.name)
+
+    def stop_zlf_capture(self) -> None:
+        self.wpk.stop_pti_logger()
+
+    def start_log_capture(self) -> None:
+        self.wpk.start_rtt_logger(f"{self.name}_rtt")
+
+    def stop_log_capture(self) -> None:
+        self.wpk.stop_rtt_logger()
