@@ -20,10 +20,10 @@ from . import config
 logger = config.LOGGER.getChild(__name__)
 
 
-def are_all_patterns_matched(patterns: Dict[str: re.Match | None] | None) -> bool:    
+def are_all_patterns_matched(patterns: Dict[str: re.Match | None] | None) -> bool:
     if patterns is None:
         return True
-    
+
     if None in patterns.values():
         return False
     return True
@@ -32,7 +32,7 @@ def are_all_patterns_matched(patterns: Dict[str: re.Match | None] | None) -> boo
 def pattern_matching(patterns: Dict[str: re.Match | None] | None, log_file: io.TextIOWrapper):
     if patterns is None:
         return
-    
+
     for line in log_file.readlines():
         for p in patterns.keys():
             m = re.search(p, line)
@@ -46,81 +46,23 @@ def md5_base64(file: str) -> str | None:
         return base64.b64encode(hash.digest()).decode()
 
 
-class CommanderCli(object):
-
-    def __init__(self, hostname) -> None:
-        self.hostname = hostname
-        if re.match(r'^[0-9]{9}$', self.hostname):
-            self.ip_or_sn = '--serialno'
-        else:
-            self.ip_or_sn = '--ip'
-            self.hostname = socket.gethostbyname(self.hostname)
-
-        if not os.path.exists(config.CONFIG["commander-cli"]):
-            raise Exception('commander-cli not found on system')  
-        self._commander_cli_path = config.CONFIG["commander-cli"]
-    
-    def _run_commander_cli(self, cmd) -> str:
-        cmd_output  = ''
-        cmd_line    = f"{self._commander_cli_path} {cmd} {self.ip_or_sn} {self.hostname}"
-        p = Popen(
-            shlex.split(cmd_line),
-            stdin=DEVNULL,
-            stdout=PIPE,
-            stderr=STDOUT,
-            text=True
-        )
-        for line in p.stdout:
-            cmd_output += line
-        p.wait()
-        if p.returncode != 0:
-            logger.error(f'+ {cmd_line}')
-            logger.error(cmd_output)
-            raise Exception(f'commander-cli FAILED with exit code {p.returncode}')
-        logger.debug(f'commander-cli: {cmd_line}')
-        return cmd_output
-
-    def device_info(self):
-        return self._run_commander_cli('device info')
-
-    def device_recover(self):
-        return self._run_commander_cli('device recover')
-        
-    def device_pageerase(self, region: str):
-        return self._run_commander_cli(f'device pageerase --region {region}')
-    
-    def device_zwave_qrcode(self):
-        return self._run_commander_cli(f'device zwave-qrcode --timeout 2000')
-    
-    def flash(self, firmware_path):
-        return self._run_commander_cli(f'flash {firmware_path}')
-
-    def flash_token(self, token_group: str, token: str):
-        return self._run_commander_cli(f'flash --tokengroup {token_group} --token {token}')
-        
-    def flash_tokenfiles(self, token_group: str, token_files: tuple):
-        cmd_line = f'flash --tokengroup {token_group}'
-        for tkfile_path in token_files:
-            cmd_line += f' --tokenfile {tkfile_path}'
-        return self._run_commander_cli(cmd_line)
-
-
 # This module scoped variable is accessed by the BackgroundProcess class below with a static method
 background_process_list: List[BackgroundProcess] = []
+
 
 class BackgroundProcess(object):
 
     @staticmethod
     def stop_background_processes():
-        while(len(background_process_list) != 0):
+        while len(background_process_list) != 0:
             bg_proc = background_process_list.pop()
             bg_proc.stop()
 
     # patterns dict keys must be set to None
     def __init__(self, name: str, cmd_line: str, patterns: Dict[str: re.Match | None] = None, timeout: float = 10):
         self._name = name
-        self._process: Popen = None
-        self._thread : threading.Thread = None
+        self._process: Popen | None = None
+        self._thread: threading.Thread | None = None
         self.log_file_path = f"{config.LOGDIR_CURRENT_TEST}/{self._name}.log"
         self.wo_log_file = open(self.log_file_path, 'w')
         self.ro_log_file = open(self.log_file_path, 'r')
@@ -155,9 +97,9 @@ class BackgroundProcess(object):
 
         if self._process:
             self._process.kill()
-            self._process.wait(0.01) # 10ms should be enough to kill a process
+            self._process.wait(0.01)  # 10ms should be enough to kill a process
             self._process = None
-        
+
         # check that the thread that spawned the process has ended
         if self._thread and not self._thread.is_alive():
             self._thread = None
@@ -169,14 +111,81 @@ class BackgroundProcess(object):
             stdout=self.wo_log_file,
             stderr=STDOUT,
         )
-        self._process.wait() # wait is a blocking call, this thread should stop after that
-    
+        self._process.wait()  # wait is a blocking call, this thread should stop after that
+
     @property
     def is_alive(self) -> bool:
         if self._process:
             if self._process.poll() is None:
                 return True
         return False
+
+
+class CommanderCli(object):
+
+    def __init__(self, hostname) -> None:
+        self.hostname = hostname
+        if re.match(r'^[0-9]{9}$', self.hostname):
+            self.ip_or_sn = '--serialno'
+        else:
+            self.ip_or_sn = '--ip'
+            self.hostname = socket.gethostbyname(self.hostname)
+
+        if not os.path.exists(config.CONFIG["commander-cli"]):
+            raise Exception('commander-cli not found on system')
+        self._commander_cli_path = config.CONFIG["commander-cli"]
+        self._rtt_logger_background_process: BackgroundProcess | None = None
+
+    def _run_commander_cli(self, cmd) -> str:
+        cmd_output = ''
+        cmd_line = f"{self._commander_cli_path} {cmd} {self.ip_or_sn} {self.hostname}"
+        p = Popen(
+            shlex.split(cmd_line),
+            stdin=DEVNULL,
+            stdout=PIPE,
+            stderr=STDOUT,
+            text=True
+        )
+        for line in p.stdout:
+            cmd_output += line
+        p.wait()
+        if p.returncode != 0:
+            logger.error(f'+ {cmd_line}')
+            logger.error(cmd_output)
+            raise Exception(f'commander-cli FAILED with exit code {p.returncode}')
+        logger.debug(f'commander-cli: {cmd_line}')
+        return cmd_output
+
+    def device_info(self):
+        return self._run_commander_cli('device info')
+
+    def device_recover(self):
+        return self._run_commander_cli('device recover')
+
+    def device_pageerase(self, region: str):
+        return self._run_commander_cli(f'device pageerase --region {region}')
+
+    def device_zwave_qrcode(self):
+        return self._run_commander_cli(f'device zwave-qrcode --timeout 2000')
+
+    def flash(self, firmware_path):
+        return self._run_commander_cli(f'flash {firmware_path}')
+
+    def flash_token(self, token_group: str, token: str):
+        return self._run_commander_cli(f'flash --tokengroup {token_group} --token {token}')
+
+    def flash_tokenfiles(self, token_group: str, token_files: tuple):
+        cmd_line = f'flash --tokengroup {token_group}'
+        for tkfile_path in token_files:
+            cmd_line += f' --tokenfile {tkfile_path}'
+        return self._run_commander_cli(cmd_line)
+
+    def spawn_rtt_logger_background_process(self, process_name: str):
+        cmd_line = f"{self._commander_cli_path} rtt connect --noreset {self.ip_or_sn} {self.hostname}"
+        self._rtt_logger_background_process = BackgroundProcess(name=process_name, cmd_line=cmd_line)
+
+    def kill_rtt_logger_background_process(self):
+        self._rtt_logger_background_process.stop()
 
 
 class Mosquitto(BackgroundProcess):
@@ -229,7 +238,7 @@ class Socat(BackgroundProcess):
 
 
 class UicUpvl(BackgroundProcess):
-    
+
     def __init__(self):
 
         # start by cleaning upvl file(s) in /var/lib/uic
@@ -243,7 +252,7 @@ class UicUpvl(BackgroundProcess):
 
 
 class UicImageProvider(BackgroundProcess):
-     
+
     def __init__(self, devices_to_update: List[Dict[str, str]]):
         # devices_to_update format is 
         # [
@@ -256,10 +265,10 @@ class UicImageProvider(BackgroundProcess):
         # ]
         self.updates_dir_path = '/var/lib/uic-image-provider/updates'
         self.images_file_path = '/var/lib/uic-image-provider/images.json'
-        
+
         self.images_json = {
             "Version": "1",
-            "Images": [ ]
+            "Images": []
         }
 
         # start by cleaning /var/lib/uic-image-provider
@@ -275,7 +284,7 @@ class UicImageProvider(BackgroundProcess):
         # (re-)create the updates/ folder and the images.json file
         os.mkdir(self.updates_dir_path)
         with open(self.images_file_path, 'w') as f:
-            
+
             for dev in devices_to_update:
                 file = dev['file']
                 uuid = dev['uiid']
@@ -286,14 +295,15 @@ class UicImageProvider(BackgroundProcess):
                 images_entry = {
                     "FileName": f"updates/{file}",
                     "Uiid": uuid,
-                    "Unid": [ unid ],
+                    "Unid": [unid],
                     "Version": "255.0.0",
-                    "ApplyAfter": "2000-01-01T10:00:00+02:00", # date is set way back so that the update starts right away
+                    "ApplyAfter": "2000-01-01T10:00:00+02:00",
+                    # date is set way back so that the update starts right away
                     "Md5": md5_base64(f'{config.CONFIG["zwave-binaries"]}/{file}')
                 }
                 self.images_json["Images"].append(images_entry)
                 shutil.copyfile(src_path, dst_path)
-            
+
             logger.debug(f'uic-image-updater: images.json: {self.images_json}')
             f.write(json.dumps(self.images_json))
 
@@ -302,9 +312,8 @@ class UicImageProvider(BackgroundProcess):
 
 
 class Zpc(BackgroundProcess):
-
     # This is a class attribute
-    uic_configuration_template ="""# Unify configuration file (autogenerated on: ${DATE})
+    uic_configuration_template = """# Unify configuration file (autogenerated on: ${DATE})
 
 log:
   level: '${LOG_LEVEL}'
@@ -328,8 +337,8 @@ zpc:
         except FileNotFoundError:
             pass
 
-        self.mqtt_main_process: Mosquitto = None 
-        self.mqtt_logs_process: MosquittoSub = None 
+        self.mqtt_main_process: Mosquitto = None
+        self.mqtt_logs_process: MosquittoSub = None
         self.socat_process: Socat = None
         self.tty_path: str = ""
         if '/dev/serial/' in hostname_or_tty:
@@ -372,7 +381,7 @@ zpc:
                 logger.debug(f'OTW Serial API version: {self.sapi_version}')
             else:
                 raise Exception(f"could not find pattern: '{sapi_ver_regex}' in zpc output")
-            
+
             if self.patterns[r"\[uic_gbl_interface\] Transmission is done"] is None:
                 raise Exception(f"OTW failed, check zpc_ncp_update.log")
         else:
@@ -393,13 +402,12 @@ zpc:
             else:
                 raise Exception(f"could not find pattern: '{zpc_info_regex}' in zpc output")
 
-
     def _start_socat_process(self, hostname: str) -> str:
         self.socat_process = Socat(hostname)
         if not self.socat_process.is_alive:
             raise Exception("socat process did not start or died unexpectedly")
         return self.socat_process.pty_path
-    
+
     def _start_mqtt_processes(self, port: int = 1883) -> None:
         self.mqtt_main_process = Mosquitto()
         if not self.mqtt_main_process.is_alive:
