@@ -19,7 +19,6 @@ def test_door_lock_keypad_basic_set(get_wpks_from_cluster):
     zpc.wait_for_node_connection(end_device_1)
 
     #TODO: check that Node was securely included
-    # https://stash.silabs.com/projects/Z-WAVE/repos/zw-sqa-tools/browse/ZATS/TestCases/DoorLock/Security2_TC/TC02132.cs#10
 
     zpc.stop_zlf_capture()
     zpc.stop_log_capture()
@@ -91,7 +90,6 @@ def test_power_strip_inclusion_and_control(get_wpks_from_cluster):
     zpc.wait_for_node_connection(end_device_1)
 
     #TODO: implement the rest of the 
-    # https://stash.silabs.com/projects/Z-WAVE/repos/zw-sqa-tools/browse/ZATS/TestCases/PowerStrip/Non_Secure/TC03408.cs#11
 
     zpc.stop_zlf_capture()
     zpc.stop_log_capture()
@@ -117,7 +115,6 @@ def test_sensor_pir_battery_report(get_wpks_from_cluster):
     zpc.wait_for_node_connection(end_device_1)
 
     #TODO: implement the rest of the test:
-    # https://stash.silabs.com/projects/Z-WAVE/repos/zw-sqa-tools/browse/ZATS/TestCases/SensorPIR/Security2_TC/TC02280.cs
     # we will need some more MQTT functions
 
     end_device_1.battery_report()
