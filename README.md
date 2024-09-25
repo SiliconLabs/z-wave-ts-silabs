@@ -13,7 +13,7 @@ virtualenv .venv # or: python -m venv .venv
 
 ## Presentation
 
-[z_wave_ts_silabs](https://stash.silabs.com/projects/SADDLE/repos/zwave-silabs/browse) is inspired by [witef-wisun](https://stash.silabs.com/projects/SADDLE/repos/witef-wisun/browse), taking only what was necessary to run Z-Wave smoke tests using [ZPC](https://stash.silabs.com/projects/UIC/repos/uic/browse/applications/zpc) and the cli functionnality of Z-Wave [apps](https://stash.silabs.com/projects/Z-WAVE/repos/zw-protocol/browse/Apps).
+[z_wave_ts_silabs](https://stash.silabs.com/projects/SADDLE/repos/z_wave_ts_silabs/browse) is inspired by [witef-wisun](https://stash.silabs.com/projects/SADDLE/repos/witef-wisun/browse), taking only what was necessary to run Z-Wave smoke tests using [ZPC](https://stash.silabs.com/projects/UIC/repos/uic/browse/applications/zpc) and the cli functionnality of Z-Wave [apps](https://stash.silabs.com/projects/Z-WAVE/repos/zw-protocol/browse/Apps).
 Unlike witef-wisun it's not using [witef-core](https://stash.silabs.com/projects/SADDLE/repos/witef-core/browse), see witef-core [README](https://stash.silabs.com/projects/SADDLE/repos/witef-core/browse/README.md) for more information on Witef.
 
 ## Use of Simplicity Commander

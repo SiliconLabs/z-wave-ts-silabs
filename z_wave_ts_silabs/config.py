@@ -20,7 +20,7 @@ def setup_config() -> dict:
     # in effect this config file is always necessary
     json_config: dict = None
     rootdir = os.getcwd()
-    config_file_path = f'{rootdir}/zwave-silabs-config.json'
+    config_file_path = f'{rootdir}/config.json'
 
     try:
         with open(config_file_path, 'r') as f:
@@ -38,7 +38,7 @@ def setup_config() -> dict:
 
 
 def setup_logging() -> logging.Logger:
-    logger = logging.getLogger('zwave-silabs')
+    logger = logging.getLogger('ts_silabs')
     formatter = logging.Formatter('%(asctime)s.%(msecs)03d %(name)s %(levelname)s %(message)s', datefmt='%Y-%m-%d %H:%M:%S')
     handler = logging.StreamHandler()
     handler.setFormatter(formatter)
@@ -55,7 +55,7 @@ def setup_logs_directory() -> str:
     return logs_directory
 
 # module variables
-# to access them externally use: `from zwave-silabs import config`
+# to access them externally use: `from z_wave_ts_silabs import config`
 # to access them from zwave-silabs use: `from . import config`
 # then just use: `config.VAR_NAME` to access them
 CONFIG: dict = setup_config()
