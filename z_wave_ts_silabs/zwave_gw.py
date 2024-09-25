@@ -332,7 +332,7 @@ class MqttClientZpc(object):
                 node_id = int(match.groupdict()['nodeid'])
                 if (msg.payload is not None) and (msg.payload != b''):
                     msg_payload = json.loads(msg.payload)
-                    if msg_payload['value'] == "Abort":
+                    if msg_payload['value'] != "Success":
                         self.zpc.ota_status[node_id] = False
 
     # TODO: this function should return a node id of the next node to be added
