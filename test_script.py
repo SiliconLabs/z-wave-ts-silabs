@@ -8,11 +8,6 @@ def test_door_lock_keypad_basic_set(get_wpks_from_cluster):
     zpc = DevZwaveGwZpc('zpc', wpks[-1], 'REGION_EU')
     end_device_1 = DevZwaveDoorLockKeypad('end_device_1', wpks[0], 'REGION_EU')
 
-    zpc.start_zlf_capture()
-    zpc.start_log_capture()
-    end_device_1.start_zlf_capture()
-    end_device_1.start_log_capture()
-
     # secure inclusion
     zpc.add_node(end_device_1.get_dsk())
     end_device_1.set_learn_mode()
@@ -33,11 +28,6 @@ def test_led_buld_inclusion(get_wpks_from_cluster):
     zpc = DevZwaveGwZpc('zpc', wpks[-1], 'REGION_EU')
     end_device_1 = DevZwaveLedBulb('end_device_1', wpks[0], 'REGION_EU')
 
-    zpc.start_zlf_capture()
-    zpc.start_log_capture()
-    end_device_1.start_zlf_capture()
-    end_device_1.start_log_capture()
-
     # secure inclusion
     zpc.add_node(end_device_1.get_dsk())
     end_device_1.set_learn_mode()
@@ -56,11 +46,6 @@ def test_multilevel_sensor_inclusion(get_wpks_from_cluster):
     zpc = DevZwaveGwZpc('zpc', wpks[-1], 'REGION_EU')
     end_device_1 = DevZwaveMultilevelSensor('end_device_1', wpks[0], 'REGION_EU')
 
-    zpc.start_zlf_capture()
-    zpc.start_log_capture()
-    end_device_1.start_zlf_capture()
-    end_device_1.start_log_capture()
-
     # secure inclusion
     zpc.add_node(end_device_1.get_dsk())
     end_device_1.set_learn_mode()
@@ -78,11 +63,6 @@ def test_power_strip_inclusion_and_control(get_wpks_from_cluster):
     wpks = get_wpks_from_cluster('stdv1-1')
     zpc = DevZwaveGwZpc('zpc', wpks[-1], 'REGION_EU')
     end_device_1 = DevZwavePowerStrip('end_device_1', wpks[0], 'REGION_EU')
-
-    zpc.start_zlf_capture()
-    zpc.start_log_capture()
-    end_device_1.start_zlf_capture()
-    end_device_1.start_log_capture()
 
     # secure inclusion
     zpc.add_node(end_device_1.get_dsk())
@@ -103,11 +83,6 @@ def test_sensor_pir_battery_report(get_wpks_from_cluster):
     wpks = get_wpks_from_cluster('stdv1-1')
     zpc = DevZwaveGwZpc('zpc', wpks[-1], 'REGION_EU')
     end_device_1 = DevZwaveSensorPIR('end_device_1', wpks[0], 'REGION_EU')
-
-    zpc.start_zlf_capture()
-    zpc.start_log_capture()
-    end_device_1.start_zlf_capture()
-    end_device_1.start_log_capture()
 
     # secure inclusion
     zpc.add_node(end_device_1.get_dsk())
@@ -134,11 +109,6 @@ def test_serial_api_controller_otw_update(get_wpks_from_cluster):
     zpc = DevZwaveGwZpc('zpc', wpks[-1], 'REGION_EU', update=True)
     end_device_1 = DevZwaveSwitchOnOff('end_device_1', wpks[0], 'REGION_EU')
 
-    zpc.start_zlf_capture()
-    zpc.start_log_capture()
-    end_device_1.start_zlf_capture()
-    end_device_1.start_log_capture()
-
     # unsecure inclusion
     zpc.add_node()
     end_device_1.set_learn_mode()
@@ -158,11 +128,6 @@ def test_switch_on_off_secure_inclusion_exclusion(get_wpks_from_cluster):
     wpks = get_wpks_from_cluster('stdv1-1')
     zpc = DevZwaveGwZpc('zpc', wpks[-1], 'REGION_EU')
     end_device_1 = DevZwaveSwitchOnOff('end_device_1', wpks[0], 'REGION_EU')
-
-    zpc.start_zlf_capture()
-    zpc.start_log_capture()
-    end_device_1.start_zlf_capture()
-    end_device_1.start_log_capture()
 
     # secure inclusion
     zpc.add_node(end_device_1.get_dsk())
@@ -189,11 +154,6 @@ def test_switch_on_off_secure_ota(get_wpks_from_cluster):
     zpc = DevZwaveGwZpc('zpc', wpks[-1], 'REGION_EU')
     end_device_1 = DevZwaveSwitchOnOff('end_device_1', wpks[0], 'REGION_EU')
 
-    zpc.start_zlf_capture()
-    zpc.start_log_capture()
-    end_device_1.start_zlf_capture()
-    end_device_1.start_log_capture()
-
     # secure inclusion
     zpc.add_node(end_device_1.get_dsk())
     end_device_1.set_learn_mode()
@@ -215,11 +175,6 @@ def test_switch_on_off_unsecure_inclusion_exclusion(get_wpks_from_cluster):
     wpks = get_wpks_from_cluster('stdv1-1')
     zpc = DevZwaveGwZpc('zpc', wpks[-1], 'REGION_EU')
     end_device_1 = DevZwaveSwitchOnOff('end_device_1', wpks[0], 'REGION_EU')
-
-    zpc.start_zlf_capture()
-    zpc.start_log_capture()
-    end_device_1.start_zlf_capture()
-    end_device_1.start_log_capture()
 
     # unsecure inclusion
     zpc.add_node()
@@ -245,11 +200,6 @@ def test_switch_on_off_unsecure_ota(get_wpks_from_cluster):
     wpks = get_wpks_from_cluster('stdv1-1')
     zpc = DevZwaveGwZpc('zpc', wpks[-1], 'REGION_EU')
     end_device_1 = DevZwaveSwitchOnOff('end_device_1', wpks[0], 'REGION_EU')
-
-    zpc.start_zlf_capture()
-    zpc.start_log_capture()
-    end_device_1.start_zlf_capture()
-    end_device_1.start_log_capture()
 
     # unsecure inclusion
     zpc.add_node()
@@ -306,11 +256,6 @@ def test_wall_controller_basic_set(get_wpks_from_cluster):
     wpks = get_wpks_from_cluster('stdv1-1')
     zpc = DevZwaveGwZpc('zpc', wpks[-1], 'REGION_EU')
     end_device_1 = DevZwaveWallController('end_device_1', wpks[0], 'REGION_EU')
-
-    zpc.start_zlf_capture()
-    zpc.start_log_capture()
-    end_device_1.start_zlf_capture()
-    end_device_1.start_log_capture()
 
     # secure inclusion
     zpc.add_node(end_device_1.get_dsk())

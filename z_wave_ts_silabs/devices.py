@@ -302,6 +302,9 @@ class ZwaveDevBase(object):
         if not os.path.exists(f'{config.CONFIG["zwave-binaries"]}/{self.gbl_v255_file}'):
             raise Exception(f'could not find matching v255.gbl file in {config.CONFIG["zwave-binaries"]}/ for {self.firmware_file}')
 
+        self.start_log_capture()
+        self.start_zlf_capture()
+
     # Uiid are used by Unify
     def uiid(self) -> str:
         return f"ZWave-0000-{ZwaveAppProductType[self.app_type].value:04}-0004-00-01"
