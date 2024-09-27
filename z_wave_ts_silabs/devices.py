@@ -60,6 +60,7 @@ class DevWpk(object):
         self._pti_thread_running: bool = False
         self._rtt_thread: threading.Thread | None = None
         self._rtt_thread_running: bool = False
+        self._target_devinfo: TargetDevInfo | None = None
 
         # set dch version to 2 for ZLF
         if self.dch_message_version != 2:
@@ -142,7 +143,7 @@ class DevWpk(object):
         """Gets the target's cached Dev Info.
         :return: TargetDevInfo dataclass
         """
-        if not hasattr(self, '_target_devinfo'):
+        if self._target_devinfo is None:
             self._target_devinfo = self._get_target_devinfo()
         return self._target_devinfo
 
@@ -259,10 +260,10 @@ class ZwaveDevBase(object):
         self.wpk: DevWpk = wpk
         self.region: str = region
         self.app_type: ZwaveApp = app_type
-        self.firmware_file: str = None
-        self.gbl_v255_file: str = None
-        self.home_id: str = None
-        self.node_id: int = None
+        self.firmware_file: str | None = None
+        self.gbl_v255_file: str | None = None
+        self.home_id: str | None = None
+        self.node_id: int | None = None
 
         self.loggger = config.LOGGER.getChild(f'dev_{self.name}')
         self.radio_board = self.wpk.radio_board.lower()

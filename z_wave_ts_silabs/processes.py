@@ -1,5 +1,4 @@
 from __future__ import annotations
-import io
 import os
 import re
 import json
@@ -10,7 +9,7 @@ import shutil
 import socket
 import hashlib
 import threading
-from typing import List, Dict
+from typing import List, Dict, TextIO
 from string import Template
 from datetime import datetime
 from subprocess import Popen, PIPE, STDOUT, DEVNULL
@@ -29,7 +28,7 @@ def are_all_patterns_matched(patterns: Dict[str: re.Match | None] | None) -> boo
     return True
 
 
-def pattern_matching(patterns: Dict[str: re.Match | None] | None, log_file: io.TextIOWrapper):
+def pattern_matching(patterns: Dict[str: re.Match | None] | None, log_file: TextIO):
     if patterns is None:
         return
 
@@ -42,8 +41,8 @@ def pattern_matching(patterns: Dict[str: re.Match | None] | None, log_file: io.T
 
 def md5_base64(file: str) -> str | None:
     with open(file, 'rb') as f:
-        hash = hashlib.md5(f.read())
-        return base64.b64encode(hash.digest()).decode()
+        md5_hash = hashlib.md5(f.read())
+        return base64.b64encode(md5_hash.digest()).decode()
 
 
 # This module scoped variable is accessed by the BackgroundProcess class below with a static method
@@ -85,7 +84,7 @@ class BackgroundProcess(object):
         # if process is still alive add it to the module list, test fixtures can then be used to kill background processes
         if self.is_alive:
             background_process_list.append(self)
-        # otherwise just log the event that the process has died, it's the caller responsability to check to check
+        # otherwise just log the event that the process has died, it's the caller responsibility to check
         # if the process is still alive with BackgroundProcess.is_alive
         else:
             logger.debug(f"process: {self._name} died")
@@ -279,7 +278,7 @@ class UicImageProvider(BackgroundProcess):
             pass
 
         # there's a mapping between app and Product type part of UIID
-        # see OTA UIID Contruction in: https://siliconlabs.github.io/UnifySDK/applications/zpc/readme_user.html
+        # see OTA UIID Construction in: https://siliconlabs.github.io/UnifySDK/applications/zpc/readme_user.html
 
         # (re-)create the updates/ folder and the images.json file
         os.mkdir(self.updates_dir_path)
@@ -337,9 +336,9 @@ zpc:
         except FileNotFoundError:
             pass
 
-        self.mqtt_main_process: Mosquitto = None
-        self.mqtt_logs_process: MosquittoSub = None
-        self.socat_process: Socat = None
+        self.mqtt_main_process: Mosquitto | None = None
+        self.mqtt_logs_process: MosquittoSub | None = None
+        self.socat_process: Socat | None = None
         self.tty_path: str = ""
         if '/dev/serial/' in hostname_or_tty:
             self.tty_path = hostname_or_tty
@@ -408,7 +407,7 @@ zpc:
             raise Exception("socat process did not start or died unexpectedly")
         return self.socat_process.pty_path
 
-    def _start_mqtt_processes(self, port: int = 1883) -> None:
+    def _start_mqtt_processes(self) -> None:
         self.mqtt_main_process = Mosquitto()
         if not self.mqtt_main_process.is_alive:
             raise Exception("mosquitto process did not start or died unexpectedly")

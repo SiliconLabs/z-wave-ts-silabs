@@ -156,7 +156,7 @@ def test_serial_api_controller_otw_update(get_wpks_from_cluster):
 
 def test_switch_on_off_secure_inclusion_exclusion(get_wpks_from_cluster):
     wpks = get_wpks_from_cluster('stdv1-1')
-    zpc = DevZwaveGwZpc('zpc', wpks[-1], 'EU')
+    zpc = DevZwaveGwZpc('zpc', wpks[-1], 'REGION_EU')
     end_device_1 = DevZwaveSwitchOnOff('end_device_1', wpks[0], 'REGION_EU')
 
     zpc.start_zlf_capture()

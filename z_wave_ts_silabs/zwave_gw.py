@@ -5,7 +5,7 @@ import time
 import paho.mqtt.client as mqtt
 from typing import Dict, List
 
-
+from .utils import ZwaveRegion
 from .devices import ZwaveDevBase, DevWpk
 from .processes import Zpc, UicUpvl, UicImageProvider
 
@@ -13,17 +13,17 @@ from .processes import Zpc, UicUpvl, UicImageProvider
 class DevZwaveGwZpc(ZwaveDevBase):
     """ZPC Z-Wave Gateway (based on UnifySDK)."""
 
-    def __init__(self, name: str, wpk: DevWpk, region: str, usb: bool = False, update: bool = False) -> None:
+    def __init__(self, name: str, wpk: DevWpk, region: ZwaveRegion, usb: bool = False, update: bool = False) -> None:
         """Initializes the device.
         :param name: The device name
         :param wpk: The wpk with the radio board acting as NCP
         :param uart_ncp: The NCP uart
         """
 
-        self.zpc_process: Zpc = None
-        self.uic_upvl_process: UicUpvl = None
-        self.uic_image_provider_process: UicImageProvider = None
-        self.mqtt_client: MqttClientZpc = None
+        self.zpc_process: Zpc | None = None
+        self.uic_upvl_process: UicUpvl | None = None
+        self.uic_image_provider_process: UicImageProvider | None = None
+        self.mqtt_client: MqttClientZpc | None = None
 
         super().__init__(name, wpk, region, 'zwave_ncp_serial_api_controller')
 
@@ -75,10 +75,11 @@ class DevZwaveGwZpc(ZwaveDevBase):
         devices = [ ]
         
         for dev in devices_to_update:
-            entry = {}
-            entry['file'] = dev.gbl_v255_file
-            entry['uiid'] = dev.uiid()
-            entry['unid'] = dev.unid()
+            entry = {
+                'file': dev.gbl_v255_file,
+                'uiid': dev.uiid(),
+                'unid': dev.unid()
+            }
             self.ota_status[dev.node_id] = None
             devices.append(entry)
 
@@ -162,7 +163,7 @@ class DevZwaveGwZpc(ZwaveDevBase):
         for node_id in node_id_list:
             is_node_id_connected[node_id] = False
 
-        while (time.time() < end_time):
+        while time.time() < end_time:
             for node_id in is_node_id_connected.keys():
                 is_node_id_connected[node_id] = self._is_node_connected(node_id)
 
@@ -203,7 +204,7 @@ class DevZwaveGwZpc(ZwaveDevBase):
         node_id = device.node_id
         end_time = time.time() + timeout
         
-        while (time.time() < end_time):
+        while time.time() < end_time:
             if self.ota_status[node_id] is True:
                 break
             elif self.ota_status[node_id] is False:
