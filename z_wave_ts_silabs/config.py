@@ -18,7 +18,7 @@ def setup_config() -> dict:
     
     # optional JSON config file to modify defaut configuration, 
     # in effect this config file is always necessary
-    json_config: dict = None
+    json_config: dict | None = None
     rootdir = os.getcwd()
     config_file_path = f'{rootdir}/config.json'
 

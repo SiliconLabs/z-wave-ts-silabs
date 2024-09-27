@@ -50,7 +50,7 @@ everytime.
 
 ## Rpi
 
-the Rpi are setup to act as button manipulators. the idea is to control them remotely using pigpiod.
+the Rpi are set up to act as button manipulators. the idea is to control them remotely using pigpiod.
 
 `systemctl enable --now pigpiod.service`
 

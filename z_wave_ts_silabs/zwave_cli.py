@@ -2,8 +2,8 @@ import re
 from typing import Literal
 
 from . import telnetlib
-from .devices import ZwaveDevBase, DevWpk
 from .utils import ZwaveRegion, ZwaveSocApp
+from .devices import ZwaveDevBase, DevWpk
 
 
 class DevZwaveCli(ZwaveDevBase):
@@ -55,7 +55,7 @@ class DevZwaveCli(ZwaveDevBase):
 
 class DevZwaveDoorLockKeypad(DevZwaveCli):
      
-     def __init__(self, name: str, wpk: DevWpk, region: str):
+     def __init__(self, name: str, wpk: DevWpk, region: ZwaveRegion):
           super().__init__(name, wpk, region, 'zwave_soc_door_lock_keypad') 
 
      def enable_sleeping(self):
@@ -76,13 +76,13 @@ class DevZwaveDoorLockKeypad(DevZwaveCli):
 
 class DevZwaveLedBulb(DevZwaveCli):
      
-     def __init__(self, name: str, wpk: DevWpk, region: str):
+     def __init__(self, name: str, wpk: DevWpk, region: ZwaveRegion):
           super().__init__(name, wpk, region, 'zwave_soc_led_bulb') 
 
 
 class DevZwaveMultilevelSensor(DevZwaveCli):
      
-     def __init__(self, name: str, wpk: DevWpk, region: str):
+     def __init__(self, name: str, wpk: DevWpk, region: ZwaveRegion):
           super().__init__(name, wpk, region, 'zwave_soc_multilevel_sensor') 
 
      def enable_sleeping(self):
@@ -94,7 +94,7 @@ class DevZwaveMultilevelSensor(DevZwaveCli):
 
 class DevZwavePowerStrip(DevZwaveCli):
 
-     def __init__(self, name: str, wpk: DevWpk, region: str):
+     def __init__(self, name: str, wpk: DevWpk, region: ZwaveRegion):
           super().__init__(name, wpk, region, 'zwave_soc_power_strip') 
      
      def toggle_endpoint(self, endpoint: Literal[1, 2]):
@@ -109,7 +109,7 @@ class DevZwavePowerStrip(DevZwaveCli):
 
 class DevZwaveSensorPIR(DevZwaveCli):
 
-     def __init__(self, name: str, wpk: DevWpk, region: str):
+     def __init__(self, name: str, wpk: DevWpk, region: ZwaveRegion):
           super().__init__(name, wpk, region, 'zwave_soc_sensor_pir') 
      
      def enable_sleeping(self):
@@ -124,7 +124,7 @@ class DevZwaveSensorPIR(DevZwaveCli):
 
 class DevZwaveSwitchOnOff(DevZwaveCli):
 
-     def __init__(self, name: str, wpk: DevWpk, region: str):
+     def __init__(self, name: str, wpk: DevWpk, region: ZwaveRegion):
           super().__init__(name, wpk, region, 'zwave_soc_switch_on_off') 
      
      def toggle_led(self):
@@ -136,7 +136,7 @@ class DevZwaveSwitchOnOff(DevZwaveCli):
 
 class DevZwaveWallController(DevZwaveCli):
 
-     def __init__(self, name: str, wpk: DevWpk, region: str):
+     def __init__(self, name: str, wpk: DevWpk, region: ZwaveRegion):
           super().__init__(name, wpk, region, 'zwave_soc_wall_controller') 
      
      def send_central_scene_key(self, key_number: Literal[1, 2, 3], key_action: Literal['press', 'hold', 'release']):
