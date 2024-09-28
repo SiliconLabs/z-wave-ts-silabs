@@ -38,13 +38,13 @@ class DevWpk(object):
     ADMIN_PORT_OFFSET = 2
     DCH_PORT_OFFSET = 5
 
-    def __init__(self, serial_no: int, hostname: str = None, vuart_port: int = 4900):
+    def __init__(self, serial_no: str, hostname: str = None, vuart_port: int = 4900):
         """Initializes the WPK board.
         :param serial_no: J-Link serial number
         :param hostname: Device's IP address or hostname
         :param vuart_port: VUART port number (VCOM, admin and DCH port numbers are offsets)
         """
-        self.serial_no = serial_no
+        self.serial_no = int(serial_no)
         self.hostname = hostname
         self.vuart_port = vuart_port
         self.commander_cli = CommanderCli(self.hostname)
