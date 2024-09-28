@@ -96,7 +96,7 @@ class BackgroundProcess(object):
 
         if self._process:
             self._process.kill()
-            self._process.wait(0.01)  # 10ms should be enough to kill a process
+            self._process.wait(1)  # 1 second should be enough to kill a process
             self._process = None
 
         # check that the thread that spawned the process has ended
