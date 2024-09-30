@@ -14,9 +14,10 @@ from string import Template
 from datetime import datetime
 from subprocess import Popen, PIPE, STDOUT, DEVNULL
 
-from . import config
+from .config import ctxt
 
-logger = config.LOGGER.getChild(__name__)
+
+logger = ctxt.session_logger.getChild(__name__)
 
 
 class BackgroundProcess(object):
@@ -59,7 +60,7 @@ class BackgroundProcess(object):
         self._name = name
         self._process: Popen | None = None
         self._thread: threading.Thread | None = None
-        self.log_file_path = f"{config.LOGDIR_CURRENT_TEST}/{self._name}.log"
+        self.log_file_path = f"{ctxt.session_logdir_current_test}/{self._name}.log"
         self.wo_log_file = open(self.log_file_path, 'w')
         self.ro_log_file = open(self.log_file_path, 'r')
 
@@ -127,9 +128,9 @@ class CommanderCli(object):
             self.ip_or_sn = '--ip'
             self.hostname = socket.gethostbyname(self.hostname)
 
-        if not os.path.exists(config.CONFIG["commander-cli"]):
+        if not os.path.exists(ctxt.commander_cli):
             raise Exception('commander-cli not found on system')
-        self._commander_cli_path = config.CONFIG["commander-cli"]
+        self._commander_cli_path = ctxt.commander_cli
         self._rtt_logger_background_process: BackgroundProcess | None = None
 
     def _run_commander_cli(self, cmd) -> str:
@@ -243,7 +244,7 @@ class UicUpvl(BackgroundProcess):
         except FileNotFoundError:
             pass
 
-        cmd_line = f'{config.CONFIG["uic-build"]}/cargo/uic_upvl_build/x86_64-unknown-linux-gnu/debug/uic-upvl'
+        cmd_line = f'{ctxt.uic_build}/cargo/uic_upvl_build/x86_64-unknown-linux-gnu/debug/uic-upvl'
         super().__init__('upvl', cmd_line)
 
 
@@ -292,7 +293,7 @@ class UicImageProvider(BackgroundProcess):
                 uuid = dev['uiid']
                 unid = dev['unid']
 
-                src_path = f'{config.CONFIG["zwave-binaries"]}/{file}'
+                src_path = f'{ctxt.zwave_binaries}/{file}'
                 dst_path = f'{self.updates_dir_path}/{file}'
                 images_entry = {
                     "FileName": f"updates/{file}",
@@ -301,7 +302,7 @@ class UicImageProvider(BackgroundProcess):
                     "Version": "255.0.0",
                     "ApplyAfter": "2000-01-01T10:00:00+02:00",
                     # date is set way back so that the update starts right away
-                    "Md5": UicImageProvider.md5_base64(f'{config.CONFIG["zwave-binaries"]}/{file}')
+                    "Md5": UicImageProvider.md5_base64(f'{ctxt.zwave_binaries}/{file}')
                 }
                 self.images_json["Images"].append(images_entry)
                 shutil.copyfile(src_path, dst_path)
@@ -309,7 +310,7 @@ class UicImageProvider(BackgroundProcess):
             logger.debug(f'uic-image-updater: images.json: {self.images_json}')
             f.write(json.dumps(self.images_json))
 
-        cmd_line = f'{config.CONFIG["uic-build"]}/cargo/uic_image_provider_build/x86_64-unknown-linux-gnu/debug/uic-image-provider'
+        cmd_line = f'{ctxt.uic_build}/cargo/uic_image_provider_build/x86_64-unknown-linux-gnu/debug/uic-image-provider'
         super().__init__('image_provider', cmd_line)
 
 
@@ -351,19 +352,19 @@ class Zpc(BackgroundProcess):
         self.uic_cfg_dict = {
             'DATE': datetime.now(),
             'LOG_LEVEL': 'd',
-            'UAM_MAPDIR': f'{config.CONFIG["uic-build"]}/applications/zpc/components/dotdot_mapper/rules',
+            'UAM_MAPDIR': f'{ctxt.uic_build}/applications/zpc/components/dotdot_mapper/rules',
             'TX_POWER_DBM': '0',
             'PROTOCOL_PREF': '1,2',
             'REGION': region,
             'TTY': self.tty_path,
-            'SAPI_LOG_FILE': f'{config.LOGDIR_CURRENT_TEST}/sapi.log'
+            'SAPI_LOG_FILE': f'{ctxt.session_logdir_current_test}/sapi.log'
         }
 
         with open("/etc/uic/uic.cfg", "w") as uic_cfg:
             t = Template(self.UIC_CONFIGURATION_TEMPLATE).substitute(self.uic_cfg_dict)
             uic_cfg.write(t)
 
-        cmd_line = f'{config.CONFIG["uic-build"]}/applications/zpc/zpc'
+        cmd_line = f'{ctxt.uic_build}/applications/zpc/zpc'
         if update:
             if update_file is None:
                 raise Exception("no update file was given to zpc_ncp_update")
@@ -375,7 +376,7 @@ class Zpc(BackgroundProcess):
                 r"\[uic_gbl_interface\] Transmission is done": None,
                 r"\[uic_component_fixtures\] Startup sequence aborted by: ZPC NCP update": None
             }
-            cmd_line += f' --zpc.ncp_update {config.CONFIG["zwave-binaries"]}/{update_file}'
+            cmd_line += f' --zpc.ncp_update {ctxt.zwave_binaries}/{update_file}'
             # OTW should not take more than 30 seconds, giving it a minute is more than enough
             super().__init__('zpc_ncp_update', cmd_line, self.patterns, 60)
             if self.patterns[sapi_ver_regex] is not None:
