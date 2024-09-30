@@ -10,7 +10,7 @@ from dataclasses import dataclass
 
 from . import telnetlib, config
 from .processes import CommanderCli
-from .utils import ZwaveAppProductType, ZwaveRegion, ZwaveApp
+from .definitions import ZwaveAppProductType, ZwaveRegion, ZwaveApp
 
 # ZLF is used by Zniffer and Zniffer is a C# app thus:
 # https://learn.microsoft.com/en-us/dotnet/api/system.datetime.ticks?view=net-8.0#remarks

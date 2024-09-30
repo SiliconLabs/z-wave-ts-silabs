@@ -5,7 +5,7 @@ import time
 import paho.mqtt.client as mqtt
 from typing import Dict, List
 
-from .utils import ZwaveRegion
+from .definitions import ZwaveRegion
 from .devices import ZwaveDevBase, DevWpk
 from .processes import Zpc, UicUpvl, UicImageProvider
 
