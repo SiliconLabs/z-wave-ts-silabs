@@ -67,8 +67,14 @@ class DevWpk(object):
         if self.dch_message_version != 2:
             self.dch_message_version = 2
 
-        # reset the WPK just in case
-        self.reset()
+        # check if commander can access the WPK and if not reset it.
+        try:
+            self.logger.debug(f"radio board part number: {self.target_devinfo.part_number}")
+        except:
+            self.logger.debug(f"could not read radio board part number, resetting the WPK now")
+            self.reset()
+            # if this raises an Exception again then there's another problem.
+            self.logger.debug(f"radio board part number: {self.target_devinfo.part_number}")
 
     @property
     def vcom_port(self) -> int:
