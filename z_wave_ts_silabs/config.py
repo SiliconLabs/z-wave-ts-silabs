@@ -49,7 +49,7 @@ def setup_logging() -> logging.Logger:
 
 
 def setup_logs_directory() -> str:
-    logs_directory = f"logs/{datetime.now().strftime('test_run_%Y_%m_%d_%H_%M_%S')}" 
+    logs_directory = f"logs/{datetime.now().strftime('%Y_%m_%d-%H_%M_%S')}"
     if not os.path.exists(logs_directory):
         os.makedirs(logs_directory)
     return logs_directory
