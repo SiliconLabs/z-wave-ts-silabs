@@ -8,7 +8,8 @@ from pathlib import Path
 from datetime import datetime
 from dataclasses import dataclass
 
-from . import telnetlib, config
+from . import telnetlib
+from .config import ctxt
 from .processes import CommanderCli
 from .definitions import ZwaveAppProductType, ZwaveRegion, ZwaveApp
 
@@ -54,7 +55,7 @@ class DevWpk(object):
             raise Exception(f"Error trying to connect to {hostname}")
         self.telnet_prompt = self.telnet_client.read_some().decode('ascii')
         self.target_dsk = None
-        self.logger = config.LOGGER.getChild(f"wpk_{self.serial_no}")
+        self.logger = ctxt.session_logger.getChild(f"wpk_{self.serial_no}")
         self.tty = f"/dev/serial/by-id/usb-Silicon_Labs_J-Link_Pro_OB_000{self.serial_no}-if00"
         self._pti_thread: threading.Thread | None = None
         self._pti_thread_running: bool = False
@@ -213,7 +214,7 @@ class DevWpk(object):
             file.write(data_chunk)
 
     def _pti_logger_thread(self, logger_name: str) -> bool:
-        filename = f"{config.LOGDIR_CURRENT_TEST}/{logger_name}.zlf"
+        filename = f"{ctxt.session_logdir_current_test}/{logger_name}.zlf"
         # get sub logger here from self, and re-direct output in file.
         # redirect output from port 4905.
         DevWpk._create_zlf_file(filename)
@@ -265,7 +266,7 @@ class ZwaveDevBase(object):
         self.home_id: str | None = None
         self.node_id: int | None = None
 
-        self.loggger = config.LOGGER.getChild(f'dev_{self.name}')
+        self.loggger = ctxt.session_logger.getChild(f'dev_{self.name}')
         self.radio_board = self.wpk.radio_board.lower()
         self.loggger.debug(self.radio_board)
 
@@ -273,7 +274,7 @@ class ZwaveDevBase(object):
         # Unify exposes this as an attribute called: SerialNumber, thus the name
         self.serial_number = f"h'{devinfo.unique_id.upper()}"
         
-        for file in os.listdir(config.CONFIG["zwave-binaries"]):
+        for file in os.listdir(ctxt.zwave_binaries):
             if (
                 (self.app_type in file) and 
                 (self.radio_board in file) and 
@@ -289,18 +290,18 @@ class ZwaveDevBase(object):
 
         # TODO: we should check ZGM130 -> ncp controller needs to be flashed with sample keys
         if 'ncp_serial_api_controller' in self.app_type:
-            btl_signing_key = config.CONFIG["zwave-btl-signing-key-controller"]
-            btl_encrypt_key = config.CONFIG["zwave-btl-encrypt-key-controller"]
+            btl_signing_key = ctxt.zwave_btl_signing_key_controller
+            btl_encrypt_key = ctxt.zwave_btl_encrypt_key_controller
         else:          
-            btl_signing_key = config.CONFIG["zwave-btl-signing-key-end-device"]
-            btl_encrypt_key = config.CONFIG["zwave-btl-encrypt-key-end-device"]
+            btl_signing_key = ctxt.zwave_btl_signing_key_end_device
+            btl_encrypt_key = ctxt.zwave_btl_encrypt_key_end_device
 
         self.loggger.debug(f'flashing: {self.firmware_file} with: {btl_encrypt_key}, {btl_signing_key}')
-        self.wpk.flash_target(f'{config.CONFIG["zwave-binaries"]}/{self.firmware_file}', signing_key_path=btl_signing_key, encrypt_key_path=btl_encrypt_key)
+        self.wpk.flash_target(f'{ctxt.zwave_binaries}/{self.firmware_file}', signing_key_path=btl_signing_key, encrypt_key_path=btl_encrypt_key)
 
         self.gbl_v255_file = f'{Path(self.firmware_file).stem}_v255.gbl'
-        if not os.path.exists(f'{config.CONFIG["zwave-binaries"]}/{self.gbl_v255_file}'):
-            raise Exception(f'could not find matching v255.gbl file in {config.CONFIG["zwave-binaries"]}/ for {self.firmware_file}')
+        if not os.path.exists(f'{ctxt.zwave_binaries}/{self.gbl_v255_file}'):
+            raise Exception(f'could not find matching v255.gbl file in {ctxt.zwave_binaries}/ for {self.firmware_file}')
 
         self.start_log_capture()
         self.start_zlf_capture()

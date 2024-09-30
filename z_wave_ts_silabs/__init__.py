@@ -1,4 +1,4 @@
-from . import config
+from .config import ctxt
 from .clusters import *
 from .devices import *
 from .processes import BackgroundProcess
