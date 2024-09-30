@@ -2,7 +2,7 @@ import re
 from typing import Literal
 
 from . import telnetlib
-from .utils import ZwaveRegion, ZwaveSocApp
+from .definitions import ZwaveRegion, ZwaveSocApp
 from .devices import ZwaveDevBase, DevWpk
 
 
