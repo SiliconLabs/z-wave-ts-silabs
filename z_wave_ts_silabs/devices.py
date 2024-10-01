@@ -228,10 +228,13 @@ class DevWpk(object):
         s.connect((self.hostname, self.dch_port))
 
         while self._pti_thread_running:
-            dch_packet = s.recv(2048)
-            if dch_packet == b'':
-                raise Exception('DCH socket connection broken')
-            self._dump_to_zlf_file(filename, dch_packet)
+            try:
+                dch_packet = s.recv(2048)
+                if dch_packet == b'':
+                    raise Exception('DCH socket connection broken')
+                self._dump_to_zlf_file(filename, dch_packet)
+            except ConnectionResetError:
+                self.logger.debug("dch socket: connection was reset by peer")
 
         return self._pti_thread_running
 
