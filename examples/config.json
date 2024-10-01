@@ -1,0 +1,10 @@
+{
+    "clusters_json": "clusters.json",
+    "commander_cli": "/opt/silabs/commander-cli/commander-cli",
+    "uic_build": "/opt/silabs/uic/build",
+    "zwave_binaries": "build_archive/dist/bin",
+    "zwave_btl_encrypt_key_controller": "bootloader/controller_encrypt.key",
+    "zwave_btl_signing_key_controller": "bootloader/controller_sign.key-tokens.txt",
+    "zwave_btl_encrypt_key_end_device": "bootloader/sample_encrypt.key",
+    "zwave_btl_signing_key_end_device": "bootloader/sample_sign.key-tokens.txt"
+}
