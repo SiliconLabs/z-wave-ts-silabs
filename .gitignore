@@ -3,6 +3,9 @@ __pycache__/
 .pytest_cache
 .venv/
 logs/
+build/
+dist/
+z_wave_ts_silabs.egg-info/
 
 # IDE 
 .idea/

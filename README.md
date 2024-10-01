@@ -4,8 +4,16 @@
 
 ```bash
 virtualenv .venv # or: python -m venv .venv
-.venv/bin/pip install -r requirements.txt
-./run_tests.sh
+.venv/bin/pip wheel --no-deps -w dist . && .venv/bin/pip install z_wave_ts_silabs -f ./dist # or: .venv/bin/pip install -r requirements.txt
+cd examples/ && ./run_tests.sh manual-0 test_script.py
+```
+
+## Update
+
+```bash
+.venv/bin/pip uninstall z_wave_ts_silabs -y
+rm -rf build/ dist/ z_wave_ts_silabs.egg-info/ # note: pip will always take the highest version in dist/
+.venv/bin/pip wheel --no-deps -w dist . && .venv/bin/pip install z_wave_ts_silabs -f ./dist
 ```
 
 ## Use of Simplicity Commander
