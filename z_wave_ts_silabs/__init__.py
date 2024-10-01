@@ -1,5 +1,5 @@
 from .config import ctxt
-from .clusters import *
+from .definitions import *
 from .devices import *
 from .processes import BackgroundProcess
 from .zwave_cli import *

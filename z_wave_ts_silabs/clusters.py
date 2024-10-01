@@ -1,7 +1,6 @@
 from __future__ import annotations
 from typing import List
 from dataclasses import dataclass, field
-import json
 
 
 @dataclass
@@ -31,19 +30,12 @@ class Cluster:
     rpis: List[Rpi] = field(default_factory=lambda: [])  # this makes rpis optional
 
     @staticmethod
-    def from_json(json_file: str, cluster_name: str) -> Cluster:
+    def from_dict(cluster_name: str, cluster_dict: dict) -> Cluster:
         wpks = []
         rpis = []
 
-        with open(json_file, 'r') as f:
-            clusters_json = json.load(f)
-
-        if cluster_name not in clusters_json:
-            raise Exception(f"no cluster named {cluster_name} in {json_file}")
-        cluster_dict = clusters_json[cluster_name]
-
         if 'wpks' not in cluster_dict:
-            raise Exception(f"no wpks in {json_file}")
+            raise Exception(f"no wpks in {cluster_name}")
 
         for wpk in cluster_dict['wpks']:
             wpks.append(Wpk(wpk['board'], wpk['serial']))

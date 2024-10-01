@@ -1,5 +1,5 @@
 {
-    "clusters": "examples/clusters.json",
+    "clusters_json": "examples/clusters.json",
     "commander_cli": "/opt/silabs/commander-cli/commander-cli",
     "uic_build": "/opt/silabs/uic/build",
     "zwave_binaries": "build_archive/dist/bin",

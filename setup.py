@@ -17,8 +17,6 @@ VERSION = "0.1.3"
 
 # see https://setuptools.pypa.io/en/latest/userguide/quickstart.html
 
-REQUIRES = [ ]
-
 # Utility function to read the README.md file for the long_description.
 def read(filename):
     return open(os.path.join(os.path.dirname(__file__), filename)).read()
@@ -32,7 +30,14 @@ setup(
     license="Copyright 2024 Silicon Laboratories Inc. www.silabs.com",
     url="https://github.com/SiliconLabs/z-wave-ts-silabs",
     keywords=["Z-Wave"],
-    install_requires=REQUIRES,
+    install_requires=[
+        "paho-mqtt",
+        "pigpio",
+        "pytest"
+    ],
+    entry_points={
+        'pytest11': ['z_wave_ts_silabs = z_wave_ts_silabs.fixtures']
+    },
     packages=find_packages(),
     long_description=read("README.md"),
     include_package_data=True
