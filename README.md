@@ -25,6 +25,10 @@ it can be downloaded for Linux, MacOS and Windows:
 - https://www.silabs.com/documents/public/software/SimplicityCommander-Mac.zip
 - https://www.silabs.com/documents/public/software/SimplicityCommander-Windows.zip
 
+on Linux 	it should be installed in `/opt/silabs/commander-cli/commander-cli`
+on macOS 	it should be installed in `/Applications/Commander-cli.app/Contents/MacOS/commander-cli`
+on Windows 	it should be installed in `C:\Program Files\Simplicity Commander CLI\commander-cli.exe`
+
 ## ZPC
 
 ZPC is the Z-Wave gateway supported by Silicon Labs, in order to remove constraints on one wpk being
