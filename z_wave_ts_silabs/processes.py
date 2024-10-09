@@ -1,5 +1,6 @@
 from __future__ import annotations
 import os
+import platform
 import re
 import json
 import time
@@ -233,7 +234,23 @@ class UicUpvl(BackgroundProcess):
         if not os.path.exists(uic_config_file_path):
             raise FileNotFoundError
 
-        cmd_line = f'{ctxt.uic}/build/cargo/uic_upvl_build/x86_64-unknown-linux-gnu/debug/uic-upvl --conf {uic_config_file_path}'
+        rust_platform: str | None = None
+        if platform.system() == 'Linux':
+            if platform.machine() == 'x86_64': # is amd64 on windows
+                rust_platform = "x86_64-unknown-linux-gnu"
+            elif platform.machine() == 'arm64':
+                rust_platform = "aarch64-unknown-linux-gnu"
+            elif platform.machine() == 'arm':
+                rust_platform = "armv7-unknown-linux-gnueabihf"
+        elif platform.system() == 'Darwin':
+            if platform.machine() == 'x86_64':
+                rust_platform = "x86_64-apple-darwin"
+            elif platform.machine() == 'arm64':
+                rust_platform = "aarch64-apple-darwin"
+        if rust_platform is None:
+            raise OSError(f"unsupported OS: {platform.system()}")
+
+        cmd_line = f'{ctxt.uic}/build/cargo/uic_upvl_build/{rust_platform}/debug/uic-upvl --conf {uic_config_file_path}'
         super().__init__('upvl', cmd_line)
 
 
@@ -297,7 +314,23 @@ class UicImageProvider(BackgroundProcess):
             logger.debug(f'uic-image-updater: images.json: {self.images_json}')
             f.write(json.dumps(self.images_json))
 
-        cmd_line = f'{ctxt.uic}/build/cargo/uic_image_provider_build/x86_64-unknown-linux-gnu/debug/uic-image-provider --conf {uic_config_file_path}'
+        rust_platform: str | None = None
+        if platform.system() == 'Linux':
+            if platform.machine() == 'x86_64':  # is amd64 on windows
+                rust_platform = "x86_64-unknown-linux-gnu"
+            elif platform.machine() == 'arm64':
+                rust_platform = "aarch64-unknown-linux-gnu"
+            elif platform.machine() == 'arm':
+                rust_platform = "armv7-unknown-linux-gnueabihf"
+        elif platform.system() == 'Darwin':
+            if platform.machine() == 'x86_64':
+                rust_platform = "x86_64-apple-darwin"
+            elif platform.machine() == 'arm64':
+                rust_platform = "aarch64-apple-darwin"
+        if rust_platform is None:
+            raise OSError(f"unsupported OS: {platform.system()}")
+
+        cmd_line = f'{ctxt.uic}/build/cargo/uic_image_provider_build/{rust_platform}/debug/uic-image-provider --conf {uic_config_file_path}'
         super().__init__('image_provider', cmd_line)
 
 
