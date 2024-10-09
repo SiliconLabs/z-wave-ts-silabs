@@ -214,11 +214,11 @@ class Socat(BackgroundProcess):
         if not os.path.exists(socat_path):
             raise Exception('socat not found on system')
 
-        pty_path_regex = r"PTY is (?P<pty>(/dev/pts/\d{1,3}))"
+        pty_path_regex = r"PTY is (?P<pty>(\/dev\/.+))"
         self.patterns = {
             pty_path_regex: None
         }
-        cmd_line = f"{socat_path} -x -v -dd TCP:{hostname}:4901,nodelay PTY,rawer,b115200,sane"
+        cmd_line = f"{socat_path} -x -v -dd TCP:{hostname}:4901,nodelay PTY,rawer,sane"
         super().__init__('socat', cmd_line, self.patterns)
         if self.patterns[pty_path_regex] is not None:
             self.pty_path = self.patterns[pty_path_regex].groupdict()['pty']
