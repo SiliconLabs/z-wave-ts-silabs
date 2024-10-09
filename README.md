@@ -37,28 +37,13 @@ a serial port. This way we can instantiate more than one gateway from a cluster.
 
 ## Setup on host machine
 
-first create these folders for the user that will run the tests:
+A `uic.cfg` file will be created in every test log folder. It will be used by every uic tools used in this test
+framework, namely: ZPC, uic-upvl (SmartStart provisioning) and uic-image-provider (OTA updates).
 
-```
-sudo mkdir -p /etc/uic
-sudo chown -R user:group /etc/uic
-
-sudo mkdir -p /var/lib/uic
-sudo chown -R user:group /var/lib/uic
-
-sudo mkdir -p /var/lib/uic-image-updater
-sudo chown -R user:group /var/lib/uic-image-updater
-```
-
-`/etc/uic` will be used to create `uic.cfg` for every uic tools used in this test
-framework, namely: ZPC, uic-upvl (SmartStart provisioning) and uic-image-updater (OTA updates).
-
-`/var/lib/uic` is used to store zpc related files, the test framework stores by default the zpc and sapi logs there.
-
-`/var/lib/uic-image-updater` is used by uic-image-updater to load `images.json` which
+A `uic-image-provider` folder will be created in every test log folder. 
+It will be used by uic-image-provider to load `images.json` which
 contains a list describing the update files available. The test framework will copy these files
-in `/var/lib/uic-image-updater/updates`. The test framework should wipe the updates folder 
-everytime.
+in `uic-image-provider/updates`.
 
 ## Rpi
 

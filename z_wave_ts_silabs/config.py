@@ -14,7 +14,7 @@ from .clusters import Cluster
 class Context:
     clusters_json: str = "clusters.json"
     commander_cli: str = "/opt/silabs/commander-cli/commander-cli"
-    uic_build: str = "/opt/silabs/uic/build"
+    uic: str = "/opt/silabs/uic"
     zwave_binaries: str = "dist/bin"
     zwave_btl_encrypt_key_controller: str = "platform/SiliconLabs/PAL/BootLoader/controller-keys/controller_encrypt.key"
     zwave_btl_signing_key_controller: str = "platform/SiliconLabs/PAL/BootLoader/controller-keys/controller_sign.key-tokens.txt"
