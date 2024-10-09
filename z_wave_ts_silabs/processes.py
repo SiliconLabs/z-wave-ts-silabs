@@ -319,7 +319,7 @@ log:
   level: '${LOG_LEVEL}'
 mapdir: '${UAM_MAPDIR}'
 zpc:
-  inclusion_protocol_preference: '{PROTOCOL_PREF}'
+  inclusion_protocol_preference: '${PROTOCOL_PREF}'
   normal_tx_power_dbm: ${TX_POWER_DBM}
   rf_region: '${REGION}'
   serial: '${TTY}'
