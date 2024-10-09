@@ -188,45 +188,37 @@ class CommanderCli(object):
 class Mosquitto(BackgroundProcess):
 
     def __init__(self):
-        if not os.path.exists('/usr/sbin/mosquitto'):
+        mosquitto_path = shutil.which('mosquitto')
+        if not os.path.exists(mosquitto_path):
             raise Exception('mosquitto not found on system')
 
-        # pty_path_regex = r"PTY is (?P<pty>(/dev/pts/\d{1,3}))"
-        # self.patterns = {
-        #     pty_path_regex: None
-        # }
-        cmd_line = "/usr/sbin/mosquitto"
-        super().__init__('mosquitto', cmd_line)
-        # super().__init__('mosquitto', cmd_line, self.patterns)
+        super().__init__('mosquitto', mosquitto_path)
 
 
 class MosquittoSub(BackgroundProcess):
 
     def __init__(self, topic: str = 'ucl/#'):
-        if not os.path.exists('/usr/bin/mosquitto_sub'):
+        mosquitto_sub_path = shutil.which('mosquitto_sub')
+        if not os.path.exists(mosquitto_sub_path):
             raise Exception('mosquitto_sub not found on system')
 
-        # pty_path_regex = r"PTY is (?P<pty>(/dev/pts/\d{1,3}))"
-        # self.patterns = {
-        #     pty_path_regex: None
-        # }
-        cmd_line = f"/usr/bin/mosquitto_sub -F '@Y-@m-@d @H:@M:@S %t %p' -t '{topic}'"
+        cmd_line = f"{mosquitto_sub_path} -F '@Y-@m-@d @H:@M:@S %t %p' -t '{topic}'"
         # naming the process 'mqtt' so that the log file bears the name mqtt.log
         super().__init__('mqtt', cmd_line)
-        # super().__init__('mqtt', cmd_line, self.patterns)
 
 
 class Socat(BackgroundProcess):
 
     def __init__(self, hostname: str):
-        if not os.path.exists('/usr/bin/socat'):
+        socat_path = shutil.which('socat')
+        if not os.path.exists(socat_path):
             raise Exception('socat not found on system')
 
         pty_path_regex = r"PTY is (?P<pty>(/dev/pts/\d{1,3}))"
         self.patterns = {
             pty_path_regex: None
         }
-        cmd_line = f"/usr/bin/socat -x -v -dd TCP:{hostname}:4901,nodelay PTY,rawer,b115200,sane"
+        cmd_line = f"{socat_path} -x -v -dd TCP:{hostname}:4901,nodelay PTY,rawer,b115200,sane"
         super().__init__('socat', cmd_line, self.patterns)
         if self.patterns[pty_path_regex] is not None:
             self.pty_path = self.patterns[pty_path_regex].groupdict()['pty']
