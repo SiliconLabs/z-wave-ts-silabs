@@ -278,7 +278,7 @@ class DevWpk(object):
 
     def stop_pti_logger(self):
         self._pti_thread_stop_event.set()
-        self._pti_thread.join()  # TODO: check if still running and set timeout
+        self._pti_thread.join(1)  # TODO: check if still running and set timeout
 
     def start_rtt_logger(self, logger_name: str) -> None:
         self.commander_cli.spawn_rtt_logger_background_process(logger_name)
