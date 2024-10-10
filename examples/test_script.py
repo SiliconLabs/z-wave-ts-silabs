@@ -16,12 +16,8 @@ def test_door_lock_keypad_basic_set(hw_cluster: DevCluster, region: ZwaveRegion)
 
     # TODO: check that Node was securely included
 
-    zpc.stop_zlf_capture()
-    zpc.stop_log_capture()
-    end_device_1.stop_zlf_capture()
-    end_device_1.stop_log_capture()
-
     zpc.stop()
+    end_device_1.stop()
 
 
 @pytest.mark.parametrize('region', ['REGION_EU'])
@@ -34,12 +30,8 @@ def test_led_buld_inclusion(hw_cluster: DevCluster, region: ZwaveRegion):
     end_device_1.set_learn_mode()
     zpc.wait_for_node_connection(end_device_1)
 
-    zpc.stop_zlf_capture()
-    zpc.stop_log_capture()
-    end_device_1.stop_zlf_capture()
-    end_device_1.stop_log_capture()
-
     zpc.stop()
+    end_device_1.stop()
 
 
 @pytest.mark.parametrize('region', ['REGION_EU'])
@@ -52,12 +44,8 @@ def test_multilevel_sensor_inclusion(hw_cluster: DevCluster, region: ZwaveRegion
     end_device_1.set_learn_mode()
     zpc.wait_for_node_connection(end_device_1)
 
-    zpc.stop_zlf_capture()
-    zpc.stop_log_capture()
-    end_device_1.stop_zlf_capture()
-    end_device_1.stop_log_capture()
-
     zpc.stop()
+    end_device_1.stop()
 
 
 @pytest.mark.parametrize('region', ['REGION_EU'])
@@ -72,12 +60,8 @@ def test_power_strip_inclusion_and_control(hw_cluster: DevCluster, region: Zwave
 
     # TODO: implement the rest of the
 
-    zpc.stop_zlf_capture()
-    zpc.stop_log_capture()
-    end_device_1.stop_zlf_capture()
-    end_device_1.stop_log_capture()
-
     zpc.stop()
+    end_device_1.stop()
 
 
 @pytest.mark.parametrize('region', ['REGION_EU'])
@@ -96,12 +80,8 @@ def test_sensor_pir_battery_report(hw_cluster: DevCluster, region: ZwaveRegion):
     end_device_1.battery_report()
     # TODO: check battery_report
 
-    zpc.stop_zlf_capture()
-    zpc.stop_log_capture()
-    end_device_1.stop_zlf_capture()
-    end_device_1.stop_log_capture()
-
     zpc.stop()
+    end_device_1.stop()
 
 
 @pytest.mark.parametrize('region', ['REGION_EU'])
@@ -117,12 +97,8 @@ def test_serial_api_controller_otw_update(hw_cluster: DevCluster, region: ZwaveR
 
     # TODO: basic set just to be sure
 
-    zpc.stop_zlf_capture()
-    zpc.stop_log_capture()
-    end_device_1.stop_zlf_capture()
-    end_device_1.stop_log_capture()
-
     zpc.stop()
+    end_device_1.stop()
 
 
 @pytest.mark.parametrize('region', ['REGION_EU'])
@@ -142,12 +118,8 @@ def test_switch_on_off_secure_inclusion_exclusion(hw_cluster: DevCluster, region
     end_device_1.set_learn_mode()
     zpc.wait_for_node_disconnection(end_device_1)
 
-    zpc.stop_zlf_capture()
-    zpc.stop_log_capture()
-    end_device_1.stop_zlf_capture()
-    end_device_1.stop_log_capture()
-
     zpc.stop()
+    end_device_1.stop()
 
 
 @pytest.mark.parametrize('region', ['REGION_EU'])
@@ -160,16 +132,12 @@ def test_switch_on_off_secure_ota(hw_cluster: DevCluster, region: ZwaveRegion):
     end_device_1.set_learn_mode()
     zpc.wait_for_node_connection(end_device_1)
 
+    # TODO: replace this by a function with a better name.
     zpc.start_uic_image_updater([end_device_1])
     zpc.wait_for_ota_update_to_finish(end_device_1)
 
-    zpc.stop_zlf_capture()
-    zpc.stop_log_capture()
-    end_device_1.stop_zlf_capture()
-    end_device_1.stop_log_capture()
-
-    zpc.stop_uic_image_updater()
     zpc.stop()
+    end_device_1.stop()
 
 
 @pytest.mark.parametrize('region', ['REGION_EU'])
@@ -189,12 +157,8 @@ def test_switch_on_off_unsecure_inclusion_exclusion(hw_cluster: DevCluster, regi
     end_device_1.set_learn_mode()
     zpc.wait_for_node_disconnection(end_device_1)
 
-    zpc.stop_zlf_capture()
-    zpc.stop_log_capture()
-    end_device_1.stop_zlf_capture()
-    end_device_1.stop_log_capture()
-
     zpc.stop()
+    end_device_1.stop()
 
 
 @pytest.mark.parametrize('region', ['REGION_EU'])
@@ -210,18 +174,14 @@ def test_switch_on_off_unsecure_ota(hw_cluster: DevCluster, region: ZwaveRegion)
     zpc.start_uic_image_updater([end_device_1])
     zpc.wait_for_ota_update_to_finish(end_device_1)
 
-    zpc.stop_zlf_capture()
-    zpc.stop_log_capture()
-    end_device_1.stop_zlf_capture()
-    end_device_1.stop_log_capture()
-
-    zpc.stop_uic_image_updater()
     zpc.stop()
+    end_device_1.stop()
 
 
 @pytest.mark.parametrize('region', ['REGION_EU'])
 def test_switch_on_off_smartstart_inclusion(hw_cluster: DevCluster, region: ZwaveRegion):
     zpc = DevZwaveGwZpc('zpc', hw_cluster.get_free_wpk(), region)
+    # TODO: uic_upvl should be implicitly started when updating the SmartStart List.
     zpc.start_uic_upvl()
 
     end_device_list: List[DevZwaveSwitchOnOff] = []
@@ -248,8 +208,9 @@ def test_switch_on_off_smartstart_inclusion(hw_cluster: DevCluster, region: Zwav
     for dsk in dsk_list:
         zpc.mqtt_client.smartstart_list_remove(dsk)
 
-    zpc.stop_uic_upvl()
     zpc.stop()
+    for ed in end_device_list:
+        ed.stop()
 
 
 @pytest.mark.parametrize('region', ['REGION_EU'])
@@ -264,9 +225,5 @@ def test_wall_controller_basic_set(hw_cluster: DevCluster, region: ZwaveRegion):
 
     # TODO: test a cli command for this app
 
-    zpc.stop_zlf_capture()
-    zpc.stop_log_capture()
-    end_device_1.stop_zlf_capture()
-    end_device_1.stop_log_capture()
-
     zpc.stop()
+    end_device_1.stop()
