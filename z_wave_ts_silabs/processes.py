@@ -64,33 +64,47 @@ class BackgroundProcess(object):
         self._process: Popen | None = None
         self._thread: threading.Thread | None = None
         self.log_file_path = f"{config.LOGDIR_CURRENT_TEST}/{self._name}.log"
-        self.wo_log_file = open(self.log_file_path, 'w')
-        self.ro_log_file = open(self.log_file_path, 'r')
+        self._cmd_line = cmd_line
+        self._patterns = patterns
 
-        logger.debug(cmd_line)
-        # create thread to start background process
-        self._thread = threading.Thread(target=self._start_process_in_thread, args=(cmd_line,))
+    def start(self, timeout: float = 10, patterns: dict[str : re.Match | None] = None):
+        """Starts the process
+
+        :param timeout: timeout for the process to start in seconds.
+        :param patterns: dict with regex to match in the log file.
+        """
+        self.wo_log_file = open(self.log_file_path, 'w')  # noqa: SIM115
+        self.ro_log_file = open(self.log_file_path)  # noqa: SIM115
+
+        logger.debug(self._cmd_line)
+
+        self._thread = threading.Thread(target=self._start_process_in_thread,
+                                        args=(self._cmd_line,))
         self._thread.daemon = True
         self._thread.start()
+
+        if patterns:
+            self._patterns = patterns
 
         end_time = time.time() + timeout
         while time.time() < end_time:
             if not self.is_alive:
                 continue
-            if are_all_patterns_matched(patterns):
+            if are_all_patterns_matched(self._patterns):
                 break
             else:
-                pattern_matching(patterns, self.ro_log_file)
+                pattern_matching(self._patterns, self.ro_log_file)
 
-        # if process is still alive add it to the module list, test fixtures can then be used to kill background processes
+        # If the process is still alive, add it to the module list.
+        # Test fixtures can then be used to kill background processes.
         if self.is_alive:
             background_process_list.append(self)
-        # otherwise just log the event that the process has died, it's the caller responsability to check to check
-        # if the process is still alive with BackgroundProcess.is_alive
+        # Otherwise, just log the event that the process has died,
+        # it's the caller's responsibility to check if the process is still
+        # alive with BackgroundProcess.is_alive
         else:
             logger.debug(f"process: {self._name} died")
 
-    # there's no equivalent start() function because the constructor starts the process right away
     def stop(self):
         self.wo_log_file.close()
         self.ro_log_file.close()
@@ -183,6 +197,7 @@ class CommanderCli(object):
     def spawn_rtt_logger_background_process(self, process_name: str):
         cmd_line = f"{self._commander_cli_path} rtt connect --noreset {self.ip_or_sn} {self.hostname}"
         self._rtt_logger_background_process = BackgroundProcess(name=process_name, cmd_line=cmd_line)
+        self._rtt_logger_background_process.start()
 
     def kill_rtt_logger_background_process(self):
         self._rtt_logger_background_process.stop()
@@ -200,6 +215,7 @@ class Mosquitto(BackgroundProcess):
         # }
         cmd_line = "/usr/sbin/mosquitto"
         super().__init__('mosquitto', cmd_line)
+        self.start()
         # super().__init__('mosquitto', cmd_line, self.patterns)
 
 
@@ -216,6 +232,7 @@ class MosquittoSub(BackgroundProcess):
         cmd_line = f"/usr/bin/mosquitto_sub -F '@Y-@m-@d @H:@M:@S %t %p' -t '{topic}'"
         # naming the process 'mqtt' so that the log file bears the name mqtt.log
         super().__init__('mqtt', cmd_line)
+        self.start()
         # super().__init__('mqtt', cmd_line, self.patterns)
 
 
@@ -231,6 +248,7 @@ class Socat(BackgroundProcess):
         }
         cmd_line = f"/usr/bin/socat -x -v -dd TCP:{hostname}:4901,nodelay PTY,rawer,b115200,sane"
         super().__init__('socat', cmd_line, self.patterns)
+        self.start()
         if self.patterns[pty_path_regex] is not None:
             self.pty_path = self.patterns[pty_path_regex].groupdict()['pty']
         else:
@@ -249,6 +267,7 @@ class UicUpvl(BackgroundProcess):
 
         cmd_line = f'{config.CONFIG["uic-build"]}/cargo/uic_upvl_build/x86_64-unknown-linux-gnu/debug/uic-upvl'
         super().__init__('upvl', cmd_line)
+        self.start()
 
 
 class UicImageProvider(BackgroundProcess):
@@ -309,6 +328,7 @@ class UicImageProvider(BackgroundProcess):
 
         cmd_line = f'{config.CONFIG["uic-build"]}/cargo/uic_image_provider_build/x86_64-unknown-linux-gnu/debug/uic-image-provider'
         super().__init__('image_provider', cmd_line)
+        self.start()
 
 
 class Zpc(BackgroundProcess):
@@ -376,6 +396,7 @@ zpc:
             cmd_line += f' --zpc.ncp_update {config.CONFIG["zwave-binaries"]}/{update_file}'
             # OTW should not take more than 30 seconds, giving it a minute is more than enough
             super().__init__('zpc_ncp_update', cmd_line, self.patterns, 60)
+            self.start()
             if self.patterns[sapi_ver_regex] is not None:
                 self.sapi_version = self.patterns[sapi_ver_regex].groupdict()['sapiver']
                 logger.debug(f'OTW Serial API version: {self.sapi_version}')
@@ -396,6 +417,7 @@ zpc:
                 r"Subscription to ucl\/by-unid\/zw-(([A-F]|[0-9]){8})-(\d{4})\/ProtocolController\/NetworkManagement\/Write successful": None
             }
             super().__init__('zpc', cmd_line, self.patterns, 30)
+            self.start()
             if self.patterns[zpc_info_regex] is not None:
                 self.home_id = self.patterns[zpc_info_regex].groupdict()['homeid']
                 self.node_id = self.patterns[zpc_info_regex].groupdict()['nodeid']
