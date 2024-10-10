@@ -102,6 +102,7 @@ class DevZwaveGwZpc(ZwaveDevBase):
 
     # should be called everytime a test involves ZPC
     def stop(self):
+        super().stop()
         # just in case a user forgets to stop these services
         self.stop_uic_image_updater()
         self.stop_uic_upvl()

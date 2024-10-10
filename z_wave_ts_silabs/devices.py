@@ -360,8 +360,15 @@ class ZwaveDevBase(object):
         if not os.path.exists(f'{ctxt.zwave_binaries}/{self.gbl_v255_file}'):
             raise Exception(f'could not find matching v255.gbl file in {ctxt.zwave_binaries}/ for {self.firmware_file}')
 
+        self.start()
+
+    def start(self):
         self.start_log_capture()
         self.start_zlf_capture()
+
+    def stop(self):
+        self.stop_log_capture()
+        self.stop_zlf_capture()
 
     # Uiid are used by Unify
     def uiid(self) -> str:
