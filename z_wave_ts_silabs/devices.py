@@ -1,6 +1,7 @@
 import os
 import re
 import time
+import select
 import socket
 import threading
 from typing import List
@@ -59,9 +60,7 @@ class DevWpk(object):
         self.logger = ctxt.session_logger.getChild(f"wpk_{self.serial_no}")
         self.tty = f"/dev/serial/by-id/usb-Silicon_Labs_J-Link_Pro_OB_000{self.serial_no}-if00"
         self._pti_thread: threading.Thread | None = None
-        self._pti_thread_running: bool = False
-        self._rtt_thread: threading.Thread | None = None
-        self._rtt_thread_running: bool = False
+        self._pti_thread_stop_event: threading.Event = threading.Event()
         self._target_devinfo: TargetDevInfo | None = None
 
         # set dch version to 3
@@ -223,7 +222,7 @@ class DevWpk(object):
             data_chunk.append(0xF5)
             file.write(data_chunk)
 
-    def _pti_logger_thread(self, logger_name: str) -> bool:
+    def _pti_logger_thread(self, logger_name: str):
         filename = f"{ctxt.session_logdir_current_test}/{logger_name}.zlf"
         # get sub logger here from self, and re-direct output in file.
         # redirect output from port 4905.
@@ -231,7 +230,15 @@ class DevWpk(object):
         s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         s.connect((self.hostname, self.dch_port))
 
-        while self._pti_thread_running:
+        self.logger.debug("_pti_logger_thread started")
+
+        while not self._pti_thread_stop_event.is_set():
+
+            r, _, _ = select.select([s], [], [], 0.1) # timeout is in seconds, we set it to 100 milliseconds
+
+            if len(r) == 0:
+                continue
+
             try:
                 dch_packet = s.recv(2048)
                 if dch_packet == b'':
@@ -257,18 +264,20 @@ class DevWpk(object):
             except ConnectionResetError:
                 self.logger.debug("dch socket: connection was reset by peer")
 
-        return self._pti_thread_running
+        self.logger.debug("_pti_logger_thread stopped")
+
+        return
 
     def start_pti_logger(self, logger_name: str) -> None:
+        if self._pti_thread_stop_event.is_set():
+            self._pti_thread_stop_event.clear()
         self._pti_thread = threading.Thread(target=self._pti_logger_thread, args=(logger_name,))
         self._pti_thread.daemon = True
         # TODO: check that the thread is running
-        self._pti_thread_running = True
-
         self._pti_thread.start()
 
     def stop_pti_logger(self):
-        self._pti_thread_running = False
+        self._pti_thread_stop_event.set()
         self._pti_thread.join()  # TODO: check if still running and set timeout
 
     def start_rtt_logger(self, logger_name: str) -> None:
