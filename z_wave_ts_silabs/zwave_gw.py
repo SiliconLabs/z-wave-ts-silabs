@@ -292,7 +292,7 @@ class MqttClientZpc(object):
             #     "StateParameters": {"ProvisioningMode":"ZWaveDSK","SecurityCode":"xxxxx-05417-18642-54899-54659-53543-56356-17880"},
             #     "SupportedStateList":["idle"]
             # }
-            security_code = ""
+            security_code = "00000-00000-00000-00000-00000-00000-00000-00000"
             request = json.loads(msg.payload)
             if request["StateParameters"]["ProvisioningMode"] == "ZWaveDSK":
                 dsk_end = request["StateParameters"]["SecurityCode"].replace('xxxxx-', '')
