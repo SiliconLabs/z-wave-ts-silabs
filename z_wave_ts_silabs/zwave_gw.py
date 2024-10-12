@@ -13,7 +13,7 @@ from .processes import Zpc, UicUpvl, UicImageProvider
 class DevZwaveGwZpc(ZwaveDevBase):
     """ZPC Z-Wave Gateway (based on UnifySDK)."""
 
-    def __init__(self, name: str, wpk: DevWpk, region: ZwaveRegion, usb: bool = False, update: bool = False) -> None:
+    def __init__(self, name: str, wpk: DevWpk, region: ZwaveRegion, update: bool = False) -> None:
         """Initializes the device.
         :param name: The device name
         :param wpk: The wpk with the radio board acting as NCP
@@ -30,7 +30,7 @@ class DevZwaveGwZpc(ZwaveDevBase):
         # zpc_process when started with update=True does not return other information
         if update:
             self.loggger.debug('zpc_ncp_update process starting')
-            self.zpc_process = Zpc(self.region, self.wpk.tty if usb else self.wpk.hostname, update, self.gbl_v255_file)
+            self.zpc_process = Zpc(self.region, self.wpk.hostname, update, self.gbl_v255_file)
             self.loggger.debug('zpc_ncp_update process finished')
             self.zpc_process.stop()
             if self.zpc_process.is_alive:
@@ -39,7 +39,7 @@ class DevZwaveGwZpc(ZwaveDevBase):
                 self.loggger.debug("zpc_ncp_update process died as expected")
 
         self.loggger.debug('zpc process starting')
-        self.zpc_process = Zpc(self.region, self.wpk.tty if usb else self.wpk.hostname)
+        self.zpc_process = Zpc(self.region, self.wpk.hostname)
         if not self.zpc_process.is_alive:
             raise Exception("zpc process did not start or died unexpectedly")
         self.loggger.debug('zpc process started')
