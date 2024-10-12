@@ -32,6 +32,30 @@ class TargetDevInfo:
     unique_id: str
 
 
+# Does not represent a device, but allows all DevWpk (and DevCluster) to have the same time reference.
+class DevTimeServer(object):
+
+    def __init__(self):
+        self._server_address: str | None = None
+        self._reference_time_host: int | None = None
+        self._reference_time_target: int | None = None
+        self._reference_time: int | None = None
+
+    @property
+    def server_address(self):
+        return self._server_address
+
+    @server_address.setter
+    def server_address(self, value: str):
+        self._server_address = value
+
+    @property
+    def reference_time(self) -> int:
+        if self._reference_time is None:
+            self._reference_time = self._reference_time_host - self._reference_time_target
+        return self._reference_time
+
+
 class DevWpk(object):
     """Represents a WPK board. 
     inspired from DevWstk class in witef-core,
@@ -42,7 +66,7 @@ class DevWpk(object):
     ADMIN_PORT_OFFSET = 2
     DCH_PORT_OFFSET = 5
 
-    def __init__(self, serial_no: str, hostname: str = None, vuart_port: int = 4900):
+    def __init__(self, serial_no: str, hostname: str, time_server: DevTimeServer, vuart_port: int = 4900):
         """Initializes the WPK board.
         :param serial_no: J-Link serial number
         :param hostname: Device's IP address or hostname
@@ -50,6 +74,7 @@ class DevWpk(object):
         """
         self.serial_no = int(serial_no)
         self.hostname = hostname
+        self.time_server = time_server
         self.vuart_port = vuart_port
         self.commander_cli = CommanderCli(self.hostname)
         try:
@@ -66,6 +91,20 @@ class DevWpk(object):
         # set dch version to 3
         if self.dch_message_version != 3:
             self.dch_message_version = 3
+
+        # no WPK is serving as time server yet.
+        if time_server.server_address is None:
+            self.setup_as_time_server() # will use self.time_server
+            self.time_server.server_address = socket.gethostbyname(self.hostname)
+        # a WPK is already acting as a time server.
+        else:
+            self.setup_as_time_client(time_server.server_address)
+
+        # set PTI bitrate to 1.6M (can also be setup to 3.2M)
+        if self.pti_config_bitrate != 1600000:
+            self.pti_config_bitrate = 1600000
+        # Enable PTI
+        self.enable_pti()
 
         # check if commander can access the WPK and if not reset it.
         try:
@@ -127,7 +166,7 @@ class DevWpk(object):
         :return: The radio board name
         """
         match = re.search(
-                r'\[A2h\]\s+(?P<boardid>\w+)',
+                r'\[A2h]\s+(?P<boardid>\w+)',
                 self._run_admin("boardid")
           )
         if match:
@@ -171,6 +210,58 @@ class DevWpk(object):
     def dch_message_version(self, version: int):
         #TODO: check result
         self._run_admin(f"dch message version {version}")
+
+    @property
+    def pti_config_bitrate(self) -> int:
+        match = re.search(
+            r'Bitrate {11}: (?P<bitrate>\d)',
+            self._run_admin("pti config")
+        )
+        if match:
+            return int(match.groupdict()['bitrate'])
+        raise Exception("Could not get PTI config")
+
+    @pti_config_bitrate.setter
+    def pti_config_bitrate(self, bitrate: int):
+        # TODO: check result
+        self._run_admin(f"pti config 0 efruart {bitrate}")
+
+    def enable_pti(self):
+        # TODO: check result
+        self._run_admin("dch message pti enable")
+
+    def setup_as_time_server(self):
+        self._run_admin("time server")
+        self.time_server._reference_time_host = time.time_ns() // (10 ** 3) # convert ns to us
+        time_info_output = self._run_admin("time info")
+
+        # first check that the time server is active
+        match = re.search(
+            r'Time service mode {4}: server \[5]',
+            time_info_output
+        )
+        if match is None:
+           raise Exception("Could not set up time server")
+
+        # then extract the current time on this WPK
+        match = re.search(
+            r'Current local time {3}: (?P<current_local_time>\d+) us',
+            time_info_output
+        )
+        if match:
+            self.time_server._reference_time_target = int(match.groupdict()['current_local_time'])
+        else:
+            self.logger.info(f"NO WPK TIME SET UP")
+
+
+    def setup_as_time_client(self, ip_client: str):
+        self._run_admin(f"time client {ip_client}")
+        match = re.search(
+            r'Time service mode {4}: client \[3]',
+            self._run_admin(f"time info")
+        )
+        if match is None:
+            raise Exception("Could not set up time client")
 
     # does more than flashing
     def flash_target(self, firmware_path: str, signing_key_path: str = None, encrypt_key_path: str = None):
@@ -297,7 +388,7 @@ class DevWpk(object):
                     for dch_frame in dch_packet.frames:
                         self.logger.info(
                             f"dch_version: {dch_frame.version} | "
-                            f"timestamp_us: {dch_frame.get_timestamp_us()} | "
+                            f"timestamp_us: {self.time_server.reference_time + dch_frame.get_timestamp_us()} | "
                             f"zwave_frame: {dch_frame.payload.ota_packet_data.hex(' ')} | "
                             f"rssi: {dch_frame.payload.appended_info.rssi} | "
                             f"region: {dch_frame.payload.appended_info.radio_config.z_wave_region_id} | "
@@ -336,8 +427,8 @@ class DevWpk(object):
 class DevCluster(object):
 
     def __init__(self, name: str, wpk_list: List[DevWpk]):
-        self.name = name
-        self.wpk_list = wpk_list
+        self.name: str = name
+        self.wpk_list: List[DevWpk] = wpk_list
 
     def get_free_wpk(self) -> DevWpk:
         for wpk in self.wpk_list:
