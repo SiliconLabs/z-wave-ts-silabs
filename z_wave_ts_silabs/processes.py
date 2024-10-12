@@ -209,7 +209,7 @@ class MosquittoSub(BackgroundProcess):
 
 class Socat(BackgroundProcess):
 
-    def __init__(self, hostname: str):
+    def __init__(self, hostname: str, port: int):
         socat_path = shutil.which('socat')
         if not os.path.exists(socat_path):
             raise Exception('socat not found on system')
@@ -218,7 +218,7 @@ class Socat(BackgroundProcess):
         self.patterns = {
             pty_path_regex: None
         }
-        cmd_line = f"{socat_path} -x -v -dd TCP:{hostname}:4901,nodelay PTY,rawer,sane"
+        cmd_line = f"{socat_path} -x -v -dd TCP:{hostname}:{port},nodelay PTY,rawer,sane"
         super().__init__('socat', cmd_line, self.patterns)
         if self.patterns[pty_path_regex] is not None:
             self.pty_path = self.patterns[pty_path_regex].groupdict()['pty']
@@ -336,12 +336,12 @@ class UicImageProvider(BackgroundProcess):
 
 class Zpc(BackgroundProcess):
 
-    def __init__(self, region: str, hostname_or_tty: str, update: bool = False, update_file: str | None = None):
+    def __init__(self, region: str, hostname: str, update: bool = False, update_file: str | None = None):
 
         self.mqtt_main_process: Mosquitto | None = None
         self.mqtt_logs_process: MosquittoSub | None = None
         self.socat_process: Socat | None = None
-        self.tty_path: str = self._start_socat_process(hostname_or_tty)
+        self.tty_path: str = self._start_socat_process(hostname)
 
         uic_config_file_path = f"{ctxt.session_logdir_current_test}/uic.cfg"
         with open(uic_config_file_path, "w") as uic_cfg:
@@ -414,8 +414,8 @@ class Zpc(BackgroundProcess):
 
         return uic_configuration
 
-    def _start_socat_process(self, hostname: str) -> str:
-        self.socat_process = Socat(hostname)
+    def _start_socat_process(self, hostname: str, port: int = 4901) -> str:
+        self.socat_process = Socat(hostname, port)
         if not self.socat_process.is_alive:
             raise Exception("socat process did not start or died unexpectedly")
         return self.socat_process.pty_path
