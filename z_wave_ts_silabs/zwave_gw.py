@@ -30,7 +30,7 @@ class DevZwaveGwZpc(ZwaveDevBase):
         # zpc_process when started with update=True does not return other information
         if update:
             self.loggger.debug('zpc_ncp_update process starting')
-            self.zpc_process = Zpc(self.region, self.wpk.hostname, update, self.gbl_v255_file)
+            self.zpc_process = Zpc(self.region, self.wpk.hostname, self.gbl_v255_file)
             self.loggger.debug('zpc_ncp_update process finished')
             self.zpc_process.stop()
             if self.zpc_process.is_alive:
