@@ -336,7 +336,7 @@ class UicImageProvider(BackgroundProcess):
 
 class Zpc(BackgroundProcess):
 
-    def __init__(self, region: str, hostname: str, update: bool = False, update_file: str | None = None):
+    def __init__(self, region: str, hostname: str, update_file: str | None = None):
 
         self.mqtt_main_process: Mosquitto | None = None
         self.mqtt_logs_process: MosquittoSub | None = None
@@ -348,10 +348,7 @@ class Zpc(BackgroundProcess):
             uic_cfg.write(self._generate_uic_configuration_file(region=region, log_level='d', tx_power='0', protocol_pref='1,2'))
 
         cmd_line = f'{ctxt.uic}/build/applications/zpc/zpc --conf {uic_config_file_path}'
-        if update:
-            if update_file is None:
-                raise Exception("no update file was given to zpc_ncp_update")
-
+        if update_file is not None:
             sapi_ver_regex = r"\[zpc_ncp_update\] chip_serial_api_version: (?P<sapiver>(7.\d{1,3}.\d{1,3}))"
             self.patterns = {
                 sapi_ver_regex: None,
