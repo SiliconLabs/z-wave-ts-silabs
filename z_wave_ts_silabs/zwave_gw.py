@@ -71,7 +71,7 @@ class DevZwaveGwZpc(ZwaveDevBase):
             raise Exception("uic_upvl process did not start or died unexpectedly")
 
 
-    def start_uic_image_updater(self, devices_to_update: List[ZwaveDevBase]):
+    def start_uic_image_provider(self, devices_to_update: List[ZwaveDevBase]):
         devices = [ ]
         
         for dev in devices_to_update:
@@ -95,7 +95,7 @@ class DevZwaveGwZpc(ZwaveDevBase):
             self.uic_upvl_process.stop()
             self.uic_upvl_process = None
 
-    def stop_uic_image_updater(self):
+    def stop_uic_image_provider(self):
         if self.uic_image_provider_process is not None:
             self.uic_image_provider_process.stop()
             self.uic_image_provider_process = None
@@ -104,7 +104,7 @@ class DevZwaveGwZpc(ZwaveDevBase):
     def stop(self):
         super().stop()
         # just in case a user forgets to stop these services
-        self.stop_uic_image_updater()
+        self.stop_uic_image_provider()
         self.stop_uic_upvl()
         if self.mqtt_client is not None:
             self.mqtt_client.stop()

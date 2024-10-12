@@ -311,7 +311,7 @@ class UicImageProvider(BackgroundProcess):
                 self.images_json["Images"].append(images_entry)
                 shutil.copyfile(src_path, dst_path)
 
-            logger.debug(f'uic-image-updater: images.json: {self.images_json}')
+            logger.debug(f'uic-image-provider: images.json: {self.images_json}')
             f.write(json.dumps(self.images_json))
 
         rust_platform: str | None = None
