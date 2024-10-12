@@ -133,7 +133,7 @@ def test_switch_on_off_secure_ota(hw_cluster: DevCluster, region: ZwaveRegion):
     zpc.wait_for_node_connection(end_device_1)
 
     # TODO: replace this by a function with a better name.
-    zpc.start_uic_image_updater([end_device_1])
+    zpc.start_uic_image_provider([end_device_1])
     zpc.wait_for_ota_update_to_finish(end_device_1)
 
     zpc.stop()
@@ -171,7 +171,7 @@ def test_switch_on_off_unsecure_ota(hw_cluster: DevCluster, region: ZwaveRegion)
     end_device_1.set_learn_mode()
     zpc.wait_for_node_connection(end_device_1)
 
-    zpc.start_uic_image_updater([end_device_1])
+    zpc.start_uic_image_provider([end_device_1])
     zpc.wait_for_ota_update_to_finish(end_device_1)
 
     zpc.stop()
