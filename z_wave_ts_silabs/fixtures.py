@@ -3,7 +3,7 @@ import pytest
 from typing import List
 from pathlib import Path
 
-from z_wave_ts_silabs import DevWpk, DevCluster, BackgroundProcess, ctxt
+from z_wave_ts_silabs import DevWpk, DevCluster, BackgroundProcess, ctxt, DevTimeServer
 
 logger = ctxt.session_logger.getChild(__name__)
 
@@ -23,9 +23,12 @@ def hw_cluster_name(pytestconfig: pytest.Config) -> str:
 def hw_cluster(hw_cluster_name: str) -> DevCluster:
     cluster = ctxt.clusters[hw_cluster_name]
     dev_wpks: List[DevWpk] = []
+    # This object is used to synchronize the timestamps of all WPK in the cluster
+    time_server: DevTimeServer = DevTimeServer()
+
     for wpk in cluster.wpks:
         dev_wpks.append(
-            DevWpk(wpk.serial, f"jlink{wpk.serial}.silabs.com")
+            DevWpk(wpk.serial, f"jlink{wpk.serial}.silabs.com", time_server=time_server)
         )
     yield DevCluster(hw_cluster_name, dev_wpks)
 
