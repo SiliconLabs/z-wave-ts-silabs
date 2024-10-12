@@ -341,11 +341,7 @@ class Zpc(BackgroundProcess):
         self.mqtt_main_process: Mosquitto | None = None
         self.mqtt_logs_process: MosquittoSub | None = None
         self.socat_process: Socat | None = None
-        self.tty_path: str = ""
-        if '/dev/serial/' in hostname_or_tty:
-            self.tty_path = hostname_or_tty
-        else:
-            self.tty_path = self._start_socat_process(hostname_or_tty)
+        self.tty_path: str = self._start_socat_process(hostname_or_tty)
 
         uic_config_file_path = f"{ctxt.session_logdir_current_test}/uic.cfg"
         with open(uic_config_file_path, "w") as uic_cfg:

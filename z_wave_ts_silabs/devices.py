@@ -59,7 +59,6 @@ class DevWpk(object):
         self.telnet_prompt = self.telnet_client.read_some().decode('ascii')
         self.target_dsk = None
         self.logger = ctxt.session_logger.getChild(f"wpk_{self.serial_no}")
-        self.tty = f"/dev/serial/by-id/usb-Silicon_Labs_J-Link_Pro_OB_000{self.serial_no}-if00"
         self._pti_thread: threading.Thread | None = None
         self._pti_thread_stop_event: threading.Event = threading.Event()
         self._target_devinfo: TargetDevInfo | None = None
