@@ -4,6 +4,7 @@ from typing import List
 from pathlib import Path
 
 from z_wave_ts_silabs import DevWpk, DevCluster, BackgroundProcess, ctxt, DevTimeServer
+from z_wave_ts_silabs.device_factory import DeviceFactory
 
 logger = ctxt.session_logger.getChild(__name__)
 
@@ -31,6 +32,14 @@ def hw_cluster(hw_cluster_name: str) -> DevCluster:
             DevWpk(wpk.serial, f"jlink{wpk.serial}.silabs.com", time_server=time_server)
         )
     yield DevCluster(hw_cluster_name, dev_wpks)
+
+
+@pytest.fixture(scope='function')
+def device_factory(hw_cluster: DevCluster) -> DeviceFactory:
+    factory = DeviceFactory(hw_cluster)
+    yield factory
+    factory.finalize()
+
 
 
 @pytest.fixture(scope="function", autouse=True)

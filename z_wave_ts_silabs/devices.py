@@ -5,6 +5,7 @@ import time
 import select
 import socket
 import threading
+from abc import ABCMeta
 from typing import List
 from pathlib import Path
 from datetime import datetime
@@ -383,21 +384,21 @@ class DevWpk(object):
                 self._dump_to_zlf_file(filename, dch_packet)
                 dch_packet = DchPacket.from_bytes(dch_packet)
                 self._dump_to_pcap_file(filename_pcap, dch_packet, self.time_server.reference_time)
-                if dch_packet is not None:
-                    self.logger.info(f"dch packet nb: {len(dch_packet.frames)}")
-                    for dch_frame in dch_packet.frames:
-                        self.logger.info(
-                            f"dch_version: {dch_frame.version} | "
-                            f"timestamp_us: {self.time_server.reference_time + dch_frame.get_timestamp_us()} | "
-                            f"zwave_frame: {dch_frame.payload.ota_packet_data.hex(' ')} | "
-                            f"rssi: {dch_frame.payload.appended_info.rssi} | "
-                            f"region: {dch_frame.payload.appended_info.radio_config.z_wave_region_id} | "
-                            f"channel_number: {dch_frame.payload.appended_info.radio_info.channel_number} | "
-                            f"direction: {"Rx" if dch_frame.payload.appended_info.appended_info_cfg.is_rx else "Tx"} | "
-                            f"pti_length: {dch_frame.payload.appended_info.appended_info_cfg.length} | "
-                            f"pti_version: {dch_frame.payload.appended_info.appended_info_cfg.version} | "
-                            f"error_code: {dch_frame.payload.appended_info.status_0.error_code}"
-                        )
+                # if dch_packet is not None:
+                #     self.logger.info(f"dch packet nb: {len(dch_packet.frames)}")
+                #     for dch_frame in dch_packet.frames:
+                #         self.logger.info(
+                #             f"dch_version: {dch_frame.version} | "
+                #             f"timestamp_us: {self.time_server.reference_time + dch_frame.get_timestamp_us()} | "
+                #             f"zwave_frame: {dch_frame.payload.ota_packet_data.hex(' ')} | "
+                #             f"rssi: {dch_frame.payload.appended_info.rssi} | "
+                #             f"region: {dch_frame.payload.appended_info.radio_config.z_wave_region_id} | "
+                #             f"channel_number: {dch_frame.payload.appended_info.radio_info.channel_number} | "
+                #             f"direction: {"Rx" if dch_frame.payload.appended_info.appended_info_cfg.is_rx else "Tx"} | "
+                #             f"pti_length: {dch_frame.payload.appended_info.appended_info_cfg.length} | "
+                #             f"pti_version: {dch_frame.payload.appended_info.appended_info_cfg.version} | "
+                #             f"error_code: {dch_frame.payload.appended_info.status_0.error_code}"
+                #         )
             except ConnectionResetError:
                 self.logger.debug("dch socket: connection was reset by peer")
 
@@ -442,27 +443,28 @@ class DevCluster(object):
             wpk.is_free = True
 
 
-class ZwaveDevBase(object):
+class DevZwave(metaclass=ABCMeta):
     """Base class for Z-Wave devices."""
     
-    def __init__(self, name: str, wpk: DevWpk, region: ZwaveRegion, app_type: ZwaveApp, debug: bool = False):
+    def __init__(self, device_number: int, wpk: DevWpk, region: ZwaveRegion, app_type: ZwaveApp, debug: bool = False):
         """Initializes the device.
-        :param name: Device name (helps with logger)
+        :param device_number: Device number (helps with logger)
         :param wpk: WPK hosting the radio board
         :param region: Z-Wave region 
         """
-        self.name: str = name
+        self._device_number: int = device_number
         self.wpk: DevWpk = wpk
         self.region: str = region
         self.app_type: ZwaveApp = app_type
+        self._name = f'{self._device_number}_{self.app_type}' # derive the name from the device number and the app type
         self.firmware_file: str | None = None
         self.gbl_v255_file: str | None = None
         self.home_id: str | None = None
         self.node_id: int | None = None
 
-        self.loggger = ctxt.session_logger.getChild(f'dev_{self.name}')
+        self.logger = ctxt.session_logger.getChild(self._name)
         self.radio_board = self.wpk.radio_board.lower()
-        self.loggger.debug(self.radio_board)
+        self.logger.debug(self.radio_board)
 
         devinfo: TargetDevInfo = self.wpk.target_devinfo
         # Unify exposes this as an attribute called: SerialNumber, thus the name
@@ -480,7 +482,7 @@ class ZwaveDevBase(object):
                 break
         
         if self.firmware_file is None:
-            raise Exception(f'No suitable firmware was found for {self.name}')
+            raise Exception(f'No suitable firmware was found for {self._name}')
 
         # TODO: we should check ZGM130 -> ncp controller needs to be flashed with sample keys
         if 'ncp_serial_api_controller' in self.app_type:
@@ -490,14 +492,13 @@ class ZwaveDevBase(object):
             btl_signing_key = ctxt.zwave_btl_signing_key_end_device
             btl_encrypt_key = ctxt.zwave_btl_encrypt_key_end_device
 
-        self.loggger.debug(f'flashing: {self.firmware_file} with: {btl_encrypt_key}, {btl_signing_key}')
+        self.logger.debug(f'flashing: {self.firmware_file} with: {btl_encrypt_key}, {btl_signing_key}')
         self.wpk.flash_target(f'{ctxt.zwave_binaries}/{self.firmware_file}', signing_key_path=btl_signing_key, encrypt_key_path=btl_encrypt_key)
 
         self.gbl_v255_file = f'{Path(self.firmware_file).stem}_v255.gbl'
         if not os.path.exists(f'{ctxt.zwave_binaries}/{self.gbl_v255_file}'):
             raise Exception(f'could not find matching v255.gbl file in {ctxt.zwave_binaries}/ for {self.firmware_file}')
 
-        self.start()
 
     def start(self):
         self.start_log_capture()
@@ -518,13 +519,13 @@ class ZwaveDevBase(object):
         return f"zw-{self.home_id}-{self.node_id:04}"
 
     def start_zlf_capture(self) -> None:
-        self.wpk.start_pti_logger(self.name)
+        self.wpk.start_pti_logger(self._name)
 
     def stop_zlf_capture(self) -> None:
         self.wpk.stop_pti_logger()
 
     def start_log_capture(self) -> None:
-        self.wpk.start_rtt_logger(f"{self.name}_rtt")
+        self.wpk.start_rtt_logger(f"{self._name}_rtt")
 
     def stop_log_capture(self) -> None:
         self.wpk.stop_rtt_logger()
