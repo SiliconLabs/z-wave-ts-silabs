@@ -1,5 +1,6 @@
-from typing import Literal
-from enum import Enum
+from __future__ import annotations
+from typing import Literal, List
+from enum import Enum, auto
 
 ZwaveNcpApp = Literal[
     'zwave_ncp_serial_api_controller',
@@ -35,7 +36,6 @@ ZwaveRegion = Literal[
     'REGION_JP',
     'REGION_KR'
 ]
-
 
 # see ZAF/ApplicationUtilities/ZW_product_id_enum.h in zw-protocol: typedef enum _PRODUCT_PLUS_ID_ENUM_
 class ZwaveAppProductType(Enum):

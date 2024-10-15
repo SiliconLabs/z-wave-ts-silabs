@@ -5,65 +5,86 @@ import time
 import paho.mqtt.client as mqtt
 from typing import Dict, List
 
-from .definitions import ZwaveRegion
-from .devices import ZwaveDevBase, DevWpk
+from .definitions import ZwaveRegion, ZwaveApp, ZwaveNcpApp
+from .devices import DevZwave, DevWpk
 from .processes import Zpc, UicUpvl, UicImageProvider
 
 
-class DevZwaveGwZpc(ZwaveDevBase):
+class DevZwaveGwZpc(DevZwave):
     """ZPC Z-Wave Gateway (based on UnifySDK)."""
 
-    def __init__(self, name: str, wpk: DevWpk, region: ZwaveRegion, update: bool = False) -> None:
+    @classmethod
+    def zwave_app(cls) -> ZwaveApp:
+        return 'zwave_ncp_serial_api_controller'
+
+    def __init__(self, device_number: int, wpk: DevWpk, region: ZwaveRegion, app_name: ZwaveNcpApp) -> None:
         """Initializes the device.
-        :param name: The device name
+        :param device_number: The device name
         :param wpk: The wpk with the radio board acting as NCP
-        :param uart_ncp: The NCP uart
+        :param region: The Z-Wave region of the device
         """
 
         self.zpc_process: Zpc | None = None
         self.uic_upvl_process: UicUpvl | None = None
         self.uic_image_provider_process: UicImageProvider | None = None
         self.mqtt_client: MqttClientZpc | None = None
+        # TODO: maybe create a class with the fields below (Some of these states need to be shared with the MQTT client):
+        self.network_next_node_id: int | None = None
+        self.network_dict: dict | None = None
+        self.ota_status: dict | None = None
+        self.command_status: dict | None = None
+        self.dsk_list: dict | None = None
 
-        super().__init__(name, wpk, region, 'zwave_ncp_serial_api_controller')
+        super().__init__(device_number, wpk, region, app_name)
 
-        # zpc_process when started with update=True does not return other information
-        if update:
-            self.loggger.debug('zpc_ncp_update process starting')
-            self.zpc_process = Zpc(self.region, self.wpk.hostname, self.gbl_v255_file)
-            self.loggger.debug('zpc_ncp_update process finished')
-            self.zpc_process.stop()
-            if self.zpc_process.is_alive:
-                raise Exception("zpc_ncp_update process did NOT die as expected")
-            else:
-                self.loggger.debug("zpc_ncp_update process died as expected")
+    # should be called by the device factory
+    def start(self):
+        super().start() # important: otherwise the rtt and pti loggers are not started
+        if self.zpc_process is not None and self.zpc_process.is_alive:
+            raise Exception("ZPC process is already running")
 
-        self.loggger.debug('zpc process starting')
+        self.logger.debug('zpc process starting')
         self.zpc_process = Zpc(self.region, self.wpk.hostname)
         if not self.zpc_process.is_alive:
             raise Exception("zpc process did not start or died unexpectedly")
-        self.loggger.debug('zpc process started')
+        self.logger.debug('zpc process started')
 
         self.home_id = self.zpc_process.home_id
-        self.loggger.debug(f'Home ID: {self.home_id}')
-        
+        self.logger.debug(f'Home ID: {self.home_id}')
+
         self.node_id = int(self.zpc_process.node_id)
-        self.loggger.debug(f'Node ID: {self.node_id}')
+        self.logger.debug(f'Node ID: {self.node_id}')
 
         self.network_next_node_id = self.node_id + 1
 
         # according to: uic/components/unify_dotdot_attribute_store/src/unify_dotdot_attribute_store_node_state.cpp
-        # Nodes can be in these states 
+        # Nodes can be in these states
         # "Online interviewing", "Online functional", "Online non-functional", "Online interviewing", "Offline", "Unavailable"
-        self.network_dict = { self.node_id: "Offline" }
-        self.ota_status = {} # node_id: None (default), True if finished, False if issue -> it sucks, make it a property or something
-        self.command_status = {} # node_id: { "command" : "state" }, and then do something about the state.
+        self.network_dict = {self.node_id: "Offline"}
+        self.ota_status = {}  # node_id: None (default), True if finished, False if issue -> it sucks, make it a property or something
+        self.command_status = {}  # node_id: { "command" : "state" }, and then do something about the state.
         # list of provisioned DSKs for S2 secured inclusion (not SmartStart ! see uic_upvl for that)
         self.dsk_list = []
 
         # We pass a reference of this DevZwaveGwZpc object (self) to the MqttClientZpc to avoid duplicating attributes
         self.mqtt_client = MqttClientZpc(self)
 
+    # start the ZPC process in ncp_update mode, the stop() method should be called before calling this else it will fail
+    def ncp_update(self):
+        if self.zpc_process is not None and self.zpc_process.is_alive:
+            raise Exception("ZPC process is already running")
+
+        self.logger.debug('zpc_ncp_update process starting')
+        self.zpc_process = Zpc(self.region, self.wpk.hostname, self.gbl_v255_file)
+        self.logger.debug('zpc_ncp_update process finished')
+        self.zpc_process.stop()
+        if self.zpc_process.is_alive:
+            raise Exception("zpc_ncp_update process did NOT die as expected")
+        else:
+            self.logger.debug("zpc_ncp_update process died as expected")
+
+        # cleanup after update so that can the start() method can be called.
+        self.zpc_process = None
 
     def start_uic_upvl(self):
         self.uic_upvl_process = UicUpvl()
@@ -71,7 +92,7 @@ class DevZwaveGwZpc(ZwaveDevBase):
             raise Exception("uic_upvl process did not start or died unexpectedly")
 
 
-    def start_uic_image_provider(self, devices_to_update: List[ZwaveDevBase]):
+    def start_uic_image_provider(self, devices_to_update: List[DevZwave]):
         devices = [ ]
         
         for dev in devices_to_update:
@@ -83,7 +104,7 @@ class DevZwaveGwZpc(ZwaveDevBase):
             self.ota_status[dev.node_id] = None
             devices.append(entry)
 
-        self.loggger.info(devices)
+        self.logger.info(devices)
         self.uic_image_provider_process = UicImageProvider(devices)
         if not self.uic_image_provider_process.is_alive:
             raise Exception("uic_image_provider process did not start or died unexpectedly")
@@ -102,7 +123,7 @@ class DevZwaveGwZpc(ZwaveDevBase):
 
     # should be called everytime a test involves ZPC
     def stop(self):
-        super().stop()
+        super().stop() # important: otherwise the rtt and pti loggers are never stopped
         # just in case a user forgets to stop these services
         self.stop_uic_image_provider()
         self.stop_uic_upvl()
@@ -132,11 +153,11 @@ class DevZwaveGwZpc(ZwaveDevBase):
         return False
 
     # ZPC state machine has a 40 sec timemout on state transitions if nothing happens to go back to idle
-    def wait_for_node_connection(self, device: ZwaveDevBase, timeout: float = 40):
+    def wait_for_node_connection(self, device: DevZwave, timeout: float = 40):
         node_id = self.network_next_node_id
         
         end_time = time.time() + timeout
-        self.loggger.info(f'waiting for connection of node: {node_id}')
+        self.logger.info(f'waiting for connection of node: {node_id}')
         
         while (time.time() < end_time) and not self._is_node_connected(node_id):
             os.sched_yield() # let the MQTT client thread run
@@ -144,7 +165,7 @@ class DevZwaveGwZpc(ZwaveDevBase):
         if not self._is_node_connected(node_id):
             raise Exception(f"timeout waiting for connection of node: {node_id}")
         
-        self.loggger.info(f'node: {node_id} connected')
+        self.logger.info(f'node: {node_id} connected')
 
         # do not forget to increment self.network_next_node_id before returning
         self.network_next_node_id += 1
@@ -153,11 +174,11 @@ class DevZwaveGwZpc(ZwaveDevBase):
         device.home_id = self.home_id
 
     # no default value for timeout, it depends on the type of tests
-    def wait_for_node_list_connection(self, device_list: List[ZwaveDevBase], timeout: float):
+    def wait_for_node_list_connection(self, device_list: List[DevZwave], timeout: float):
         end_time = time.time() + timeout
 
         node_id_list = [ x for x in range(self.network_next_node_id, self.network_next_node_id + len(device_list)) ]        
-        self.loggger.info(f'waiting for connection of nodes: {node_id_list}')
+        self.logger.info(f'waiting for connection of nodes: {node_id_list}')
 
         # dict to store the nodes states
         is_node_id_connected = {}
@@ -176,7 +197,7 @@ class DevZwaveGwZpc(ZwaveDevBase):
         if not all(is_node_id_connected.values()):
             raise Exception(f"timeout waiting for connection of node(s): { [ k for k,v in is_node_id_connected.items() if not v ] }")
         
-        self.loggger.info(f'nodes: {node_id_list} connected')
+        self.logger.info(f'nodes: {node_id_list} connected')
 
         # do not forget to increment self.network_next_node_id before returning
         self.network_next_node_id += len(device_list)
@@ -187,10 +208,10 @@ class DevZwaveGwZpc(ZwaveDevBase):
             device.node_id = node_id
             device.home_id = self.home_id
 
-    def wait_for_node_disconnection(self, device: ZwaveDevBase, timeout: float = 40):
+    def wait_for_node_disconnection(self, device: DevZwave, timeout: float = 40):
         node_id = device.node_id
         end_time = time.time() + timeout
-        self.loggger.info(f'waiting for disconnection of nodes: {node_id}')
+        self.logger.info(f'waiting for disconnection of nodes: {node_id}')
         
         while (time.time() < end_time) and not self._is_node_disconnected(node_id):
             os.sched_yield() # let the MQTT client thread run
@@ -198,10 +219,10 @@ class DevZwaveGwZpc(ZwaveDevBase):
         if not self._is_node_disconnected(node_id):
             raise Exception(f"timeout waiting for disconnection of node: {node_id}")
         
-        self.loggger.info(f'node: {node_id} disconnected')
+        self.logger.info(f'node: {node_id} disconnected')
 
     # secured OTA should not take more than 10 minutes
-    def wait_for_ota_update_to_finish(self, device: ZwaveDevBase, timeout: float = 600):
+    def wait_for_ota_update_to_finish(self, device: DevZwave, timeout: float = 600):
         node_id = device.node_id
         end_time = time.time() + timeout
         
@@ -214,14 +235,14 @@ class DevZwaveGwZpc(ZwaveDevBase):
         
         if not self.ota_status[node_id]:
             raise Exception(f"timeout waiting for OTA update of node: {node_id}")
-        self.loggger.info(f'node: {node_id} OTA update successful')
+        self.logger.info(f'node: {node_id} OTA update successful')
 
 
 class MqttClientZpc(object):
 
     def __init__(self, zpc: DevZwaveGwZpc , timeout: float = 30):
         self.zpc = zpc
-        self.logger = self.zpc.loggger.getChild('mqtt_client')
+        self.logger = self.zpc.logger.getChild('mqtt_client')
         
         self.mqttc = mqtt.Client(mqtt.CallbackAPIVersion.VERSION2)
         self.mqttc.on_connect = self._on_connect
