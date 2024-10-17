@@ -1,15 +1,13 @@
-from typing import List, Dict
-
 import pytest
+from typing import List
 from z_wave_ts_silabs import DevZwaveGwZpc, DevZwaveDoorLockKeypad, DevZwaveLedBulb, DevZwaveMultilevelSensor, \
-    DevZwavePowerStrip, DevZwaveSensorPIR, DevZwaveSwitchOnOff, DevZwaveWallController, DevWpk, ZwaveRegion
+    DevZwavePowerStrip, DevZwaveSensorPIR, DevZwaveSwitchOnOff, DevZwaveWallController, DevWpk, ZwaveRegion, DevCluster
 
 
 @pytest.mark.parametrize('region', ['REGION_EU'])
-def test_door_lock_keypad_basic_set(hw_cluster_wpks: List[DevWpk], region: ZwaveRegion):
-    wpks = hw_cluster_wpks
-    zpc = DevZwaveGwZpc('zpc', wpks[-1], region)
-    end_device_1 = DevZwaveDoorLockKeypad('end_device_1', wpks[0], region)
+def test_door_lock_keypad_basic_set(hw_cluster: DevCluster, region: ZwaveRegion):
+    zpc = DevZwaveGwZpc('zpc', hw_cluster.get_free_wpk(), region)
+    end_device_1 = DevZwaveDoorLockKeypad('end_device_1', hw_cluster.get_free_wpk(), region)
 
     # secure inclusion
     zpc.add_node(end_device_1.get_dsk())
@@ -27,10 +25,9 @@ def test_door_lock_keypad_basic_set(hw_cluster_wpks: List[DevWpk], region: Zwave
 
 
 @pytest.mark.parametrize('region', ['REGION_EU'])
-def test_led_buld_inclusion(hw_cluster_wpks: List[DevWpk], region: ZwaveRegion):
-    wpks = hw_cluster_wpks
-    zpc = DevZwaveGwZpc('zpc', wpks[-1], region)
-    end_device_1 = DevZwaveLedBulb('end_device_1', wpks[0], region)
+def test_led_buld_inclusion(hw_cluster: DevCluster, region: ZwaveRegion):
+    zpc = DevZwaveGwZpc('zpc', hw_cluster.get_free_wpk(), region)
+    end_device_1 = DevZwaveLedBulb('end_device_1', hw_cluster.get_free_wpk(), region)
 
     # secure inclusion
     zpc.add_node(end_device_1.get_dsk())
@@ -46,10 +43,9 @@ def test_led_buld_inclusion(hw_cluster_wpks: List[DevWpk], region: ZwaveRegion):
 
 
 @pytest.mark.parametrize('region', ['REGION_EU'])
-def test_multilevel_sensor_inclusion(hw_cluster_wpks: List[DevWpk], region: ZwaveRegion):
-    wpks = hw_cluster_wpks
-    zpc = DevZwaveGwZpc('zpc', wpks[-1], region)
-    end_device_1 = DevZwaveMultilevelSensor('end_device_1', wpks[0], region)
+def test_multilevel_sensor_inclusion(hw_cluster: DevCluster, region: ZwaveRegion):
+    zpc = DevZwaveGwZpc('zpc', hw_cluster.get_free_wpk(), region)
+    end_device_1 = DevZwaveMultilevelSensor('end_device_1', hw_cluster.get_free_wpk(), region)
 
     # secure inclusion
     zpc.add_node(end_device_1.get_dsk())
@@ -65,10 +61,9 @@ def test_multilevel_sensor_inclusion(hw_cluster_wpks: List[DevWpk], region: Zwav
 
 
 @pytest.mark.parametrize('region', ['REGION_EU'])
-def test_power_strip_inclusion_and_control(hw_cluster_wpks: List[DevWpk], region: ZwaveRegion):
-    wpks = hw_cluster_wpks
-    zpc = DevZwaveGwZpc('zpc', wpks[-1], region)
-    end_device_1 = DevZwavePowerStrip('end_device_1', wpks[0], region)
+def test_power_strip_inclusion_and_control(hw_cluster: DevCluster, region: ZwaveRegion):
+    zpc = DevZwaveGwZpc('zpc', hw_cluster.get_free_wpk(), region)
+    end_device_1 = DevZwavePowerStrip('end_device_1', hw_cluster.get_free_wpk(), region)
 
     # secure inclusion
     zpc.add_node(end_device_1.get_dsk())
@@ -86,10 +81,9 @@ def test_power_strip_inclusion_and_control(hw_cluster_wpks: List[DevWpk], region
 
 
 @pytest.mark.parametrize('region', ['REGION_EU'])
-def test_sensor_pir_battery_report(hw_cluster_wpks: List[DevWpk], region: ZwaveRegion):
-    wpks = hw_cluster_wpks
-    zpc = DevZwaveGwZpc('zpc', wpks[-1], region)
-    end_device_1 = DevZwaveSensorPIR('end_device_1', wpks[0], region)
+def test_sensor_pir_battery_report(hw_cluster: DevCluster, region: ZwaveRegion):
+    zpc = DevZwaveGwZpc('zpc', hw_cluster.get_free_wpk(), region)
+    end_device_1 = DevZwaveSensorPIR('end_device_1', hw_cluster.get_free_wpk(), region)
 
     # secure inclusion
     zpc.add_node(end_device_1.get_dsk())
@@ -111,11 +105,10 @@ def test_sensor_pir_battery_report(hw_cluster_wpks: List[DevWpk], region: ZwaveR
 
 
 @pytest.mark.parametrize('region', ['REGION_EU'])
-def test_serial_api_controller_otw_update(hw_cluster_wpks: List[DevWpk], region: ZwaveRegion):
-    wpks = hw_cluster_wpks
+def test_serial_api_controller_otw_update(hw_cluster: DevCluster, region: ZwaveRegion):
     # setting update to True does an OTW with a v255 firmware
-    zpc = DevZwaveGwZpc('zpc', wpks[-1], region, update=True)
-    end_device_1 = DevZwaveSwitchOnOff('end_device_1', wpks[0], region)
+    zpc = DevZwaveGwZpc('zpc', hw_cluster.get_free_wpk(), region, update=True)
+    end_device_1 = DevZwaveSwitchOnOff('end_device_1', hw_cluster.get_free_wpk(), region)
 
     # unsecure inclusion
     zpc.add_node()
@@ -133,10 +126,9 @@ def test_serial_api_controller_otw_update(hw_cluster_wpks: List[DevWpk], region:
 
 
 @pytest.mark.parametrize('region', ['REGION_EU'])
-def test_switch_on_off_secure_inclusion_exclusion(hw_cluster_wpks: List[DevWpk], region: ZwaveRegion):
-    wpks = hw_cluster_wpks
-    zpc = DevZwaveGwZpc('zpc', wpks[-1], region)
-    end_device_1 = DevZwaveSwitchOnOff('end_device_1', wpks[0], region)
+def test_switch_on_off_secure_inclusion_exclusion(hw_cluster: DevCluster, region: ZwaveRegion):
+    zpc = DevZwaveGwZpc('zpc', hw_cluster.get_free_wpk(), region)
+    end_device_1 = DevZwaveSwitchOnOff('end_device_1', hw_cluster.get_free_wpk(), region)
 
     # secure inclusion
     zpc.add_node(end_device_1.get_dsk())
@@ -159,10 +151,9 @@ def test_switch_on_off_secure_inclusion_exclusion(hw_cluster_wpks: List[DevWpk],
 
 
 @pytest.mark.parametrize('region', ['REGION_EU'])
-def test_switch_on_off_secure_ota(hw_cluster_wpks: List[DevWpk], region: ZwaveRegion):
-    wpks = hw_cluster_wpks
-    zpc = DevZwaveGwZpc('zpc', wpks[-1], region)
-    end_device_1 = DevZwaveSwitchOnOff('end_device_1', wpks[0], region)
+def test_switch_on_off_secure_ota(hw_cluster: DevCluster, region: ZwaveRegion):
+    zpc = DevZwaveGwZpc('zpc', hw_cluster.get_free_wpk(), region)
+    end_device_1 = DevZwaveSwitchOnOff('end_device_1', hw_cluster.get_free_wpk(), region)
 
     # secure inclusion
     zpc.add_node(end_device_1.get_dsk())
@@ -182,10 +173,9 @@ def test_switch_on_off_secure_ota(hw_cluster_wpks: List[DevWpk], region: ZwaveRe
 
 
 @pytest.mark.parametrize('region', ['REGION_EU'])
-def test_switch_on_off_unsecure_inclusion_exclusion(hw_cluster_wpks: List[DevWpk], region: ZwaveRegion):
-    wpks = hw_cluster_wpks
-    zpc = DevZwaveGwZpc('zpc', wpks[-1], region)
-    end_device_1 = DevZwaveSwitchOnOff('end_device_1', wpks[0], region)
+def test_switch_on_off_unsecure_inclusion_exclusion(hw_cluster: DevCluster, region: ZwaveRegion):
+    zpc = DevZwaveGwZpc('zpc', hw_cluster.get_free_wpk(), region)
+    end_device_1 = DevZwaveSwitchOnOff('end_device_1',hw_cluster.get_free_wpk(), region)
 
     # unsecure inclusion
     zpc.add_node()
@@ -208,10 +198,9 @@ def test_switch_on_off_unsecure_inclusion_exclusion(hw_cluster_wpks: List[DevWpk
 
 
 @pytest.mark.parametrize('region', ['REGION_EU'])
-def test_switch_on_off_unsecure_ota(hw_cluster_wpks: List[DevWpk], region: ZwaveRegion):
-    wpks = hw_cluster_wpks
-    zpc = DevZwaveGwZpc('zpc', wpks[-1], region)
-    end_device_1 = DevZwaveSwitchOnOff('end_device_1', wpks[0], region)
+def test_switch_on_off_unsecure_ota(hw_cluster: DevCluster, region: ZwaveRegion):
+    zpc = DevZwaveGwZpc('zpc', hw_cluster.get_free_wpk(), region)
+    end_device_1 = DevZwaveSwitchOnOff('end_device_1', hw_cluster.get_free_wpk(), region)
 
     # unsecure inclusion
     zpc.add_node()
@@ -231,10 +220,8 @@ def test_switch_on_off_unsecure_ota(hw_cluster_wpks: List[DevWpk], region: Zwave
 
 
 @pytest.mark.parametrize('region', ['REGION_EU'])
-def test_switch_on_off_smartstart_inclusion(hw_cluster_wpks: List[DevWpk], region: ZwaveRegion):
-    wpks = hw_cluster_wpks
-
-    zpc = DevZwaveGwZpc('zpc', wpks[-1], region)
+def test_switch_on_off_smartstart_inclusion(hw_cluster: DevCluster, region: ZwaveRegion):
+    zpc = DevZwaveGwZpc('zpc', hw_cluster.get_free_wpk(), region)
     zpc.start_uic_upvl()
 
     end_device_list: List[DevZwaveSwitchOnOff] = []
@@ -243,7 +230,7 @@ def test_switch_on_off_smartstart_inclusion(hw_cluster_wpks: List[DevWpk], regio
     nb_end_devices = 1
 
     for i in range(nb_end_devices):
-        end_device = DevZwaveSwitchOnOff('end_device_1', wpks[i], region)
+        end_device = DevZwaveSwitchOnOff('end_device_1', hw_cluster.get_free_wpk(), region)
         end_device_list.append(end_device)
         dsk_list.append(end_device.get_dsk())
 
@@ -266,10 +253,9 @@ def test_switch_on_off_smartstart_inclusion(hw_cluster_wpks: List[DevWpk], regio
 
 
 @pytest.mark.parametrize('region', ['REGION_EU'])
-def test_wall_controller_basic_set(hw_cluster_wpks: List[DevWpk], region: ZwaveRegion):
-    wpks = hw_cluster_wpks
-    zpc = DevZwaveGwZpc('zpc', wpks[-1], region)
-    end_device_1 = DevZwaveWallController('end_device_1', wpks[0], region)
+def test_wall_controller_basic_set(hw_cluster: DevCluster, region: ZwaveRegion):
+    zpc = DevZwaveGwZpc('zpc', hw_cluster.get_free_wpk(), region)
+    end_device_1 = DevZwaveWallController('end_device_1', hw_cluster.get_free_wpk(), region)
 
     # secure inclusion
     zpc.add_node(end_device_1.get_dsk())

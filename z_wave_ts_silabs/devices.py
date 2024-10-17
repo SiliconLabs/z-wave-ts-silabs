@@ -3,7 +3,7 @@ import re
 import time
 import socket
 import threading
-from typing import Literal
+from typing import List
 from pathlib import Path
 from datetime import datetime
 from dataclasses import dataclass
@@ -75,6 +75,9 @@ class DevWpk(object):
             self.reset()
             # if this raises an Exception again then there's another problem.
             self.logger.debug(f"radio board part number: {self.target_devinfo.part_number}")
+
+        # boolean to control WPK reservation
+        self.is_free = False
 
     @property
     def vcom_port(self) -> int:
@@ -255,6 +258,24 @@ class DevWpk(object):
 
     def stop_rtt_logger(self):
         self.commander_cli.kill_rtt_logger_background_process()
+
+
+class DevCluster(object):
+
+    def __init__(self, name: str, wpk_list: List[DevWpk]):
+        self.name = name
+        self.wpk_list = wpk_list
+
+    def get_free_wpk(self) -> DevWpk:
+        for wpk in self.wpk_list:
+            if wpk.is_free is True:
+                wpk.is_free = False
+                return wpk
+        raise Exception(f"All WPKs in cluster: {self.name} are reserved")
+
+    def free_all_wpk(self) -> None:
+        for wpk in self.wpk_list:
+            wpk.is_free = True
 
 
 class ZwaveDevBase(object):
