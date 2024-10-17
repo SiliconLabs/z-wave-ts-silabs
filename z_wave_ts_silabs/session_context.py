@@ -39,9 +39,12 @@ class SessionContext:
         return context
 
     def __post_init__(self):
-        self.logdir: Path = Path.cwd() / f"logs/{datetime.now().strftime('%Y_%m_%d-%H_%M_%S')}"
-        self.current_test_logdir: Path | None = None
+        # clusters holds every cluster described in the JSON file under the form of Cluster objects
         self.clusters: Dict[str, Cluster] = {}
+        # TODO: logdir may have to be handled by a fixture instead, it's only useful to construct current_test_logdir
+        self.logdir: Path = Path.cwd() / f"logs/{datetime.now().strftime('%Y_%m_%d-%H_%M_%S')}"
+        # current_test_logdir is used by most classes to store logs, but also other files such as configuration files for ZPC.
+        self.current_test_logdir: Path | None = None
 
         # create the session log directory
         self.logdir.mkdir(parents=True, exist_ok=True)
