@@ -19,43 +19,40 @@ from . import config
 logger = config.LOGGER.getChild(__name__)
 
 
-def are_all_patterns_matched(patterns: Dict[str: re.Match | None] | None) -> bool:
-    if patterns is None:
-        return True
-
-    if None in patterns.values():
-        return False
-    return True
-
-
-def pattern_matching(patterns: Dict[str: re.Match | None] | None, log_file: TextIO):
-    if patterns is None:
-        return
-
-    for line in log_file.readlines():
-        for p in patterns.keys():
-            m = re.search(p, line)
-            if m is not None:
-                patterns[p] = m
-
-
-def md5_base64(file: str) -> str | None:
-    with open(file, 'rb') as f:
-        md5_hash = hashlib.md5(f.read())
-        return base64.b64encode(md5_hash.digest()).decode()
-
-
-# This module scoped variable is accessed by the BackgroundProcess class below with a static method
-background_process_list: List[BackgroundProcess] = []
-
-
 class BackgroundProcess(object):
 
+    _process_list: List[BackgroundProcess] = []
+
     @staticmethod
-    def stop_background_processes():
-        while len(background_process_list) != 0:
-            bg_proc = background_process_list.pop()
+    def are_all_patterns_matched(patterns: Dict[str: re.Match | None] | None) -> bool:
+        if patterns is None:
+            return True
+
+        if None in patterns.values():
+            return False
+        return True
+
+    @staticmethod
+    def pattern_matching(patterns: Dict[str: re.Match | None] | None, log_file: TextIO):
+        if patterns is None:
+            return
+
+        for line in log_file.readlines():
+            for p in patterns.keys():
+                m = re.search(p, line)
+                if m is not None:
+                    patterns[p] = m
+
+    @staticmethod
+    def stop_all():
+        while len(BackgroundProcess._process_list) != 0:
+            bg_proc = BackgroundProcess._process_list.pop()
             bg_proc.stop()
+
+    @staticmethod
+    def register(process: BackgroundProcess):
+        if process not in BackgroundProcess._process_list:
+            BackgroundProcess._process_list.append(process)
 
     # patterns dict keys must be set to None
     def __init__(self, name: str, cmd_line: str, patterns: Dict[str: re.Match | None] = None, timeout: float = 10):
@@ -76,14 +73,14 @@ class BackgroundProcess(object):
         while time.time() < end_time:
             if not self.is_alive:
                 continue
-            if are_all_patterns_matched(patterns):
+            if BackgroundProcess.are_all_patterns_matched(patterns):
                 break
             else:
-                pattern_matching(patterns, self.ro_log_file)
+                BackgroundProcess.pattern_matching(patterns, self.ro_log_file)
 
         # if process is still alive add it to the module list, test fixtures can then be used to kill background processes
         if self.is_alive:
-            background_process_list.append(self)
+            BackgroundProcess.register(self)
         # otherwise just log the event that the process has died, it's the caller responsibility to check
         # if the process is still alive with BackgroundProcess.is_alive
         else:
@@ -252,6 +249,12 @@ class UicUpvl(BackgroundProcess):
 
 class UicImageProvider(BackgroundProcess):
 
+    @staticmethod
+    def md5_base64(file: str) -> str | None:
+        with open(file, 'rb') as f:
+            md5_hash = hashlib.md5(f.read())
+            return base64.b64encode(md5_hash.digest()).decode()
+
     def __init__(self, devices_to_update: List[Dict[str, str]]):
         # devices_to_update format is 
         # [
@@ -298,7 +301,7 @@ class UicImageProvider(BackgroundProcess):
                     "Version": "255.0.0",
                     "ApplyAfter": "2000-01-01T10:00:00+02:00",
                     # date is set way back so that the update starts right away
-                    "Md5": md5_base64(f'{config.CONFIG["zwave-binaries"]}/{file}')
+                    "Md5": UicImageProvider.md5_base64(f'{config.CONFIG["zwave-binaries"]}/{file}')
                 }
                 self.images_json["Images"].append(images_entry)
                 shutil.copyfile(src_path, dst_path)
