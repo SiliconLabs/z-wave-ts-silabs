@@ -14,3 +14,15 @@ Release v0.1
 - Supports socat to get rid of the ubs connection between the ncp_serial_api_controller and ZPC
 - Clean management of subprocesses, logs and configuration (zwave binaries location, bootloader keys, cluster description file location)
 - Integrates with Pytest and the CI (fixtures and Junit report)
+
+Release v0.2
+------------
+
+- Is now a pytest plugin, this means that a conftest.py is not needed to load fixtures anymore, they will automatically be launched by pytest
+- Installs pytest-rerunfailures by default now
+- Supports DCH/PTI parsing in both .pcap and .zlf files (pcap support is partial)
+- Supports RTT traces using commander-cli (for now all the output from commander-cli is dumped, which is not the cleanest)
+- Supports running UIC tools without needing access to /etc or /var
+- Has a better look and feel for tests through the use introduction of a device_factory fixture for spawning nodes
+- Has a better interface for choosing on which cluster should the current test session run on (--hw-cluster cli option)
+- Supports macOS natively
