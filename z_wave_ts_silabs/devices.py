@@ -1,5 +1,6 @@
 import os
 import re
+import struct
 import time
 import select
 import socket
@@ -187,6 +188,49 @@ class DevWpk(object):
             self.target_dsk = qr_code.group()[12:53]
 
     @staticmethod
+    def _create_pcap_file(filename: str) -> None:
+        """Creates a new pcap file.
+        :param filename: File path
+        """
+        # we follow this specification: https://ietf-opsawg-wg.github.io/draft-ietf-opsawg-pcap/draft-ietf-opsawg-pcap.html#name-general-file-structure
+        with open(filename, 'wb') as file:
+            file.write(struct.pack("<IHHQII",
+                                   0xA1B2C3D4,  # Magic Number (4 bytes) 0xA1B2C3D4 -> s and us | 0xA1B23C4D -> s and ns
+                                   2,               # Major version (2 bytes) the current standard is 2
+                                   4,               # Minor version (2 bytes) the current standard is 4
+                                   0,               # Reserved 1 (4 bytes) and Reserved 2 (4 bytes) both set to 0
+                                   4096,            # SnapLen (4 bytes) max number of octets captured from each packet, must not be 0
+                                   297              # LinkType and additional information (4 bytes), we only set the link type to LINKTYPE_ZWAVE_TAP: 297
+                                   ))
+
+    @staticmethod
+    def _dump_to_pcap_file(filename: str, dch_packet: DchPacket, reference_time: int) -> None:
+        """Dumps frame to pcap file.
+        :param filename: File path
+        :param dch_packet: parsed DCH packet from WSTK/WPK/TB containing Z-Wave frames
+        """
+        if dch_packet is None:
+            return
+
+        with open(filename, 'ab') as file:
+            # file.write(struct.pack("<II", timestamp_s, timestamp_ns))
+            for frame in dch_packet.frames:
+                # https://ietf-opsawg-wg.github.io/draft-ietf-opsawg-pcap/draft-ietf-opsawg-pcap.html#name-packet-record
+                cur_time = (reference_time + frame.timestamp)
+                cur_time_second = cur_time // (10 ** 6)
+                cur_time_microsecond = cur_time % (10 ** 6)
+                # TODO: write total packet size with TAP header + TLVs (should be 30 bytes)
+                packet_length = 32 + len(frame.payload.ota_packet_data) # 32 is TAP header + TAP TLVs
+                # Timestamp (seconds), Timestamp (microseconds), Captured packet length, Original packet length
+                file.write(struct.pack("<IIII", cur_time_second, cur_time_microsecond, packet_length, packet_length))
+                # TAP header
+                file.write(struct.pack("<BBH", 1, 0, 7)) # version, reserved (0), length of TLVs section (7 32bit words with all 3 TLVs)
+                file.write(struct.pack("<HHI", 0, 1, 0)) # FCS: 1 for R1 and R2, 2 for R3 TODO: replace 0 with the right value
+                file.write(struct.pack("<HHI", 1, 4, 0)) # RSS: TODO: replace 0 with the RSSI value in dBm from RAIL
+                file.write(struct.pack("<HHHHI", 2, 8, 0, 0, 0)) # RFI: radio frequency information -> Region, Data Rate, Frequency in KHz
+                file.write(frame.payload.ota_packet_data)
+
+    @staticmethod
     def _create_zlf_file(filename: str) -> None:
         """Creates a new zlf file.
         :param filename: File path
@@ -224,9 +268,11 @@ class DevWpk(object):
 
     def _pti_logger_thread(self, logger_name: str):
         filename = f"{ctxt.session_logdir_current_test}/{logger_name}.zlf"
+        filename_pcap = f"{ctxt.session_logdir_current_test}/{logger_name}.pcap"
         # get sub logger here from self, and re-direct output in file.
         # redirect output from port 4905.
         DevWpk._create_zlf_file(filename)
+        DevWpk._create_pcap_file(filename_pcap)
         s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         s.connect((self.hostname, self.dch_port))
 
@@ -246,6 +292,7 @@ class DevWpk(object):
                     # raise Exception('DCH socket connection broken')
                 self._dump_to_zlf_file(filename, dch_packet)
                 dch_packet = DchPacket.from_bytes(dch_packet)
+                self._dump_to_pcap_file(filename_pcap, dch_packet, self.time_server.reference_time)
                 if dch_packet is not None:
                     self.logger.info(f"dch packet nb: {len(dch_packet.frames)}")
                     for dch_frame in dch_packet.frames:
