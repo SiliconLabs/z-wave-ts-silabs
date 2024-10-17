@@ -8,9 +8,9 @@ logger = config.LOGGER.getChild(__name__)
 
 @pytest.fixture(scope="function", autouse=True)
 def cleanup_background_processes():
-    BackgroundProcess.stop_background_processes()
+    BackgroundProcess.stop_all()
     yield
-    BackgroundProcess.stop_background_processes()
+    BackgroundProcess.stop_all()
 
 @pytest.fixture(scope="function", autouse=True)
 def setup_logs(request):
