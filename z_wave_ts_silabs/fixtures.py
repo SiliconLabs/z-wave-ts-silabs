@@ -1,13 +1,14 @@
 import os
 import pytest
+import logging
 from typing import List
 from pathlib import Path
 
 from z_wave_ts_silabs import DevWpk, DevCluster, BackgroundProcess, ctxt, DevTimeServer
 from z_wave_ts_silabs.device_factory import DeviceFactory
 
-logger = ctxt.session_logger.getChild(__name__)
 
+_logger = logging.getLogger(__name__)
 
 def pytest_addoption(parser: pytest.Parser):
     parser.addoption(
@@ -62,4 +63,4 @@ def setup_logs(request):
     ctxt.session_logdir_current_test = f"{ctxt.session_logdir}/{request.node.originalname}"
     # the mkdir below should never raise an error since function names should be unique in a test file
     os.mkdir(ctxt.session_logdir_current_test)
-    logger.debug(f'current test log directory: {ctxt.session_logdir_current_test}')
+    _logger.debug(f'current test log directory: {ctxt.session_logdir_current_test}')

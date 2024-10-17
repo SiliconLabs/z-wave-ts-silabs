@@ -9,6 +9,7 @@ import base64
 import shutil
 import socket
 import hashlib
+import logging
 import threading
 from typing import List, Dict, TextIO
 from datetime import datetime
@@ -17,7 +18,7 @@ from subprocess import Popen, PIPE, STDOUT, DEVNULL
 from .config import ctxt
 
 
-logger = ctxt.session_logger.getChild(__name__)
+_logger = logging.getLogger(__name__)
 
 
 class BackgroundProcess(object):
@@ -64,7 +65,7 @@ class BackgroundProcess(object):
         self.wo_log_file = open(self.log_file_path, 'w')
         self.ro_log_file = open(self.log_file_path, 'r')
 
-        logger.debug(cmd_line)
+        _logger.debug(cmd_line)
         # create thread to start background process
         self._thread = threading.Thread(target=self._start_process_in_thread, args=(cmd_line,))
         self._thread.daemon = True
@@ -85,7 +86,7 @@ class BackgroundProcess(object):
         # otherwise just log the event that the process has died, it's the caller responsibility to check
         # if the process is still alive with BackgroundProcess.is_alive
         else:
-            logger.debug(f"process: {self._name} died")
+            _logger.debug(f"process: {self._name} died")
 
     # there's no equivalent start() function because the constructor starts the process right away
     def stop(self):
@@ -147,10 +148,10 @@ class CommanderCli(object):
             cmd_output += line
         p.wait()
         if p.returncode != 0:
-            logger.error(f'+ {cmd_line}')
-            logger.error(cmd_output)
+            _logger.error(f'+ {cmd_line}')
+            _logger.error(cmd_output)
             raise Exception(f'commander-cli FAILED with exit code {p.returncode}')
-        logger.debug(f'commander-cli: {cmd_line}')
+        _logger.debug(f'commander-cli: {cmd_line}')
         return cmd_output
 
     def device_info(self):
@@ -311,7 +312,7 @@ class UicImageProvider(BackgroundProcess):
                 self.images_json["Images"].append(images_entry)
                 shutil.copyfile(src_path, dst_path)
 
-            logger.debug(f'uic-image-provider: images.json: {self.images_json}')
+            _logger.debug(f'uic-image-provider: images.json: {self.images_json}')
             f.write(json.dumps(self.images_json))
 
         rust_platform: str | None = None
@@ -361,7 +362,7 @@ class Zpc(BackgroundProcess):
             super().__init__('zpc_ncp_update', cmd_line, self.patterns, 60)
             if self.patterns[sapi_ver_regex] is not None:
                 self.sapi_version = self.patterns[sapi_ver_regex].groupdict()['sapiver']
-                logger.debug(f'OTW Serial API version: {self.sapi_version}')
+                _logger.debug(f'OTW Serial API version: {self.sapi_version}')
             else:
                 raise Exception(f"could not find pattern: '{sapi_ver_regex}' in zpc output")
 
