@@ -13,7 +13,7 @@ from datetime import datetime
 from dataclasses import dataclass
 
 from . import telnetlib
-from .config import ctxt
+from .session_context import SessionContext
 from .parsers import DchPacket
 from .processes import CommanderCli
 from .definitions import ZwaveAppProductType, ZwaveRegion, ZwaveApp
@@ -68,17 +68,18 @@ class DevWpk(object):
     ADMIN_PORT_OFFSET = 2
     DCH_PORT_OFFSET = 5
 
-    def __init__(self, serial_no: str, hostname: str, time_server: DevTimeServer, vuart_port: int = 4900):
+    def __init__(self, ctxt: SessionContext, serial_no: str, hostname: str, time_server: DevTimeServer, vuart_port: int = 4900):
         """Initializes the WPK board.
         :param serial_no: J-Link serial number
         :param hostname: Device's IP address or hostname
         :param vuart_port: VUART port number (VCOM, admin and DCH port numbers are offsets)
         """
+        self._ctxt = ctxt
         self.serial_no = int(serial_no)
         self.hostname = hostname
         self.time_server = time_server
         self.vuart_port = vuart_port
-        self.commander_cli = CommanderCli(self.hostname)
+        self.commander_cli = CommanderCli(self._ctxt, self.hostname)
         try:
             self.telnet_client = telnetlib.Telnet(host=self.hostname, port=self.admin_port)
         except:
@@ -359,8 +360,8 @@ class DevWpk(object):
             file.write(data_chunk)
 
     def _pti_logger_thread(self, logger_name: str):
-        filename = f"{ctxt.session_logdir_current_test}/{logger_name}.zlf"
-        filename_pcap = f"{ctxt.session_logdir_current_test}/{logger_name}.pcap"
+        filename = f"{self._ctxt.current_test_logdir}/{logger_name}.zlf"
+        filename_pcap = f"{self._ctxt.current_test_logdir}/{logger_name}.pcap"
         # get sub logger here from self, and re-direct output in file.
         # redirect output from port 4905.
         DevWpk._create_zlf_file(filename)
@@ -447,17 +448,18 @@ class DevCluster(object):
 class DevZwave(metaclass=ABCMeta):
     """Base class for Z-Wave devices."""
     
-    def __init__(self, device_number: int, wpk: DevWpk, region: ZwaveRegion, app_type: ZwaveApp, debug: bool = False):
+    def __init__(self, ctxt: SessionContext, device_number: int, wpk: DevWpk, region: ZwaveRegion, app_type: ZwaveApp, debug: bool = False):
         """Initializes the device.
         :param device_number: Device number (helps with logger)
         :param wpk: WPK hosting the radio board
         :param region: Z-Wave region 
         """
+        self._ctxt: SessionContext = ctxt
         self._device_number: int = device_number
         self.wpk: DevWpk = wpk
         self.region: str = region
         self.app_type: ZwaveApp = app_type
-        self._name = f'{self._device_number}_{self.app_type}' # derive the name from the device number and the app type
+        self._name = f'{self._device_number}-{self.app_type}' # derive the name from the device number and the app type
         self.firmware_file: str | None = None
         self.gbl_v255_file: str | None = None
         self.home_id: str | None = None
