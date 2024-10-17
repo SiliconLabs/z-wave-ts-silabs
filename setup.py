@@ -33,7 +33,8 @@ setup(
     install_requires=[
         "paho-mqtt",
         "pigpio",
-        "pytest"
+        "pytest",
+        "pytest-rerunfailures"
     ],
     entry_points={
         'pytest11': ['z_wave_ts_silabs = z_wave_ts_silabs.fixtures']
