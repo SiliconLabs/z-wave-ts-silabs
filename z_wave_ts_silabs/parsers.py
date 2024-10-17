@@ -3,11 +3,12 @@ from dataclasses import dataclass
 from typing import List
 from enum import IntEnum
 import struct
+import logging
 
 from .config import ctxt
 from .definitions import RAILZwaveRegionID, RAILZwave2CHRegionIDs, RAILZwave3ChRegionIDs, RAILZwaveLRControllerRegionIDs, RAILZwaveLREndDeviceRegionIDs
 
-logger = ctxt.session_logger.getChild(__name__)
+_logger = logging.getLogger(__name__)
 
 
 class DchSymbol(IntEnum):
@@ -143,7 +144,7 @@ class DchFrame:
         length = length+2
         # check that the given frame matches at least the given length
         if len(frame) < length:
-            logger.debug("DCH frame length mismatch")
+            _logger.debug("DCH frame length mismatch")
             return None
 
         # retrieve end symbol now to check if it's a valid DCH frame before going any further
@@ -167,7 +168,7 @@ class DchFrame:
             timestamp, dch_type, flags, sequence_number = struct.unpack("<QHIH", frame[current_index:current_index + 16])
             current_index += 16
         else:
-            logger.debug("DCH frame version unsupported")
+            _logger.debug("DCH frame version unsupported")
             return None
 
         # we don't care about stuff not related to PTI

@@ -4,6 +4,7 @@ import struct
 import time
 import select
 import socket
+import logging
 import threading
 from abc import ABCMeta
 from typing import List
@@ -84,7 +85,7 @@ class DevWpk(object):
             raise Exception(f"Error trying to connect to {hostname}")
         self.telnet_prompt = self.telnet_client.read_some().decode('ascii')
         self.target_dsk = None
-        self.logger = ctxt.session_logger.getChild(f"wpk_{self.serial_no}")
+        self.logger = logging.getLogger(f"{self.__class__.__name__}-{self.serial_no}")
         self._pti_thread: threading.Thread | None = None
         self._pti_thread_stop_event: threading.Event = threading.Event()
         self._target_devinfo: TargetDevInfo | None = None
@@ -462,25 +463,25 @@ class DevZwave(metaclass=ABCMeta):
         self.home_id: str | None = None
         self.node_id: int | None = None
 
-        self.logger = ctxt.session_logger.getChild(self._name)
+        self.logger = logging.getLogger(f'{self.__class__.__name__}-{self._name}')
         self.radio_board = self.wpk.radio_board.lower()
         self.logger.debug(self.radio_board)
 
         devinfo: TargetDevInfo = self.wpk.target_devinfo
         # Unify exposes this as an attribute called: SerialNumber, thus the name
         self.serial_number = f"h'{devinfo.unique_id.upper()}"
-        
+
         for file in os.listdir(ctxt.zwave_binaries):
             if (
-                (self.app_type in file) and 
-                (self.radio_board in file) and 
+                (self.app_type in file) and
+                (self.radio_board in file) and
                 (self.region in file) and
-                (file.endswith('.hex')) and 
+                (file.endswith('.hex')) and
                 not ('DEBUG' in file)
             ):
                 self.firmware_file = file
                 break
-        
+
         if self.firmware_file is None:
             raise Exception(f'No suitable firmware was found for {self._name}')
 
@@ -488,7 +489,7 @@ class DevZwave(metaclass=ABCMeta):
         if 'ncp_serial_api_controller' in self.app_type:
             btl_signing_key = ctxt.zwave_btl_signing_key_controller
             btl_encrypt_key = ctxt.zwave_btl_encrypt_key_controller
-        else:          
+        else:
             btl_signing_key = ctxt.zwave_btl_signing_key_end_device
             btl_encrypt_key = ctxt.zwave_btl_encrypt_key_end_device
 
@@ -498,7 +499,6 @@ class DevZwave(metaclass=ABCMeta):
         self.gbl_v255_file = f'{Path(self.firmware_file).stem}_v255.gbl'
         if not os.path.exists(f'{ctxt.zwave_binaries}/{self.gbl_v255_file}'):
             raise Exception(f'could not find matching v255.gbl file in {ctxt.zwave_binaries}/ for {self.firmware_file}')
-
 
     def start(self):
         self.start_log_capture()

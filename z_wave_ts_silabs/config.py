@@ -40,18 +40,9 @@ class Context:
         return context
 
     def __post_init__(self):
-        self.session_logger: logging.Logger = logging.getLogger('ts_silabs')
         self.session_logdir: Path = Path.cwd() / f"logs/{datetime.now().strftime('%Y_%m_%d-%H_%M_%S')}"
         self.session_logdir_current_test: Path | None = None
         self.clusters: Dict[str, Cluster] = {}
-
-        # set up the session logger
-        formatter = logging.Formatter('%(asctime)s.%(msecs)03d %(name)s %(levelname)s %(message)s',
-                                      datefmt='%Y-%m-%d %H:%M:%S')
-        handler = logging.StreamHandler()
-        handler.setFormatter(formatter)
-        self.session_logger.addHandler(handler)
-        self.session_logger.setLevel(logging.DEBUG)  # change this to INFO to reduce the number of traces.
 
         # create the session log directory
         self.session_logdir.mkdir(parents=True, exist_ok=True)

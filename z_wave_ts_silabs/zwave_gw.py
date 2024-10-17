@@ -242,7 +242,7 @@ class MqttClientZpc(object):
 
     def __init__(self, zpc: DevZwaveGwZpc , timeout: float = 30):
         self.zpc = zpc
-        self.logger = self.zpc.logger.getChild('mqtt_client')
+        self.logger = self.zpc.logger.getChild(f'{self.__class__.__name__}')
         
         self.mqttc = mqtt.Client(mqtt.CallbackAPIVersion.VERSION2)
         self.mqttc.on_connect = self._on_connect
