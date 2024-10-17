@@ -4,16 +4,17 @@ from typing import Literal
 from . import telnetlib
 from .definitions import ZwaveRegion, ZwaveSocApp, ZwaveApp
 from .devices import DevZwave, DevWpk
+from .session_context import SessionContext
 
 
 class DevZwaveCli(DevZwave):
     
-     def __init__(self, device_number: int, wpk: DevWpk, region: ZwaveRegion, app_name: ZwaveSocApp):
+     def __init__(self, ctxt: SessionContext, device_number: int, wpk: DevWpk, region: ZwaveRegion, app_name: ZwaveSocApp):
           """Instantiates a Z-Wave CLI device.
           :param device_number: Device number
           :param wpk: The wpk with the radio board acting as an End Device
           """
-          super().__init__(device_number, wpk, region, app_name)
+          super().__init__(ctxt, device_number, wpk, region, app_name)
           self.telnet_client = telnetlib.Telnet(wpk.hostname, '4901', 1)
           # send empty command to check if everything is working correctly
           if '>' not in self._run_cmd(''):

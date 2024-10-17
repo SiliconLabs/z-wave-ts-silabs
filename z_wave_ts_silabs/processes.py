@@ -15,7 +15,7 @@ from typing import List, Dict, TextIO
 from datetime import datetime
 from subprocess import Popen, PIPE, STDOUT, DEVNULL
 
-from .config import ctxt
+from .session_context import SessionContext
 
 
 _logger = logging.getLogger(__name__)
@@ -57,11 +57,12 @@ class BackgroundProcess(object):
             BackgroundProcess._process_list.append(process)
 
     # patterns dict keys must be set to None
-    def __init__(self, name: str, cmd_line: str, patterns: Dict[str, re.Match | None] = None, timeout: float = 10):
+    def __init__(self, ctxt: SessionContext, name: str, cmd_line: str, patterns: Dict[str, re.Match | None] = None, timeout: float = 10):
         self._name = name
+        self._ctxt = ctxt
         self._process: Popen | None = None
         self._thread: threading.Thread | None = None
-        self.log_file_path = f"{ctxt.session_logdir_current_test}/{self._name}.log"
+        self.log_file_path = f"{self._ctxt.current_test_logdir}/{self._name}.log"
         self.wo_log_file = open(self.log_file_path, 'w')
         self.ro_log_file = open(self.log_file_path, 'r')
 
@@ -121,8 +122,11 @@ class BackgroundProcess(object):
 
 class CommanderCli(object):
 
-    def __init__(self, hostname) -> None:
-        self.hostname = hostname
+    def __init__(self, ctxt: SessionContext, hostname: str) -> None:
+        self._ctxt = ctxt
+        self.hostname: str = hostname
+        self.ip_or_sn: str | None = None
+
         if re.match(r'^[0-9]{9}$', self.hostname):
             self.ip_or_sn = '--serialno'
         else:
@@ -180,7 +184,7 @@ class CommanderCli(object):
 
     def spawn_rtt_logger_background_process(self, process_name: str):
         cmd_line = f"{self._commander_cli_path} rtt connect --noreset {self.ip_or_sn} {self.hostname}"
-        self._rtt_logger_background_process = BackgroundProcess(name=process_name, cmd_line=cmd_line)
+        self._rtt_logger_background_process = BackgroundProcess(ctxt=self._ctxt, name=process_name, cmd_line=cmd_line)
 
     def kill_rtt_logger_background_process(self):
         self._rtt_logger_background_process.stop()
@@ -188,29 +192,29 @@ class CommanderCli(object):
 
 class Mosquitto(BackgroundProcess):
 
-    def __init__(self):
+    def __init__(self, ctxt: SessionContext) -> None:
         mosquitto_path = shutil.which('mosquitto')
         if not os.path.exists(mosquitto_path):
             raise Exception('mosquitto not found on system')
 
-        super().__init__('mosquitto', mosquitto_path)
+        super().__init__(ctxt, 'mosquitto', mosquitto_path)
 
 
 class MosquittoSub(BackgroundProcess):
 
-    def __init__(self, topic: str = 'ucl/#'):
+    def __init__(self, ctxt: SessionContext, topic: str = 'ucl/#'):
         mosquitto_sub_path = shutil.which('mosquitto_sub')
         if not os.path.exists(mosquitto_sub_path):
             raise Exception('mosquitto_sub not found on system')
 
         cmd_line = f"{mosquitto_sub_path} -F '@Y-@m-@d @H:@M:@S %t %p' -t '{topic}'"
         # naming the process 'mqtt' so that the log file bears the name mqtt.log
-        super().__init__('mqtt', cmd_line)
+        super().__init__(ctxt, 'mqtt', cmd_line)
 
 
 class Socat(BackgroundProcess):
 
-    def __init__(self, hostname: str, port: int):
+    def __init__(self, ctxt: SessionContext, hostname: str, port: int):
         socat_path = shutil.which('socat')
         if not os.path.exists(socat_path):
             raise Exception('socat not found on system')
@@ -220,7 +224,7 @@ class Socat(BackgroundProcess):
             pty_path_regex: None
         }
         cmd_line = f"{socat_path} -x -v -dd TCP:{hostname}:{port},nodelay PTY,rawer,sane"
-        super().__init__('socat', cmd_line, self.patterns)
+        super().__init__(ctxt, 'socat', cmd_line, self.patterns)
         if self.patterns[pty_path_regex] is not None:
             self.pty_path = self.patterns[pty_path_regex].groupdict()['pty']
         else:
@@ -229,9 +233,9 @@ class Socat(BackgroundProcess):
 
 class UicUpvl(BackgroundProcess):
 
-    def __init__(self):
+    def __init__(self, ctxt: SessionContext):
         # the ZPC background process is in charge of creating this configuration file
-        uic_config_file_path = f"{ctxt.session_logdir_current_test}/uic.cfg"
+        uic_config_file_path = f"{ctxt.current_test_logdir}/uic.cfg"
         if not os.path.exists(uic_config_file_path):
             raise FileNotFoundError
 
@@ -252,7 +256,7 @@ class UicUpvl(BackgroundProcess):
             raise OSError(f"unsupported OS: {platform.system()}")
 
         cmd_line = f'{ctxt.uic}/build/cargo/uic_upvl_build/{rust_platform}/debug/uic-upvl --conf {uic_config_file_path}'
-        super().__init__('upvl', cmd_line)
+        super().__init__(ctxt, 'upvl', cmd_line)
 
 
 class UicImageProvider(BackgroundProcess):
@@ -263,9 +267,9 @@ class UicImageProvider(BackgroundProcess):
             md5_hash = hashlib.md5(f.read())
             return base64.b64encode(md5_hash.digest()).decode()
 
-    def __init__(self, devices_to_update: List[Dict[str, str]]):
+    def __init__(self, ctxt: SessionContext, devices_to_update: List[Dict[str, str]]):
         # the ZPC background process is in charge of creating this configuration file
-        uic_config_file_path = f"{ctxt.session_logdir_current_test}/uic.cfg"
+        uic_config_file_path = f"{ctxt.current_test_logdir}/uic.cfg"
         if not os.path.exists(uic_config_file_path):
             raise FileNotFoundError
 
@@ -278,8 +282,8 @@ class UicImageProvider(BackgroundProcess):
         #   },
         #   ...
         # ]
-        self.updates_dir_path = f'{ctxt.session_logdir_current_test}/uic-image-provider/updates'
-        self.images_file_path = f'{ctxt.session_logdir_current_test}/uic-image-provider/images.json'
+        self.updates_dir_path = f'{ctxt.current_test_logdir}/uic-image-provider/updates'
+        self.images_file_path = f'{ctxt.current_test_logdir}/uic-image-provider/images.json'
         self.images_json = {
             "Version": "1",
             "Images": []
@@ -289,7 +293,7 @@ class UicImageProvider(BackgroundProcess):
         # see OTA UIID Construction in: https://siliconlabs.github.io/UnifySDK/applications/zpc/readme_user.html
 
         # create the updates/ folder and the images.json file
-        os.mkdir(f'{ctxt.session_logdir_current_test}/uic-image-provider/')
+        os.mkdir(f'{ctxt.current_test_logdir}/uic-image-provider/')
         os.mkdir(self.updates_dir_path)
         with open(self.images_file_path, 'w') as f:
 
@@ -332,21 +336,21 @@ class UicImageProvider(BackgroundProcess):
             raise OSError(f"unsupported OS: {platform.system()}")
 
         cmd_line = f'{ctxt.uic}/build/cargo/uic_image_provider_build/{rust_platform}/debug/uic-image-provider --conf {uic_config_file_path}'
-        super().__init__('image_provider', cmd_line)
+        super().__init__(ctxt,'image_provider', cmd_line)
 
 
 class Zpc(BackgroundProcess):
 
-    def __init__(self, region: str, hostname: str, update_file: str | None = None):
+    def __init__(self, ctxt: SessionContext, region: str, hostname: str, update_file: str | None = None):
 
         self.mqtt_main_process: Mosquitto | None = None
         self.mqtt_logs_process: MosquittoSub | None = None
         self.socat_process: Socat | None = None
-        self.tty_path: str = self._start_socat_process(hostname)
+        self.tty_path: str = self._start_socat_process(ctxt, hostname)
 
-        uic_config_file_path = f"{ctxt.session_logdir_current_test}/uic.cfg"
+        uic_config_file_path = f"{ctxt.current_test_logdir}/uic.cfg"
         with open(uic_config_file_path, "w") as uic_cfg:
-            uic_cfg.write(self._generate_uic_configuration_file(region=region, log_level='d', tx_power='0', protocol_pref='1,2'))
+            uic_cfg.write(self._generate_uic_configuration_file(ctxt=ctxt, region=region, log_level='d', tx_power='0', protocol_pref='1,2'))
 
         cmd_line = f'{ctxt.uic}/build/applications/zpc/zpc --conf {uic_config_file_path}'
         if update_file is not None:
@@ -359,7 +363,7 @@ class Zpc(BackgroundProcess):
             }
             cmd_line += f' --zpc.ncp_update {ctxt.zwave_binaries}/{update_file}'
             # OTW should not take more than 30 seconds, giving it a minute is more than enough
-            super().__init__('zpc_ncp_update', cmd_line, self.patterns, 60)
+            super().__init__(ctxt,'zpc_ncp_update', cmd_line, self.patterns, 60)
             if self.patterns[sapi_ver_regex] is not None:
                 self.sapi_version = self.patterns[sapi_ver_regex].groupdict()['sapiver']
                 _logger.debug(f'OTW Serial API version: {self.sapi_version}')
@@ -371,7 +375,7 @@ class Zpc(BackgroundProcess):
         else:
             # it's useless to start mosquitto if we're doing an update of the ncp
             # that's why we only start it here
-            self._start_mqtt_processes()
+            self._start_mqtt_processes(ctxt)
 
             zpc_info_regex = r"ZPC HomeID (?P<homeid>([A-F]|[0-9]){8}) - NodeID (?P<nodeid>(\d{1,3}))"
             self.patterns = {
@@ -379,14 +383,14 @@ class Zpc(BackgroundProcess):
                 r"We are connected to the MQTT broker.": None,
                 r"Subscription to ucl\/by-unid\/zw-(([A-F]|[0-9]){8})-(\d{4})\/ProtocolController\/NetworkManagement\/Write successful": None
             }
-            super().__init__('zpc', cmd_line, self.patterns, 30)
+            super().__init__(ctxt, 'zpc', cmd_line, self.patterns, 30)
             if self.patterns[zpc_info_regex] is not None:
                 self.home_id = self.patterns[zpc_info_regex].groupdict()['homeid']
                 self.node_id = self.patterns[zpc_info_regex].groupdict()['nodeid']
             else:
                 raise Exception(f"could not find pattern: '{zpc_info_regex}' in zpc output")
 
-    def _generate_uic_configuration_file(self, region: str, log_level: str, tx_power: str, protocol_pref: str) -> str:
+    def _generate_uic_configuration_file(self, ctxt: SessionContext, region: str, log_level: str, tx_power: str, protocol_pref: str) -> str:
         uic_configuration = (
             f"# Unify configuration file (autogenerated on: {datetime.now()})\n"
             f"log:\n"
@@ -397,32 +401,32 @@ class Zpc(BackgroundProcess):
             f"  normal_tx_power_dbm: {tx_power}\n"
             f"  rf_region: '{region}'\n"
             f"  serial: '{self.tty_path}'\n"
-            f"  serial_log_file: '{ctxt.session_logdir_current_test}/sapi.log'\n"
-            f"  datastore_file: '{ctxt.session_logdir_current_test}/zpc.db'\n"
+            f"  serial_log_file: '{ctxt.current_test_logdir}/sapi.log'\n"
+            f"  datastore_file: '{ctxt.current_test_logdir}/zpc.db'\n"
             f"  poll:\n"
             f"    attribute_list_file: '{ctxt.uic}/applications/zpc/components/zpc_rust/zwave_poll_config.yaml'\n"
             f"  ota:\n"
-            f"    cache_path: '{ctxt.session_logdir_current_test}/zpc_ota_cache'\n"
+            f"    cache_path: '{ctxt.current_test_logdir}/zpc_ota_cache'\n"
             # maybe append this in the relevant processes instead ?
             f"upvl:\n"
-            f"  datastore_file: '{ctxt.session_logdir_current_test}/upvl.db'\n"
+            f"  datastore_file: '{ctxt.current_test_logdir}/upvl.db'\n"
             f"image_provider:\n"
-            f"  image_path: '{ctxt.session_logdir_current_test}/uic-image-provider'\n"
+            f"  image_path: '{ctxt.current_test_logdir}/uic-image-provider'\n"
         )
 
         return uic_configuration
 
-    def _start_socat_process(self, hostname: str, port: int = 4901) -> str:
-        self.socat_process = Socat(hostname, port)
+    def _start_socat_process(self, ctxt: SessionContext, hostname: str, port: int = 4901) -> str:
+        self.socat_process = Socat(ctxt, hostname, port)
         if not self.socat_process.is_alive:
             raise Exception("socat process did not start or died unexpectedly")
         return self.socat_process.pty_path
 
-    def _start_mqtt_processes(self) -> None:
-        self.mqtt_main_process = Mosquitto()
+    def _start_mqtt_processes(self, ctxt: SessionContext) -> None:
+        self.mqtt_main_process = Mosquitto(ctxt)
         if not self.mqtt_main_process.is_alive:
             raise Exception("mosquitto process did not start or died unexpectedly")
-        self.mqtt_logs_process = MosquittoSub()
+        self.mqtt_logs_process = MosquittoSub(ctxt)
         if not self.mqtt_logs_process.is_alive:
             raise Exception("mosquitto_sub process did not start or died unexpectedly")
 

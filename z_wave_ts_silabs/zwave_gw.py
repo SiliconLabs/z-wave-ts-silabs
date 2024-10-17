@@ -8,6 +8,7 @@ from typing import Dict, List
 from .definitions import ZwaveRegion, ZwaveApp, ZwaveNcpApp
 from .devices import DevZwave, DevWpk
 from .processes import Zpc, UicUpvl, UicImageProvider
+from .session_context import SessionContext
 
 
 class DevZwaveGwZpc(DevZwave):
@@ -17,13 +18,12 @@ class DevZwaveGwZpc(DevZwave):
     def zwave_app(cls) -> ZwaveApp:
         return 'zwave_ncp_serial_api_controller'
 
-    def __init__(self, device_number: int, wpk: DevWpk, region: ZwaveRegion, app_name: ZwaveNcpApp) -> None:
+    def __init__(self, ctxt: SessionContext, device_number: int, wpk: DevWpk, region: ZwaveRegion, app_name: ZwaveNcpApp) -> None:
         """Initializes the device.
         :param device_number: The device name
         :param wpk: The wpk with the radio board acting as NCP
         :param region: The Z-Wave region of the device
         """
-
         self.zpc_process: Zpc | None = None
         self.uic_upvl_process: UicUpvl | None = None
         self.uic_image_provider_process: UicImageProvider | None = None
@@ -35,7 +35,7 @@ class DevZwaveGwZpc(DevZwave):
         self.command_status: dict | None = None
         self.dsk_list: dict | None = None
 
-        super().__init__(device_number, wpk, region, app_name)
+        super().__init__(ctxt, device_number, wpk, region, app_name)
 
     # should be called by the device factory
     def start(self):
@@ -44,7 +44,7 @@ class DevZwaveGwZpc(DevZwave):
             raise Exception("ZPC process is already running")
 
         self.logger.debug('zpc process starting')
-        self.zpc_process = Zpc(self.region, self.wpk.hostname)
+        self.zpc_process = Zpc(self._ctxt, self.region, self.wpk.hostname)
         if not self.zpc_process.is_alive:
             raise Exception("zpc process did not start or died unexpectedly")
         self.logger.debug('zpc process started')
@@ -75,7 +75,7 @@ class DevZwaveGwZpc(DevZwave):
             raise Exception("ZPC process is already running")
 
         self.logger.debug('zpc_ncp_update process starting')
-        self.zpc_process = Zpc(self.region, self.wpk.hostname, self.gbl_v255_file)
+        self.zpc_process = Zpc(self._ctxt, self.region, self.wpk.hostname, self.gbl_v255_file)
         self.logger.debug('zpc_ncp_update process finished')
         self.zpc_process.stop()
         if self.zpc_process.is_alive:
@@ -87,7 +87,7 @@ class DevZwaveGwZpc(DevZwave):
         self.zpc_process = None
 
     def start_uic_upvl(self):
-        self.uic_upvl_process = UicUpvl()
+        self.uic_upvl_process = UicUpvl(self._ctxt)
         if not self.uic_upvl_process.is_alive:
             raise Exception("uic_upvl process did not start or died unexpectedly")
 
@@ -105,7 +105,7 @@ class DevZwaveGwZpc(DevZwave):
             devices.append(entry)
 
         self.logger.info(devices)
-        self.uic_image_provider_process = UicImageProvider(devices)
+        self.uic_image_provider_process = UicImageProvider(self._ctxt, devices)
         if not self.uic_image_provider_process.is_alive:
             raise Exception("uic_image_provider process did not start or died unexpectedly")
         # the UicImageProvider class only looks for v255 gbl files
