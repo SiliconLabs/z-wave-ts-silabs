@@ -3,7 +3,7 @@ import pytest
 from typing import List
 from pathlib import Path
 
-from z_wave_ts_silabs import DevWpk, BackgroundProcess, ctxt
+from z_wave_ts_silabs import DevWpk, DevCluster, BackgroundProcess, ctxt
 
 logger = ctxt.session_logger.getChild(__name__)
 
@@ -20,14 +20,21 @@ def hw_cluster_name(pytestconfig: pytest.Config) -> str:
 
 
 @pytest.fixture(scope="session", autouse=True)
-def hw_cluster_wpks(hw_cluster_name: str) -> List[DevWpk]:
+def hw_cluster(hw_cluster_name: str) -> DevCluster:
     cluster = ctxt.clusters[hw_cluster_name]
     dev_wpks: List[DevWpk] = []
     for wpk in cluster.wpks:
         dev_wpks.append(
             DevWpk(wpk.serial, f"jlink{wpk.serial}.silabs.com")
         )
-    yield dev_wpks
+    yield DevCluster(hw_cluster_name, dev_wpks)
+
+
+@pytest.fixture(scope="function", autouse=True)
+def hw_cluster_free_all_wpk(hw_cluster: DevCluster):
+    hw_cluster.free_all_wpk()
+    yield
+    hw_cluster.free_all_wpk()
 
 
 @pytest.fixture(scope="function", autouse=True)
