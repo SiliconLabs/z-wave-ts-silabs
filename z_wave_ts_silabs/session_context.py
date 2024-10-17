@@ -45,6 +45,10 @@ class SessionContext:
         self.logdir: Path = Path.cwd() / f"logs/{datetime.now().strftime('%Y_%m_%d-%H_%M_%S')}"
         # current_test_logdir is used by most classes to store logs, but also other files such as configuration files for ZPC.
         self.current_test_logdir: Path | None = None
+        # current_test_index and previous_test_name are used with pytest-rerunfailures
+        # to create a new logdir with a different index in case of a re-run
+        self.current_test_index = 0
+        self.previous_test_name: Path | None = None
 
         # create the session log directory
         self.logdir.mkdir(parents=True, exist_ok=True)
