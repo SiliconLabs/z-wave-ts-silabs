@@ -10,6 +10,7 @@ from dataclasses import dataclass
 
 from . import telnetlib
 from .config import ctxt
+from .parsers import DchPacket
 from .processes import CommanderCli
 from .definitions import ZwaveAppProductType, ZwaveRegion, ZwaveApp
 
@@ -63,9 +64,9 @@ class DevWpk(object):
         self._rtt_thread_running: bool = False
         self._target_devinfo: TargetDevInfo | None = None
 
-        # set dch version to 2 for ZLF
-        if self.dch_message_version != 2:
-            self.dch_message_version = 2
+        # set dch version to 3
+        if self.dch_message_version != 3:
+            self.dch_message_version = 3
 
         # check if commander can access the WPK and if not reset it.
         try:
@@ -234,8 +235,25 @@ class DevWpk(object):
             try:
                 dch_packet = s.recv(2048)
                 if dch_packet == b'':
-                    raise Exception('DCH socket connection broken')
+                    continue
+                    # raise Exception('DCH socket connection broken')
                 self._dump_to_zlf_file(filename, dch_packet)
+                dch_packet = DchPacket.from_bytes(dch_packet)
+                if dch_packet is not None:
+                    self.logger.info(f"dch packet nb: {len(dch_packet.frames)}")
+                    for dch_frame in dch_packet.frames:
+                        self.logger.info(
+                            f"dch_version: {dch_frame.version} | "
+                            f"timestamp_us: {dch_frame.get_timestamp_us()} | "
+                            f"zwave_frame: {dch_frame.payload.ota_packet_data.hex(' ')} | "
+                            f"rssi: {dch_frame.payload.appended_info.rssi} | "
+                            f"region: {dch_frame.payload.appended_info.radio_config.z_wave_region_id} | "
+                            f"channel_number: {dch_frame.payload.appended_info.radio_info.channel_number} | "
+                            f"direction: {"Rx" if dch_frame.payload.appended_info.appended_info_cfg.is_rx else "Tx"} | "
+                            f"pti_length: {dch_frame.payload.appended_info.appended_info_cfg.length} | "
+                            f"pti_version: {dch_frame.payload.appended_info.appended_info_cfg.version} | "
+                            f"error_code: {dch_frame.payload.appended_info.status_0.error_code}"
+                        )
             except ConnectionResetError:
                 self.logger.debug("dch socket: connection was reset by peer")
 
