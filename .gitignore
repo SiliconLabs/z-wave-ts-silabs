@@ -13,3 +13,6 @@ z_wave_ts_silabs.egg-info/
 
 # sample binaries
 build_archive/
+
+# macOS
+.DS_Store
