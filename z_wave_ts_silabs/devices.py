@@ -1,3 +1,4 @@
+from __future__ import annotations
 import os
 import re
 import struct
@@ -109,15 +110,6 @@ class DevWpk(object):
         # Enable PTI
         self.enable_pti()
 
-        # check if commander can access the WPK and if not reset it.
-        try:
-            self.logger.debug(f"radio board part number: {self.target_devinfo.part_number}")
-        except:
-            self.logger.debug(f"could not read radio board part number, resetting the WPK now")
-            self.reset()
-            # if this raises an Exception again then there's another problem.
-            self.logger.debug(f"radio board part number: {self.target_devinfo.part_number}")
-
         # boolean to control WPK reservation
         self.is_free = False
 
@@ -158,6 +150,15 @@ class DevWpk(object):
             self.logger.debug(f"sys_reset_sys_output: {sys_reset_sys_output}")
         self.telnet_client = telnetlib.Telnet(host=self.hostname, port=self.admin_port)
         self.telnet_prompt = self.telnet_client.read_some().decode('ascii')
+
+    @staticmethod
+    def parallel_reset(wpk_list: List[DevWpk]):
+        reset_threads: List[threading.Thread] = []
+        for wpk in wpk_list:
+            reset_threads.append(threading.Thread(target=wpk.reset))
+            reset_threads[-1].start()
+        for thread in reset_threads:
+            thread.join()
 
     def target_reset(self):
         """Resets the radio board plugged into the WPK."""
