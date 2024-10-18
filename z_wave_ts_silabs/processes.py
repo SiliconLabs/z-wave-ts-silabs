@@ -193,8 +193,8 @@ class CommanderCli(object):
 class Mosquitto(BackgroundProcess):
 
     def __init__(self, ctxt: SessionContext) -> None:
-        mosquitto_path = shutil.which('mosquitto')
-        if not os.path.exists(mosquitto_path):
+        mosquitto_path = shutil.which('mosquitto', path=os.environ['PATH']+':/usr/sbin')
+        if mosquitto_path is None:
             raise Exception('mosquitto not found on system')
 
         super().__init__(ctxt, 'mosquitto', mosquitto_path)
@@ -203,8 +203,8 @@ class Mosquitto(BackgroundProcess):
 class MosquittoSub(BackgroundProcess):
 
     def __init__(self, ctxt: SessionContext, topic: str = 'ucl/#'):
-        mosquitto_sub_path = shutil.which('mosquitto_sub')
-        if not os.path.exists(mosquitto_sub_path):
+        mosquitto_sub_path = shutil.which('mosquitto_sub', path=os.environ['PATH']+':/usr/sbin')
+        if mosquitto_sub_path is None:
             raise Exception('mosquitto_sub not found on system')
 
         cmd_line = f"{mosquitto_sub_path} -F '@Y-@m-@d @H:@M:@S %t %p' -t '{topic}'"
@@ -215,8 +215,8 @@ class MosquittoSub(BackgroundProcess):
 class Socat(BackgroundProcess):
 
     def __init__(self, ctxt: SessionContext, hostname: str, port: int):
-        socat_path = shutil.which('socat')
-        if not os.path.exists(socat_path):
+        socat_path = shutil.which('socat', path=os.environ['PATH']+':/usr/sbin')
+        if socat_path is None:
             raise Exception('socat not found on system')
 
         pty_path_regex = r"PTY is (?P<pty>(\/dev\/.+))"
