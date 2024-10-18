@@ -1,7 +1,6 @@
 import pytest
 from typing import List
 from z_wave_ts_silabs import DeviceFactory, ZwaveRegion, DevZwave
-from z_wave_ts_silabs.fixtures import device_factory
 
 
 @pytest.mark.parametrize('region', ['REGION_EU'])
