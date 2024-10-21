@@ -17,7 +17,7 @@ def test_door_lock_keypad_basic_set(device_factory: DeviceFactory, region: Zwave
 
 
 @pytest.mark.parametrize('region', ['REGION_EU'])
-def test_led_buld_inclusion(device_factory: DeviceFactory, region: ZwaveRegion):
+def test_led_bulb_inclusion(device_factory: DeviceFactory, region: ZwaveRegion):
     zpc = device_factory.serial_api_controller(region)
     end_device_1 = device_factory.led_bulb(region)
 
