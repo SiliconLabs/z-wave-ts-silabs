@@ -41,9 +41,6 @@ def hw_cluster(session_ctxt: SessionContext, hw_cluster_name: str) -> DevCluster
         dev_wpks.append(
             DevWpk(session_ctxt, wpk.serial, f"jlink{wpk.serial}.silabs.com", time_server=time_server)
         )
-    # make sure all WPKs are reset before the start of the test session
-    # plus it's pretty cool to see all WPKs reboot at the same time
-    DevWpk.parallel_reset(dev_wpks)
     yield DevCluster(hw_cluster_name, dev_wpks)
 
 
