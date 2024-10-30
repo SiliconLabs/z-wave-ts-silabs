@@ -3,7 +3,6 @@ import os
 import json
 from dataclasses import dataclass, asdict
 from datetime import datetime
-from typing import Dict
 from pathlib import Path
 
 from .clusters import Cluster
@@ -40,7 +39,7 @@ class SessionContext:
 
     def __post_init__(self):
         # clusters holds every cluster described in the JSON file under the form of Cluster objects
-        self.clusters: Dict[str, Cluster] = {}
+        self.clusters: dict[str, Cluster] = {}
         # TODO: logdir may have to be handled by a fixture instead, it's only useful to construct current_test_logdir
         self.logdir: Path = Path.cwd() / f"logs/{datetime.now().strftime('%Y_%m_%d-%H_%M_%S')}"
         # current_test_logdir is used by most classes to store logs, but also other files such as configuration files for ZPC.

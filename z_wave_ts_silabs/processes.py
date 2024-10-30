@@ -11,7 +11,7 @@ import socket
 import hashlib
 import logging
 import threading
-from typing import List, Dict, TextIO
+from typing import TextIO
 from datetime import datetime
 from subprocess import Popen, PIPE, STDOUT, DEVNULL
 
@@ -23,10 +23,10 @@ _logger = logging.getLogger(__name__)
 
 class BackgroundProcess(object):
 
-    _process_list: List[BackgroundProcess] = []
+    _process_list: list[BackgroundProcess] = []
 
     @staticmethod
-    def are_all_patterns_matched(patterns: Dict[str, re.Match | None] | None) -> bool:
+    def are_all_patterns_matched(patterns: dict[str, re.Match | None] | None) -> bool:
         if patterns is None:
             return True
 
@@ -35,7 +35,7 @@ class BackgroundProcess(object):
         return True
 
     @staticmethod
-    def pattern_matching(patterns: Dict[str, re.Match | None] | None, log_file: TextIO):
+    def pattern_matching(patterns: dict[str, re.Match | None] | None, log_file: TextIO):
         if patterns is None:
             return
 
@@ -57,7 +57,7 @@ class BackgroundProcess(object):
             BackgroundProcess._process_list.append(process)
 
     # patterns dict keys must be set to None
-    def __init__(self, ctxt: SessionContext, name: str, cmd_line: str, patterns: Dict[str, re.Match | None] = None, timeout: float = 10):
+    def __init__(self, ctxt: SessionContext, name: str, cmd_line: str, patterns: dict[str, re.Match | None] = None, timeout: float = 10):
         self._name = name
         self._ctxt = ctxt
         self._process: Popen | None = None
@@ -267,7 +267,7 @@ class UicImageProvider(BackgroundProcess):
             md5_hash = hashlib.md5(f.read())
             return base64.b64encode(md5_hash.digest()).decode()
 
-    def __init__(self, ctxt: SessionContext, devices_to_update: List[Dict[str, str]]):
+    def __init__(self, ctxt: SessionContext, devices_to_update: list[dict[str, str]]):
         # the ZPC background process is in charge of creating this configuration file
         uic_config_file_path = f"{ctxt.current_test_logdir}/uic.cfg"
         if not os.path.exists(uic_config_file_path):

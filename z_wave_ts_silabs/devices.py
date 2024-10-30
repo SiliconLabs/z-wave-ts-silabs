@@ -8,7 +8,6 @@ import socket
 import logging
 import threading
 from abc import ABCMeta
-from typing import List
 from pathlib import Path
 from datetime import datetime
 from dataclasses import dataclass
@@ -152,8 +151,8 @@ class DevWpk(object):
         self.telnet_prompt = self.telnet_client.read_some().decode('ascii')
 
     @staticmethod
-    def parallel_reset(wpk_list: List[DevWpk]):
-        reset_threads: List[threading.Thread] = []
+    def parallel_reset(wpk_list: list[DevWpk]):
+        reset_threads: list[threading.Thread] = []
         for wpk in wpk_list:
             reset_threads.append(threading.Thread(target=wpk.reset))
             reset_threads[-1].start()
@@ -430,9 +429,9 @@ class DevWpk(object):
 
 class DevCluster(object):
 
-    def __init__(self, name: str, wpk_list: List[DevWpk]):
+    def __init__(self, name: str, wpk_list: list[DevWpk]):
         self.name: str = name
-        self.wpk_list: List[DevWpk] = wpk_list
+        self.wpk_list: list[DevWpk] = wpk_list
 
     def get_free_wpk(self) -> DevWpk:
         for wpk in self.wpk_list:

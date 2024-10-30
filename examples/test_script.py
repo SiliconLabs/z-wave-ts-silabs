@@ -1,5 +1,4 @@
 import pytest
-from typing import List
 from z_wave_ts_silabs import DeviceFactory, ZwaveRegion, DevZwave
 
 
@@ -158,8 +157,8 @@ def test_switch_on_off_smartstart_inclusion(device_factory: DeviceFactory, regio
     # TODO: uic_upvl should be implicitly started when updating the SmartStart List.
     zpc.start_uic_upvl()
 
-    end_device_list: List[DevZwave] = []
-    dsk_list: List[str] = []
+    end_device_list: list[DevZwave] = []
+    dsk_list: list[str] = []
 
     nb_end_devices = 1
 

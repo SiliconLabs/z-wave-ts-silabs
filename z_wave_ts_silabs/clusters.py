@@ -1,5 +1,4 @@
 from __future__ import annotations
-from typing import List
 from dataclasses import dataclass, field
 
 
@@ -21,13 +20,13 @@ class GPIOMapping:
 @dataclass
 class Rpi:
     hostname: str
-    GPIO_mapping: List[GPIOMapping]
+    GPIO_mapping: list[GPIOMapping]
 
 
 @dataclass
 class Cluster:
-    wpks: List[Wpk]
-    rpis: List[Rpi] = field(default_factory=lambda: [])  # this makes rpis optional
+    wpks: list[Wpk]
+    rpis: list[Rpi] = field(default_factory=lambda: [])  # this makes rpis optional
 
     @staticmethod
     def from_dict(cluster_name: str, cluster_dict: dict) -> Cluster:

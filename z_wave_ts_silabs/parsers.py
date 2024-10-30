@@ -1,6 +1,5 @@
 from __future__ import annotations
 from dataclasses import dataclass
-from typing import List
 from enum import IntEnum
 import struct
 import logging
@@ -59,11 +58,11 @@ DCH_TYPES = [ DchType.DCH_TYPE_PTI_TX, DchType.DCH_TYPE_PTI_RX, DchType.DCH_TYPE
 @dataclass
 class DchPacket:
     # a TCP packet on from port 4905 can contain multiple DCH frames.
-    frames: List[DchFrame]
+    frames: list[DchFrame]
 
     @classmethod
     def from_bytes(cls, packet: bytes) -> DchPacket | None:
-        frames: List[DchFrame] = []
+        frames: list[DchFrame] = []
 
         # sanity check on the given packet, this should never happen in normal conditions
         if len(packet) == 0:

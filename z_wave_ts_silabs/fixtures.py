@@ -1,8 +1,6 @@
 import os
 import pytest
 import logging
-from typing import List
-from pathlib import Path
 
 from z_wave_ts_silabs import DevWpk, DevCluster, BackgroundProcess, DevTimeServer
 from z_wave_ts_silabs.device_factory import DeviceFactory
@@ -33,7 +31,7 @@ def session_ctxt() -> SessionContext:
 @pytest.fixture(scope="session", autouse=True)
 def hw_cluster(session_ctxt: SessionContext, hw_cluster_name: str) -> DevCluster:
     cluster = session_ctxt.clusters[hw_cluster_name]
-    dev_wpks: List[DevWpk] = []
+    dev_wpks: list[DevWpk] = []
     # This object is used to synchronize the timestamps of all WPK in the cluster
     time_server: DevTimeServer = DevTimeServer()
 

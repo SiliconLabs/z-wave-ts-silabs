@@ -3,7 +3,6 @@ import re
 import json
 import time
 import paho.mqtt.client as mqtt
-from typing import Dict, List
 
 from .definitions import ZwaveRegion, ZwaveApp, ZwaveNcpApp
 from .devices import DevZwave, DevWpk
@@ -92,7 +91,7 @@ class DevZwaveGwZpc(DevZwave):
             raise Exception("uic_upvl process did not start or died unexpectedly")
 
 
-    def start_uic_image_provider(self, devices_to_update: List[DevZwave]):
+    def start_uic_image_provider(self, devices_to_update: list[DevZwave]):
         devices = [ ]
         
         for dev in devices_to_update:
@@ -174,7 +173,7 @@ class DevZwaveGwZpc(DevZwave):
         device.home_id = self.home_id
 
     # no default value for timeout, it depends on the type of tests
-    def wait_for_node_list_connection(self, device_list: List[DevZwave], timeout: float):
+    def wait_for_node_list_connection(self, device_list: list[DevZwave], timeout: float):
         end_time = time.time() + timeout
 
         node_id_list = [ x for x in range(self.network_next_node_id, self.network_next_node_id + len(device_list)) ]        

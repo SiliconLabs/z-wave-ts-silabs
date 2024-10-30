@@ -1,12 +1,9 @@
-from typing import List, Type, TypeVar
-
 from .definitions import ZwaveApp, ZwaveRegion
 from .devices import DevZwave, DevCluster
 from .session_context import SessionContext
 from .zwave_cli import DevZwaveDoorLockKeypad, DevZwaveLedBulb, DevZwaveMultilevelSensor, DevZwavePowerStrip, DevZwaveSensorPIR, DevZwaveSwitchOnOff, DevZwaveWallController
 from .zwave_gw import DevZwaveGwZpc
 
-DevZwaveT = TypeVar('DevZwaveT', bound=DevZwave)
 
 # This class is responsible for spawning the different types of devices. (Nodes in z-wave-test-system).
 # and making sure they are stopped correctly.
@@ -18,9 +15,9 @@ class DeviceFactory(object):
         self._counter: int = 0
         self._ctxt = ctxt
         self._cluster: DevCluster = cluster
-        self._devices: List[DevZwave] = []
+        self._devices: list[DevZwave] = []
 
-    def _spawn(self, device_cls: Type[DevZwaveT], region: ZwaveRegion, app_name: ZwaveApp) -> DevZwaveT:
+    def _spawn[T: DevZwave](self, device_cls: type[T], region: ZwaveRegion, app_name: ZwaveApp) -> T:
         assert issubclass(device_cls, DevZwave)
         device = device_cls(self._ctxt, self._counter, self._cluster.get_free_wpk(), region, app_name)
 
