@@ -7,7 +7,7 @@ import select
 import socket
 import logging
 import threading
-from abc import ABCMeta
+from abc import ABCMeta, abstractmethod
 from pathlib import Path
 from datetime import datetime
 from dataclasses import dataclass
@@ -447,6 +447,11 @@ class DevCluster(object):
 
 class DevZwave(metaclass=ABCMeta):
     """Base class for Z-Wave devices."""
+
+    @classmethod
+    @abstractmethod
+    def zwave_app(cls):
+        raise NotImplementedError
     
     def __init__(self, ctxt: SessionContext, device_number: int, wpk: DevWpk, region: ZwaveRegion, app_type: ZwaveApp, debug: bool = False):
         """Initializes the device.

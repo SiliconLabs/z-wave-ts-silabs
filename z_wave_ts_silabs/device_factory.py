@@ -2,6 +2,7 @@ from .definitions import ZwaveApp, ZwaveRegion
 from .devices import DevZwave, DevCluster
 from .session_context import SessionContext
 from .zwave_cli import DevZwaveDoorLockKeypad, DevZwaveLedBulb, DevZwaveMultilevelSensor, DevZwavePowerStrip, DevZwaveSensorPIR, DevZwaveSwitchOnOff, DevZwaveWallController
+from .zwave_ncp import DevZwaveNcpSerialApiController
 from .zwave_gw import DevZwaveGwZpc
 
 
@@ -17,9 +18,9 @@ class DeviceFactory(object):
         self._cluster: DevCluster = cluster
         self._devices: list[DevZwave] = []
 
-    def _spawn[T: DevZwave](self, device_cls: type[T], region: ZwaveRegion, app_name: ZwaveApp) -> T:
+    def _spawn[T: DevZwave](self, device_cls: type[T], region: ZwaveRegion) -> T:
         assert issubclass(device_cls, DevZwave)
-        device = device_cls(self._ctxt, self._counter, self._cluster.get_free_wpk(), region, app_name)
+        device = device_cls(self._ctxt, self._counter, self._cluster.get_free_wpk(), region, device_cls.zwave_app())
 
         self._counter += 1
         self._devices.append(device)
@@ -37,91 +38,102 @@ class DeviceFactory(object):
     def finalize(self):
         self._finalize()
 
-    def serial_api_controller(self, region: ZwaveRegion = 'REGION_EU') -> DevZwaveGwZpc:
-        """Create a new SerialAPIController node. (actually it's ZPC with a NCP Serial API Controller)
+    def zpc(self, region: ZwaveRegion = 'REGION_EU') -> DevZwaveGwZpc:
+        """Create a new DevZwaveGwZpc device. (actually it's ZPC + a NCP Serial API Controller)
 
         Args:
             region (Region): Z-Wave region
 
         Returns:
-            New instance of SerialAPINode.
+            New instance of DevZwaveGwZpc.
         """
-        return self._spawn(DevZwaveGwZpc, region, 'zwave_ncp_serial_api_controller')
+        return self._spawn(DevZwaveGwZpc, region)
+
+    def serial_api_controller(self, region: ZwaveRegion = 'REGION_EU') -> DevZwaveNcpSerialApiController:
+        """Create a new SerialAPIController device.
+
+        Args:
+            region (Region): Z-Wave region
+
+        Returns:
+            New instance of DevZwaveNcpSerialApiController.
+        """
+        return self._spawn(DevZwaveNcpSerialApiController, region)
 
     def door_lock_key_pad(self, region: ZwaveRegion = 'REGION_EU') -> DevZwaveDoorLockKeypad:
-        """Create a new DoorLockKeyPad node.
+        """Create a new DoorLockKeyPad device.
 
         Args:
             region (Region): Z-Wave region
 
         Returns:
-            New instance of DoorLockKeyPadNode.
+            New instance of DevZwaveDoorLockKeypad.
         """
-        return self._spawn(DevZwaveDoorLockKeypad, region, 'zwave_soc_door_lock_keypad')
+        return self._spawn(DevZwaveDoorLockKeypad, region)
 
     def led_bulb(self, region: ZwaveRegion = 'REGION_EU') -> DevZwaveLedBulb:
-        """Create a new LEDBulb node.
+        """Create a new LEDBulb device.
 
         Args:
             region (Region): Z-Wave region
 
         Returns:
-            New instance of LEDBulbNode.
+            New instance of DevZwaveLedBulb.
         """
-        return self._spawn(DevZwaveLedBulb, region, 'zwave_soc_led_bulb')
+        return self._spawn(DevZwaveLedBulb, region)
 
     def power_strip(self, region: ZwaveRegion = 'REGION_EU') -> DevZwavePowerStrip:
-        """Create a new PowerStrip node.
+        """Create a new PowerStrip device.
 
         Args:
             region (Region): Z-Wave region
 
         Returns:
-            New instance of PowerStripNode.
+            New instance of DevZwavePowerStrip.
         """
-        return self._spawn(DevZwavePowerStrip, region, 'zwave_soc_power_strip')
+        return self._spawn(DevZwavePowerStrip, region)
 
     def sensor_pir(self, region: ZwaveRegion = 'REGION_EU') -> DevZwaveSensorPIR:
-        """Create a new SensorPIR node.
+        """Create a new SensorPIR device.
 
         Args:
             region (Region): Z-Wave region
 
         Returns:
-            New instance of SensorPIRNode.
+            New instance of DevZwaveSensorPIR.
         """
-        return self._spawn(DevZwaveSensorPIR, region, 'zwave_soc_sensor_pir')
+        return self._spawn(DevZwaveSensorPIR, region)
 
     def switch_on_off(self, region: ZwaveRegion = 'REGION_EU') -> DevZwaveSwitchOnOff:
-        """Create a new SwitchOnOff node.
+        """Create a new SwitchOnOff device.
 
         Args:
             region (Region): Z-Wave region
 
         Returns:
-            New instance of SwitchOnOffNode.
+            New instance of DevZwaveSwitchOnOff.
         """
-        return self._spawn(DevZwaveSwitchOnOff, region, 'zwave_soc_switch_on_off')
+        return self._spawn(DevZwaveSwitchOnOff, region)
 
     def wall_controller(self, region: ZwaveRegion = 'REGION_EU') -> DevZwaveWallController:
-        """Create a new WallController node.
+        """Create a new WallController device.
 
         Args:
             region (Region): Z-Wave region
 
         Returns:
-            New instance of WallControllerNode.
+            New instance of DevZwaveWallController.
         """
-        return self._spawn(DevZwaveWallController, region, 'zwave_soc_wall_controller')
+        return self._spawn(DevZwaveWallController, region)
 
     def multilevel_sensor(self, region: ZwaveRegion = 'REGION_EU') -> DevZwaveMultilevelSensor:
-        """Create a new MultilevelSensor node.
+        """Create a new MultilevelSensor device.
 
         Args:
             region (Region): Z-Wave region
 
         Returns:
-            New instance of MultilevelSensor.
+            New instance of DevZwaveMultilevelSensor.
         """
-        return self._spawn(DevZwaveMultilevelSensor, region, 'zwave_soc_multilevel_sensor')
+        return self._spawn(DevZwaveMultilevelSensor, region)
 

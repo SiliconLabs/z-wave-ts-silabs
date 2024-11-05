@@ -3,8 +3,16 @@ from z_wave_ts_silabs import DeviceFactory, ZwaveRegion, DevZwave
 
 
 @pytest.mark.parametrize('region', ['REGION_EU'])
+def test_ncp_serial_api_controller_standalone(device_factory: DeviceFactory, region: ZwaveRegion):
+    ncp_sapi_controller = device_factory.serial_api_controller(region)
+
+    ncp_sapi_controller.logger.info(f"NCP SAPI Controller hostname: {ncp_sapi_controller.wpk.hostname}")
+    ncp_sapi_controller.logger.info(f"NCP SAPI Controller pty: {ncp_sapi_controller.pty}")
+
+
+@pytest.mark.parametrize('region', ['REGION_EU'])
 def test_door_lock_keypad_basic_set(device_factory: DeviceFactory, region: ZwaveRegion):
-    zpc = device_factory.serial_api_controller(region)
+    zpc = device_factory.zpc(region)
     end_device_1 = device_factory.door_lock_key_pad(region)
 
     # secure inclusion
@@ -17,7 +25,7 @@ def test_door_lock_keypad_basic_set(device_factory: DeviceFactory, region: Zwave
 
 @pytest.mark.parametrize('region', ['REGION_EU'])
 def test_led_bulb_inclusion(device_factory: DeviceFactory, region: ZwaveRegion):
-    zpc = device_factory.serial_api_controller(region)
+    zpc = device_factory.zpc(region)
     end_device_1 = device_factory.led_bulb(region)
 
     # secure inclusion
@@ -28,7 +36,7 @@ def test_led_bulb_inclusion(device_factory: DeviceFactory, region: ZwaveRegion):
 
 @pytest.mark.parametrize('region', ['REGION_EU'])
 def test_multilevel_sensor_inclusion(device_factory: DeviceFactory, region: ZwaveRegion):
-    zpc = device_factory.serial_api_controller(region)
+    zpc = device_factory.zpc(region)
     end_device_1 = device_factory.multilevel_sensor(region)
 
     # secure inclusion
@@ -39,7 +47,7 @@ def test_multilevel_sensor_inclusion(device_factory: DeviceFactory, region: Zwav
 
 @pytest.mark.parametrize('region', ['REGION_EU'])
 def test_power_strip_inclusion_and_control(device_factory: DeviceFactory, region: ZwaveRegion):
-    zpc = device_factory.serial_api_controller(region)
+    zpc = device_factory.zpc(region)
     end_device_1 = device_factory.power_strip(region)
 
     # secure inclusion
@@ -52,7 +60,7 @@ def test_power_strip_inclusion_and_control(device_factory: DeviceFactory, region
 
 @pytest.mark.parametrize('region', ['REGION_EU'])
 def test_sensor_pir_battery_report(device_factory: DeviceFactory, region: ZwaveRegion):
-    zpc = device_factory.serial_api_controller(region)
+    zpc = device_factory.zpc(region)
     end_device_1 = device_factory.sensor_pir(region)
 
     # secure inclusion
@@ -69,7 +77,7 @@ def test_sensor_pir_battery_report(device_factory: DeviceFactory, region: ZwaveR
 
 @pytest.mark.parametrize('region', ['REGION_EU'])
 def test_serial_api_controller_otw_update(device_factory: DeviceFactory, region: ZwaveRegion):
-    zpc = device_factory.serial_api_controller(region)
+    zpc = device_factory.zpc(region)
     # ZPC has to be stopped in order to start the OTW NCP update process, then it can be started again
     zpc.stop()
     zpc.ncp_update()
@@ -86,7 +94,7 @@ def test_serial_api_controller_otw_update(device_factory: DeviceFactory, region:
 
 @pytest.mark.parametrize('region', ['REGION_EU'])
 def test_switch_on_off_secure_inclusion_exclusion(device_factory: DeviceFactory, region: ZwaveRegion):
-    zpc = device_factory.serial_api_controller(region)
+    zpc = device_factory.zpc(region)
     end_device_1 = device_factory.switch_on_off(region)
 
     # secure inclusion
@@ -104,7 +112,7 @@ def test_switch_on_off_secure_inclusion_exclusion(device_factory: DeviceFactory,
 
 @pytest.mark.parametrize('region', ['REGION_EU'])
 def test_switch_on_off_secure_ota(device_factory: DeviceFactory, region: ZwaveRegion):
-    zpc = device_factory.serial_api_controller(region)
+    zpc = device_factory.zpc(region)
     end_device_1 = device_factory.switch_on_off(region)
 
     # secure inclusion
@@ -120,7 +128,7 @@ def test_switch_on_off_secure_ota(device_factory: DeviceFactory, region: ZwaveRe
 
 @pytest.mark.parametrize('region', ['REGION_EU'])
 def test_switch_on_off_unsecure_inclusion_exclusion(device_factory: DeviceFactory, region: ZwaveRegion):
-    zpc = device_factory.serial_api_controller(region)
+    zpc = device_factory.zpc(region)
     end_device_1 = device_factory.switch_on_off(region)
 
     # unsecure inclusion
@@ -138,7 +146,7 @@ def test_switch_on_off_unsecure_inclusion_exclusion(device_factory: DeviceFactor
 
 @pytest.mark.parametrize('region', ['REGION_EU'])
 def test_switch_on_off_unsecure_ota(device_factory: DeviceFactory, region: ZwaveRegion):
-    zpc = device_factory.serial_api_controller(region)
+    zpc = device_factory.zpc(region)
     end_device_1 = device_factory.switch_on_off(region)
 
     # unsecure inclusion
@@ -153,7 +161,7 @@ def test_switch_on_off_unsecure_ota(device_factory: DeviceFactory, region: Zwave
 
 @pytest.mark.parametrize('region', ['REGION_EU'])
 def test_switch_on_off_smartstart_inclusion(device_factory: DeviceFactory, region: ZwaveRegion):
-    zpc = device_factory.serial_api_controller(region)
+    zpc = device_factory.zpc(region)
     # TODO: uic_upvl should be implicitly started when updating the SmartStart List.
     zpc.start_uic_upvl()
 
@@ -188,7 +196,7 @@ def test_switch_on_off_smartstart_inclusion(device_factory: DeviceFactory, regio
 
 @pytest.mark.parametrize('region', ['REGION_EU'])
 def test_wall_controller_basic_set(device_factory: DeviceFactory, region: ZwaveRegion):
-    zpc = device_factory.serial_api_controller(region)
+    zpc = device_factory.zpc(region)
     end_device_1 = device_factory.wall_controller(region)
 
     # secure inclusion
