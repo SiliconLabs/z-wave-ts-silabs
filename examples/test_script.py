@@ -131,6 +131,8 @@ def test_switch_on_off_unsecure_inclusion_exclusion(device_factory: DeviceFactor
     zpc = device_factory.zpc(region)
     end_device_1 = device_factory.switch_on_off(region)
 
+    end_device_1.logger.info(f"nodeID before inclusion: {end_device_1.get_node_id()}")
+
     # unsecure inclusion
     zpc.add_node()
     end_device_1.set_learn_mode()
@@ -138,10 +140,14 @@ def test_switch_on_off_unsecure_inclusion_exclusion(device_factory: DeviceFactor
 
     # TODO: basic set just to be sure
 
+    end_device_1.logger.info(f"nodeID after inclusion: {end_device_1.get_node_id()}")
+
     # exclusion
     zpc.remove_node()
     end_device_1.set_learn_mode()
     zpc.wait_for_node_disconnection(end_device_1)
+
+    end_device_1.logger.info(f"nodeID after exclusion: {end_device_1.get_node_id()}")
 
 
 @pytest.mark.parametrize('region', ['REGION_EU'])
