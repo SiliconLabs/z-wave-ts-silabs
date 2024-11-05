@@ -536,3 +536,8 @@ class DevZwave(metaclass=ABCMeta):
 
     def stop_log_capture(self) -> None:
         self.wpk.stop_rtt_logger()
+
+    def get_node_id(self) -> int:
+        if self.node_id:
+            return self.node_id
+        return 0
