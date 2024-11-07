@@ -366,20 +366,20 @@ class DevWpk(object):
         # redirect output from port 4905.
         DevWpk._create_zlf_file(filename)
         DevWpk._create_pcap_file(filename_pcap)
-        s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        s.connect((self.hostname, self.dch_port))
+        dch_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        dch_socket.connect((self.hostname, self.dch_port))
 
         self.logger.debug("_pti_logger_thread started")
 
         while not self._pti_thread_stop_event.is_set():
 
-            r, _, _ = select.select([s], [], [], 0.1) # timeout is in seconds, we set it to 100 milliseconds
+            read_fd_list, _, _ = select.select([dch_socket], [], [], 0.1) # timeout is in seconds, we set it to 100 milliseconds
 
-            if len(r) == 0:
+            if len(read_fd_list) == 0:
                 continue
 
             try:
-                dch_packet = s.recv(2048)
+                dch_packet = dch_socket.recv(2048)
                 if dch_packet == b'':
                     continue
                     # raise Exception('DCH socket connection broken')
