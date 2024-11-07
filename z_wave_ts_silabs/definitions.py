@@ -1,6 +1,7 @@
 from __future__ import annotations
+from dataclasses import dataclass
 from typing import Literal
-from enum import Enum
+from enum import IntEnum
 
 ZwaveNcpApp = Literal[
     'zwave_ncp_serial_api_controller',
@@ -38,7 +39,7 @@ ZwaveRegion = Literal[
 ]
 
 # see ZAF/ApplicationUtilities/ZW_product_id_enum.h in zw-protocol: typedef enum _PRODUCT_PLUS_ID_ENUM_
-class ZwaveAppProductType(Enum):
+class ZwaveAppProductType(IntEnum):
     zwave_soc_door_lock_keypad = 1
     zwave_soc_switch_on_off = 2
     zwave_soc_sensor_pir = 3
@@ -51,79 +52,196 @@ class ZwaveAppProductType(Enum):
 
 
 # see https://github.com/SiliconLabs/simplicity_sdk/blob/sisdk-2024.6/platform/radio/rail_lib/protocol/zwave/rail_zwave.h
-class RAILZwaveRegionID(Enum):
-    RAIL_ZWAVE_REGIONID_UNKNOWN = 0
-    RAIL_ZWAVE_REGIONID_EU = 1
-    RAIL_ZWAVE_REGIONID_US = 2
-    RAIL_ZWAVE_REGIONID_ANZ = 3
-    RAIL_ZWAVE_REGIONID_HK = 4
-    RAIL_ZWAVE_REGIONID_MY = 5
-    RAIL_ZWAVE_REGIONID_IN = 6
-    RAIL_ZWAVE_REGIONID_JP = 7
-    RAIL_ZWAVE_REGIONID_RU = 8
-    RAIL_ZWAVE_REGIONID_IL = 9
-    RAIL_ZWAVE_REGIONID_KR = 10
-    RAIL_ZWAVE_REGIONID_CN = 11
-    RAIL_ZWAVE_REGIONID_US_LR1 = 12
-    RAIL_ZWAVE_REGIONID_US_LR2 = 13
-    RAIL_ZWAVE_REGIONID_US_LR3 = 14
-    RAIL_ZWAVE_REGIONID_US_LR_END_DEVICE = RAIL_ZWAVE_REGIONID_US_LR3
-    RAIL_ZWAVE_REGIONID_EU_LR1 = 15
-    RAIL_ZWAVE_REGIONID_EU_LR2 = 16
-    RAIL_ZWAVE_REGIONID_EU_LR3 = 17
-    RAIL_ZWAVE_REGIONID_EU_LR_END_DEVICE = RAIL_ZWAVE_REGIONID_EU_LR3
+class RAILZwaveRegionID(IntEnum):
+    INV = 0 # INVALID region ID in RAIL
+    EU = 1
+    US = 2
+    ANZ = 3
+    HK = 4
+    MY = 5
+    IN = 6
+    JP = 7
+    RU = 8
+    IL = 9
+    KR = 10
+    CN = 11
+    US_LR1 = 12
+    US_LR2 = 13
+    US_LR3 = 14
+    US_LR_END_DEVICE = US_LR3
+    EU_LR1 = 15
+    EU_LR2 = 16
+    EU_LR3 = 17
+    EU_LR_END_DEVICE = EU_LR3
+
+    # RAIL allows up to 4 channels per region (channel hopping).
+    # each region has a number of predefined RAIL channels that match a particular
+    # Z-Wave Data Rate + central frequency + channel spacing (among other things)
+
+    def is_2ch(self):
+        """Check if Region is a RAIL 2-channels region (Z-Wave LR End Device)"""
+        return self in [self.US_LR3, self.EU_LR3]
+
+    def is_3ch(self):
+        """Check if Region is a RAIL 3-channels region (Z-Wave Classic)"""
+        return not self.is_2ch() and not self.is_4ch()
+
+    def is_4ch(self):
+        """Check if Region is a RAIL 4-channels region (Z-Wave LR Controller)"""
+        return self in [self.US_LR1, self.US_LR2, self.EU_LR1, self.EU_LR2]
+
+    def is_4ch_with_lr_channel_a(self):
+        """Check if Region is a RAIL 4-channels region with LR channel A (Z-Wave LR Controller)"""
+        return self in [self.US_LR1, self.EU_LR1]
+
+    def is_4ch_with_lr_channel_b(self):
+        """Check if Region is a RAIL 4-channels region with LR channel B (Z-Wave LR Controller)"""
+        return self in [self.US_LR2, self.EU_LR2]
+
+    @classmethod
+    def get_2ch_list(cls) -> list[RAILZwaveRegionID]:
+        """Return a list of RAIL 2-channels regions."""
+        return list(filter(lambda r: r.is_2ch(), iter(RAILZwaveRegionID)))
+
+    @classmethod
+    def get_3ch_list(cls) -> list[RAILZwaveRegionID]:
+        """Return a list of RAIL 3-channels regions."""
+        return list(filter(lambda r: r.is_3ch(), iter(RAILZwaveRegionID)))
+
+    @classmethod
+    def get_4ch_list(cls) -> list[RAILZwaveRegionID]:
+        """Return a list of RAIL 4-channels regions."""
+        return list(filter(lambda r: r.is_4ch(), iter(RAILZwaveRegionID)))
 
 
-# RAIL allows up to 4 channels per region (channel hopping).
-# each region has a number of predefined RAIL channels that match a particular
-# Z-Wave Data Rate + central frequency + channel spacing (among other things)
+class RAILZwaveBaud(IntEnum):
+    BAUD_9600 = 0       # R1
+    BAUD_40K = 1        # R2
+    BAUD_100K = 2       # R3
+    BAUD_100K_LR = 3    # R3 for LR ? (RAIL treats the baud rate of LR with a different enum value)
 
-# these are named 2 channels ([9.6k, 40k] and 100k) in the Z-Wave stack but RAIL list 3 channels
-# - ch0 -> 100k (CRC is on 2 bytes)
-# - ch1 -> 40k  (CRC is on 1 byte)
-# - ch2 -> 9.6k (CRC is on 1 byte)
-# - ch3 -> INVALID (impossible)
-RAILZwave2CHRegionIDs = Literal[
-    RAILZwaveRegionID.RAIL_ZWAVE_REGIONID_EU,
-    RAILZwaveRegionID.RAIL_ZWAVE_REGIONID_US,
-    RAILZwaveRegionID.RAIL_ZWAVE_REGIONID_ANZ,
-    RAILZwaveRegionID.RAIL_ZWAVE_REGIONID_HK,
-    RAILZwaveRegionID.RAIL_ZWAVE_REGIONID_MY,
-    RAILZwaveRegionID.RAIL_ZWAVE_REGIONID_IN,
-    RAILZwaveRegionID.RAIL_ZWAVE_REGIONID_RU,
-    RAILZwaveRegionID.RAIL_ZWAVE_REGIONID_IL,
-    RAILZwaveRegionID.RAIL_ZWAVE_REGIONID_KR,
-    RAILZwaveRegionID.RAIL_ZWAVE_REGIONID_CN
-]
 
-# these are 3channel 100k regions
-# - ch0 -> 100k channel 1 (CRC is on 2 bytes)
-# - ch1 -> 100k channel 2 (CRC is on 2 bytes)
-# - ch2 -> 100k channel 3 (CRC is on 2 bytes)
-# - ch3 -> INVALID (impossible)
-RAILZwave3ChRegionIDs = Literal[
-    RAILZwaveRegionID.RAIL_ZWAVE_REGIONID_JP,
-    RAILZwaveRegionID.RAIL_ZWAVE_REGIONID_KR
-]
+@dataclass
+class RAILZwaveChannel:
+    frequency: int          # in KHz
+    baud: RAILZwaveBaud     # 9.6K, 40K, 100K and 100K_LR
 
-# same as 2 channels regions + 1 long range channel
-# - ch0 -> 100k
-# - ch1 -> 40k  (CRC is on 1 byte)
-# - ch2 -> 9.6k (CRC is on 1 byte)
-# - ch3 -> 100k LR (CRC is on 2 bytes) either LR1 -> channel A and LR2 -> channel B
-RAILZwaveLRControllerRegionIDs = Literal[
-    RAILZwaveRegionID.RAIL_ZWAVE_REGIONID_US_LR1,
-    RAILZwaveRegionID.RAIL_ZWAVE_REGIONID_US_LR2,
-    RAILZwaveRegionID.RAIL_ZWAVE_REGIONID_EU_LR1,
-    RAILZwaveRegionID.RAIL_ZWAVE_REGIONID_EU_LR2
-]
 
-# end device region, only 2 channels
-# - ch0 -> 100k LR channel A
-# - ch1 -> 100k LR channel B
-# - ch2 -> INVALID (impossible)
-# - ch3 -> INVALID (impossible)
-RAILZwaveLREndDeviceRegionIDs = Literal[
-    RAILZwaveRegionID.RAIL_ZWAVE_REGIONID_US_LR3,
-    RAILZwaveRegionID.RAIL_ZWAVE_REGIONID_EU_LR3
-]
+# RAILZwaveRegion.channels is a dict that MUST always be of length 4
+@dataclass
+class RAILZwaveRegion:
+    name: str                               # RAIL region name  (from RAILZwaveRegionID.name)
+    channels: dict[int, RAILZwaveChannel]   # maps a RAIL channel index with a RAILZwaveChannel
+
+
+# maps a RAIL region ID (from RAILZwaveRegionID.value) with a RAILZwaveRegion
+RAILZwaveRegions: dict[int, RAILZwaveRegion] = {
+    RAILZwaveRegionID.INV: RAILZwaveRegion(RAILZwaveRegionID.INV.name, {
+        0: RAILZwaveChannel(916000, RAILZwaveBaud.BAUD_100K),
+        1: RAILZwaveChannel(908400, RAILZwaveBaud.BAUD_40K),
+        2: RAILZwaveChannel(908420, RAILZwaveBaud.BAUD_9600),
+        3: None
+    }),
+    RAILZwaveRegionID.EU: RAILZwaveRegion(RAILZwaveRegionID.EU.name, {
+        0: RAILZwaveChannel(869850, RAILZwaveBaud.BAUD_100K),
+        1: RAILZwaveChannel(868400, RAILZwaveBaud.BAUD_40K),
+        2: RAILZwaveChannel(868420, RAILZwaveBaud.BAUD_9600),
+        3: None
+    }),
+    RAILZwaveRegionID.US: RAILZwaveRegion(RAILZwaveRegionID.US.name, {
+        0: RAILZwaveChannel(916000, RAILZwaveBaud.BAUD_100K),
+        1: RAILZwaveChannel(908400, RAILZwaveBaud.BAUD_40K),
+        2: RAILZwaveChannel(908420, RAILZwaveBaud.BAUD_9600),
+        3: None
+    }),
+    RAILZwaveRegionID.ANZ: RAILZwaveRegion(RAILZwaveRegionID.ANZ.name, {
+        0: RAILZwaveChannel(919800, RAILZwaveBaud.BAUD_100K),
+        1: RAILZwaveChannel(921400, RAILZwaveBaud.BAUD_40K),
+        2: RAILZwaveChannel(921420, RAILZwaveBaud.BAUD_9600),
+        3: None
+    }),
+    RAILZwaveRegionID.HK: RAILZwaveRegion(RAILZwaveRegionID.HK.name, {
+        0: RAILZwaveChannel(919800, RAILZwaveBaud.BAUD_100K),
+        1: RAILZwaveChannel(919800, RAILZwaveBaud.BAUD_40K),
+        2: RAILZwaveChannel(919820, RAILZwaveBaud.BAUD_9600),
+        3: None
+    }),
+    RAILZwaveRegionID.MY: RAILZwaveRegion(RAILZwaveRegionID.MY.name, {
+        0: RAILZwaveChannel(919800, RAILZwaveBaud.BAUD_100K),
+        1: RAILZwaveChannel(921400, RAILZwaveBaud.BAUD_40K),
+        2: RAILZwaveChannel(921420, RAILZwaveBaud.BAUD_9600),
+        3: None
+    }),
+    RAILZwaveRegionID.IN: RAILZwaveRegion(RAILZwaveRegionID.IN.name, {
+        0: RAILZwaveChannel(865200, RAILZwaveBaud.BAUD_100K),
+        1: RAILZwaveChannel(865200, RAILZwaveBaud.BAUD_40K),
+        2: RAILZwaveChannel(865220, RAILZwaveBaud.BAUD_9600),
+        3: None
+    }),
+    RAILZwaveRegionID.JP: RAILZwaveRegion(RAILZwaveRegionID.JP.name, {
+        0: RAILZwaveChannel(922500, RAILZwaveBaud.BAUD_100K),
+        1: RAILZwaveChannel(923900, RAILZwaveBaud.BAUD_100K),
+        2: RAILZwaveChannel(926300, RAILZwaveBaud.BAUD_100K),
+        3: None
+    }),
+    RAILZwaveRegionID.RU: RAILZwaveRegion(RAILZwaveRegionID.RU.name, {
+        0: RAILZwaveChannel(869000, RAILZwaveBaud.BAUD_100K),
+        1: RAILZwaveChannel(869000, RAILZwaveBaud.BAUD_40K),
+        2: RAILZwaveChannel(869020, RAILZwaveBaud.BAUD_9600),
+        3: None
+    }),
+    RAILZwaveRegionID.IL: RAILZwaveRegion(RAILZwaveRegionID.IL.name, {
+        0: RAILZwaveChannel(916000, RAILZwaveBaud.BAUD_100K),
+        1: RAILZwaveChannel(916000, RAILZwaveBaud.BAUD_40K),
+        2: RAILZwaveChannel(916020, RAILZwaveBaud.BAUD_9600),
+        3: None
+    }),
+    RAILZwaveRegionID.KR: RAILZwaveRegion(RAILZwaveRegionID.KR.name, {
+        0: RAILZwaveChannel(920900, RAILZwaveBaud.BAUD_100K),
+        1: RAILZwaveChannel(921700, RAILZwaveBaud.BAUD_100K),
+        2: RAILZwaveChannel(923100, RAILZwaveBaud.BAUD_100K),
+        3: None
+    }),
+    RAILZwaveRegionID.CN: RAILZwaveRegion(RAILZwaveRegionID.CN.name, {
+        0: RAILZwaveChannel(868400, RAILZwaveBaud.BAUD_100K),
+        1: RAILZwaveChannel(868400, RAILZwaveBaud.BAUD_40K),
+        2: RAILZwaveChannel(868420, RAILZwaveBaud.BAUD_9600),
+        3: None
+    }),
+    RAILZwaveRegionID.US_LR1: RAILZwaveRegion(RAILZwaveRegionID.US_LR1.name, {
+        0: RAILZwaveChannel(916000, RAILZwaveBaud.BAUD_100K),
+        1: RAILZwaveChannel(908400, RAILZwaveBaud.BAUD_40K),
+        2: RAILZwaveChannel(908420, RAILZwaveBaud.BAUD_9600),
+        3: RAILZwaveChannel(912000, RAILZwaveBaud.BAUD_100K_LR)
+    }),
+    RAILZwaveRegionID.US_LR2: RAILZwaveRegion(RAILZwaveRegionID.US_LR2.name, {
+        0: RAILZwaveChannel(916000, RAILZwaveBaud.BAUD_100K),
+        1: RAILZwaveChannel(908400, RAILZwaveBaud.BAUD_40K),
+        2: RAILZwaveChannel(908420, RAILZwaveBaud.BAUD_9600),
+        3: RAILZwaveChannel(920000, RAILZwaveBaud.BAUD_100K_LR)
+    }),
+    RAILZwaveRegionID.US_LR3: RAILZwaveRegion(RAILZwaveRegionID.US_LR3.name, {
+        0: RAILZwaveChannel(912000, RAILZwaveBaud.BAUD_100K_LR),
+        1: RAILZwaveChannel(920000, RAILZwaveBaud.BAUD_100K_LR),
+        2: None,
+        3: None
+    }),
+    RAILZwaveRegionID.EU_LR1: RAILZwaveRegion(RAILZwaveRegionID.EU_LR1.name, {
+        0: RAILZwaveChannel(869850, RAILZwaveBaud.BAUD_100K),
+        1: RAILZwaveChannel(868400, RAILZwaveBaud.BAUD_40K),
+        2: RAILZwaveChannel(868420, RAILZwaveBaud.BAUD_9600),
+        3: RAILZwaveChannel(864400, RAILZwaveBaud.BAUD_100K_LR)
+    }),
+    RAILZwaveRegionID.EU_LR2: RAILZwaveRegion(RAILZwaveRegionID.EU_LR2.name, {
+        0: RAILZwaveChannel(869850, RAILZwaveBaud.BAUD_100K),
+        1: RAILZwaveChannel(868400, RAILZwaveBaud.BAUD_40K),
+        2: RAILZwaveChannel(868420, RAILZwaveBaud.BAUD_9600),
+        3: RAILZwaveChannel(866400, RAILZwaveBaud.BAUD_100K_LR)
+    }),
+    RAILZwaveRegionID.EU_LR3: RAILZwaveRegion(RAILZwaveRegionID.EU_LR3.name, {
+        0: RAILZwaveChannel(864400, RAILZwaveBaud.BAUD_100K_LR),
+        1: RAILZwaveChannel(866400, RAILZwaveBaud.BAUD_100K_LR),
+        2: None,
+        3: None
+    })
+}

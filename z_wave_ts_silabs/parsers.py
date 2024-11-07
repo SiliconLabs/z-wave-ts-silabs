@@ -4,8 +4,6 @@ from enum import IntEnum
 import struct
 import logging
 
-from .definitions import RAILZwaveRegionID, RAILZwave2CHRegionIDs, RAILZwave3ChRegionIDs, RAILZwaveLRControllerRegionIDs, RAILZwaveLREndDeviceRegionIDs
-
 _logger = logging.getLogger(__name__)
 
 
