@@ -1,5 +1,9 @@
 # z_wave_ts_silabs
 
+The purpose of this project is to provide tools to control SiliconLabs Z-Wave devices.
+One usage it to run the ZWA test suite and validate our embedded software,
+testing coverage can be factorized among ZWA members.
+
 ## Setup
 
 ```bash
