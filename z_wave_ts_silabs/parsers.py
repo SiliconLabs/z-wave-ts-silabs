@@ -8,15 +8,18 @@ _logger = logging.getLogger(__name__)
 
 
 class DchSymbol(IntEnum):
-    DCH_START_SYMBOL    = 0x5B #  [
-    DCH_END_SYMBOL      = 0x5D #  ]
+    DCH_START_SYMBOL = 0x5B  # [
+    DCH_END_SYMBOL = 0x5D  # ]
+
 
 class DchType(IntEnum):
-    DCH_TYPE_PTI_TX     = 0x29
-    DCH_TYPE_PTI_RX     = 0x2A
-    DCH_TYPE_PTI_OTHER  = 0x2B
+    DCH_TYPE_PTI_TX = 0x29
+    DCH_TYPE_PTI_RX = 0x2A
+    DCH_TYPE_PTI_OTHER = 0x2B
 
-DCH_TYPES = [ DchType.DCH_TYPE_PTI_TX, DchType.DCH_TYPE_PTI_RX, DchType.DCH_TYPE_PTI_OTHER ]
+
+DCH_TYPES = [DchType.DCH_TYPE_PTI_TX, DchType.DCH_TYPE_PTI_RX, DchType.DCH_TYPE_PTI_OTHER]
+
 
 #
 #       DCH frame start symbol is always 0x5D -> [
@@ -77,20 +80,27 @@ class DchPacket:
                 # the DCH frame parser failed to parse this packet. Abort.
                 return None
             frames.append(frame)
-            cur_dch_frame_length += frame.length
+            cur_dch_frame_length += len(frame)
 
         return cls(frames=frames)
+
+    def to_bytes(self) -> bytes:
+        packet: bytes = bytes()
+        for frame in self.frames:
+            packet += frame.to_bytes()
+        return packet
+
 
 @dataclass
 class DchFrame:
     start_symbol: int
-    length: int # the length stored here will take into account the start and stop symbol, which is not the case with the real frame.
-    version: int
-    timestamp: int # either in microseconds (DCHv2) or nanoseconds (DCHv3) -> IMPORTANT: DCH timestamp are the amount of time elapsed since first boot of the WPK
-    dch_type: int
-    flags: int | None # not in DCHv2
+    length: int  # the length stored here will take into account the start and stop symbol, which is not the case with the real frame.
+    version: int  # we only support version 2 and 3
+    timestamp: int  # either in microseconds (DCHv2) or nanoseconds (DCHv3) -> IMPORTANT: DCH timestamp are the amount of time elapsed since first boot of the WPK
+    dch_type: int  # determines the type of DCH frame, we're only looking for PTI.
+    flags: int | None  # not in DCHv2
     sequence_number: int
-    payload: PtiFrame # the payload can be something other than pti but for now we only care about that
+    payload: PtiFrame  # the payload can be something other than pti but for now we only care about that
     stop_symbol: int
 
     def get_timestamp_us(self) -> int:
@@ -136,32 +146,33 @@ class DchFrame:
             return None
 
         # the DCH length field does not take into account the start and stop symbols
-        # so we update the given length to take them into account.
-        length = length+2
-        # check that the given frame matches at least the given length
-        if len(frame) < length:
+        # total_length exists so that the length variable extracted from the raw frame is not altered.
+        total_length = length + 2
+        # check that the given frame matches at least the total length
+        if len(frame) < total_length:
             _logger.debug("DCH frame length mismatch")
             return None
 
         # retrieve end symbol now to check if it's a valid DCH frame before going any further
-        stop_symbol = frame[length-1]
+        stop_symbol = frame[total_length - 1]
         if stop_symbol != DchSymbol.DCH_END_SYMBOL:
             return None
 
         # check the DCH version
         if version == 2:
-            if length <= 15:
+            if total_length <= 15:
                 # a DCHv2 frame is 15 bytes in length at minimum, if it there won't be a payload afterward
                 return None
-            flags = None # there's no flag
+            flags = None  # there's no flag
             timestamp, dch_type, sequence_number = struct.unpack("<6sHB", frame[current_index:current_index + 9])
             current_index += 9
 
         elif version == 3:
-            if length <= 22:
+            if total_length <= 22:
                 # a DCHv3 frame is 22 bytes in length at minimum,  there won't be a payload afterward
                 return None
-            timestamp, dch_type, flags, sequence_number = struct.unpack("<QHIH", frame[current_index:current_index + 16])
+            timestamp, dch_type, flags, sequence_number = struct.unpack("<QHIH",
+                                                                        frame[current_index:current_index + 16])
             current_index += 16
         else:
             _logger.debug("DCH frame version unsupported")
@@ -171,7 +182,7 @@ class DchFrame:
         if dch_type not in DCH_TYPES:
             return None
 
-        payload = PtiFrame.from_bytes(frame[current_index:length-1])
+        payload = PtiFrame.from_bytes(frame[current_index:total_length - 1])  # -1 here because of the stop symbol
         if payload is None:
             return None
 
@@ -187,42 +198,62 @@ class DchFrame:
             stop_symbol=stop_symbol
         )
 
-class PtiHwStartType(IntEnum):
-    PTI_HW_START_RX_START   = 0xF8
-    PTI_HW_START_RX_END     = 0xFC
+    def to_bytes(self) -> bytes:
+        frame = struct.pack("<BHH", self.start_symbol, self.length, self.version)
+        if self.version == 2:
+            frame += struct.pack("<6sHB", self.timestamp, self.dch_type, self.sequence_number)
+        elif self.version == 3:
+            frame += struct.pack("<QHIH", self.timestamp, self.dch_type, self.flags, self.sequence_number)
+        else:
+            raise Exception(f"unsupported DCH version: {self.version}")
+        frame += self.payload.to_bytes()
+        frame += struct.pack("<B", self.stop_symbol)
 
-class PtiHwEndType(IntEnum):
-    PTI_HW_END_RX_SUCCESS   = 0xF9
-    PTI_HW_END_RX_ABORT     = 0xFA
-    PTI_HW_END_TX_SUCCESS   = 0xFD
-    PTI_HW_END_TX_ABORT     = 0xFE
+        return frame
+
+    def __len__(self):
+        return self.length + 2 # + 2 to take into account the start and stop symbols.
+
+class PtiHwStart(IntEnum):
+    PTI_HW_START_RX_START = 0xF8
+    PTI_HW_START_RX_END = 0xFC
+
+
+class PtiHwEnd(IntEnum):
+    PTI_HW_END_RX_SUCCESS = 0xF9
+    PTI_HW_END_RX_ABORT = 0xFA
+    PTI_HW_END_TX_SUCCESS = 0xFD
+    PTI_HW_END_TX_ABORT = 0xFE
+
 
 class PtiProtocolID(IntEnum):
-    PTI_PROTOCOL_ID_ZWAVE   = 0x06
+    PTI_PROTOCOL_ID_ZWAVE = 0x06
+
 
 class PtiRxErrorCodeZwave(IntEnum):
-    PTI_RX_ERROR_CODE_SUCCESS               = 0x0  # Success
-    PTI_RX_ERROR_CODE_CRC_ERROR             = 0x1  # CRC Failed or invalid packet length, Packet had a CRC error. This is the only case when we know for sure that the packet was corrupted.
-    PTI_RX_ERROR_CODE_DROPPED               = 0x2  # Dropped/Overflow, Packet was dropped for reasons other than the other errors, including Rx overflow.  E.g. Packets that appear successful but ended prematurely during filtering are dropped.
+    PTI_RX_ERROR_CODE_SUCCESS = 0x0  # Success
+    PTI_RX_ERROR_CODE_CRC_ERROR = 0x1  # CRC Failed or invalid packet length, Packet had a CRC error. This is the only case when we know for sure that the packet was corrupted.
+    PTI_RX_ERROR_CODE_DROPPED = 0x2  # Dropped/Overflow, Packet was dropped for reasons other than the other errors, including Rx overflow.  E.g. Packets that appear successful but ended prematurely during filtering are dropped.
     # PTI_RX_ERROR_CODE_RESERVED            = 0x3
-    PTI_RX_ERROR_CODE_ADDRESS_FILTERED      = 0x4  # Packet was not addressed to this node. For Z-Wave, this refers to the HomeId only.
+    PTI_RX_ERROR_CODE_ADDRESS_FILTERED = 0x4  # Packet was not addressed to this node. For Z-Wave, this refers to the HomeId only.
     # PTI_RX_ERROR_CODE_RESERVED            = 0x5
     # PTI_RX_ERROR_CODE_RESERVED            = 0x6
     # PTI_RX_ERROR_CODE_RESERVED            = 0x7
     # PTI_RX_ERROR_CODE_RESERVED            = 0x8
     # PTI_RX_ERROR_CODE_RESERVED            = 0x9
     # PTI_RX_ERROR_CODE_RESERVED            = 0xA
-    PTI_RX_ERROR_CODE_ZWAVE_BEAM_ACCEPTED   = 0xB  # Packet was a Z-Wave Beam packet deemed pertinent to the receiving node (despite being filtered).
-    PTI_RX_ERROR_CODE_ZWAVE_BEAM_IGNORED    = 0xC  # Packet was a Z-Wave Beam packet filtered as not pertinent to the receiving node.
+    PTI_RX_ERROR_CODE_ZWAVE_BEAM_ACCEPTED = 0xB  # Packet was a Z-Wave Beam packet deemed pertinent to the receiving node (despite being filtered).
+    PTI_RX_ERROR_CODE_ZWAVE_BEAM_IGNORED = 0xC  # Packet was a Z-Wave Beam packet filtered as not pertinent to the receiving node.
     # PTI_RX_ERROR_CODE_RESERVED            = 0xD
-    PTI_RX_ERROR_CODE_USER_ABORT            = 0xE
+    PTI_RX_ERROR_CODE_USER_ABORT = 0xE
     # PTI_RX_ERROR_CODE_RESERVED            = 0xF
 
+
 class PtiTxErrorCodeZwave(IntEnum):
-    PTI_TX_ERROR_CODE_SUCCESS       = 0x0
-    PTI_TX_ERROR_CODE_ABORT         = 0x1
-    PTI_TX_ERROR_CODE_UNDERFLOW     = 0x2
-    PTI_TX_ERROR_CODE_USER_ABORT    = 0x3
+    PTI_TX_ERROR_CODE_SUCCESS = 0x0
+    PTI_TX_ERROR_CODE_ABORT = 0x1
+    PTI_TX_ERROR_CODE_UNDERFLOW = 0x2
+    PTI_TX_ERROR_CODE_USER_ABORT = 0x3
     # PTI_RX_ERROR_CODE_RESERVED    = 0x4
     # PTI_RX_ERROR_CODE_RESERVED    = 0x5
     # PTI_RX_ERROR_CODE_RESERVED    = 0x6
@@ -236,91 +267,129 @@ class PtiTxErrorCodeZwave(IntEnum):
     # PTI_RX_ERROR_CODE_RESERVED    = 0xE
     # PTI_RX_ERROR_CODE_RESERVED    = 0xF
 
+
 class PtiZwaveRegionId(IntEnum):
-    PTI_ZWAVE_REGION_ID_UNKNOWN = 0x00 # Unknown
-    PTI_ZWAVE_REGION_ID_EU      = 0x01 # European Union
-    PTI_ZWAVE_REGION_ID_US      = 0x02 # United States
-    PTI_ZWAVE_REGION_ID_ANZ     = 0x03 # Australia/New Zealand
-    PTI_ZWAVE_REGION_ID_HK      = 0x04 # Hong Kong
-    PTI_ZWAVE_REGION_ID_MA      = 0x05 # Malaysia
-    PTI_ZWAVE_REGION_ID_IN      = 0x06 # India
-    PTI_ZWAVE_REGION_ID_JP      = 0x07 # Japan
-    PTI_ZWAVE_REGION_ID_RU      = 0x08 # Russian Federation
-    PTI_ZWAVE_REGION_ID_IS      = 0x09 # Israel
-    PTI_ZWAVE_REGION_ID_KR      = 0x0A # Korea
-    PTI_ZWAVE_REGION_ID_CN      = 0x0B # China
-    PTI_ZWAVE_REGION_ID_US_LR1  = 0x0C # United States Long Range 1
-    PTI_ZWAVE_REGION_ID_US_LR2  = 0x0D # United States Long Range 2
-    PTI_ZWAVE_REGION_ID_US_LR3  = 0x0E # United States Long Range 3 (also named EndDevice)
-    PTI_ZWAVE_REGION_ID_EU_LR1  = 0x0F # Europe Long Range 1
-    PTI_ZWAVE_REGION_ID_EU_LR2  = 0x10 # Europe Long Range 2
-    PTI_ZWAVE_REGION_ID_EU_LR3  = 0x11 # Europe Long Range 3 (also named EndDevice)
+    PTI_ZWAVE_REGION_ID_UNKNOWN = 0x00  # Unknown
+    PTI_ZWAVE_REGION_ID_EU = 0x01  # European Union
+    PTI_ZWAVE_REGION_ID_US = 0x02  # United States
+    PTI_ZWAVE_REGION_ID_ANZ = 0x03  # Australia/New Zealand
+    PTI_ZWAVE_REGION_ID_HK = 0x04  # Hong Kong
+    PTI_ZWAVE_REGION_ID_MA = 0x05  # Malaysia
+    PTI_ZWAVE_REGION_ID_IN = 0x06  # India
+    PTI_ZWAVE_REGION_ID_JP = 0x07  # Japan
+    PTI_ZWAVE_REGION_ID_RU = 0x08  # Russian Federation
+    PTI_ZWAVE_REGION_ID_IS = 0x09  # Israel
+    PTI_ZWAVE_REGION_ID_KR = 0x0A  # Korea
+    PTI_ZWAVE_REGION_ID_CN = 0x0B  # China
+    PTI_ZWAVE_REGION_ID_US_LR1 = 0x0C  # United States Long Range 1
+    PTI_ZWAVE_REGION_ID_US_LR2 = 0x0D  # United States Long Range 2
+    PTI_ZWAVE_REGION_ID_US_LR3 = 0x0E  # United States Long Range 3 (also named EndDevice)
+    PTI_ZWAVE_REGION_ID_EU_LR1 = 0x0F  # Europe Long Range 1
+    PTI_ZWAVE_REGION_ID_EU_LR2 = 0x10  # Europe Long Range 2
+    PTI_ZWAVE_REGION_ID_EU_LR3 = 0x11  # Europe Long Range 3 (also named EndDevice)
+
 
 @dataclass
 class PtiRadioConfigZwave:
     # b7 b6 b5 are always set to 0
-    z_wave_region_id: int # 5 bits (b4 b3 b2 b1 b0)
+    z_wave_region_id: int  # 5 bits (b4 b3 b2 b1 b0)
+
+    @classmethod
+    def from_int(cls, data: int) -> PtiRadioConfigZwave:
+        return PtiRadioConfigZwave(
+            z_wave_region_id=   (data & 0b00011111) >> 0
+        )
+
+    def to_int(self) -> int:
+        return int(
+            ((self.z_wave_region_id & 0b00011111) << 0)
+        )
+
 
 @dataclass
 class PtiRadioInfo:
-    is_antenna_selected: int    # 1 bit (b7)
-    is_syncword_selected: int   # 1 bit (b6)
-    channel_number: int         # 6 bits (b5 b4 b3 b2 b1 b0)
+    is_antenna_selected: int  # 1 bit (b7)
+    is_syncword_selected: int  # 1 bit (b6)
+    channel_number: int  # 6 bits (b5 b4 b3 b2 b1 b0)
+
+    @classmethod
+    def from_int(cls, data: int) -> PtiRadioInfo:
+        return PtiRadioInfo(
+            is_antenna_selected=    (data & 0b10000000) >> 7,
+            is_syncword_selected=   (data & 0b01000000) >> 6,
+            channel_number=         (data & 0b00111111) >> 0
+        )
+
+    def to_int(self) -> int:
+        return int(
+            ((self.is_antenna_selected  & 0b00000001) << 7) +
+            ((self.is_syncword_selected & 0b00000001) << 6) +
+            ((self.channel_number       & 0b00111111) << 0)
+        )
+
 
 @dataclass
 class PtiStatus0:
-    error_code: int     # 4 bits (b7 b6 b5 b4)
-    protocol_id: int    # 4 bits (b3 b2 b1 b0)
+    error_code: int  # 4 bits (b7 b6 b5 b4)
+    protocol_id: int  # 4 bits (b3 b2 b1 b0)
+
+    @classmethod
+    def from_int(cls, data: int) -> PtiStatus0:
+        return PtiStatus0(
+            error_code=     (data & 0b11110000) >> 4,
+            protocol_id=    (data & 0b00001111) >> 0
+        )
+
+    def to_int(self) -> int:
+        return int(
+            ((self.error_code   & 0b00001111) << 4) +
+            ((self.protocol_id  & 0b00001111) << 0)
+        )
+
 
 @dataclass
 class PtiAppendedInfoCfg:
     # b7 is always set to 0
-    is_rx: int      # 1 bit (b6) -> Rx = 1, Tx = 0
-    length: int     # 3 bits (b5 b4 b3) -> actual length - 2
-    version: int    # 3 bits (b2 b1 b0) -> from version 1 onward the RSSI (Rx only) will have to be compensated by subtracting 0x32 to get the actual RSSI
-
-# at most the PTI appended info is 10 bytes in size, for Z-Wave it will only be 5 bytes maximum (Rx) and 4 bytes maximum (Tx)
-@dataclass
-class PtiAppendedInfo:
-    rssi: int | None                        # 1 byte -> Rx only
-    # syncword: int                         # 4 bytes -> BLE only, Rx and Tx
-    radio_config: PtiRadioConfigZwave       # 0/1/2 bytes -> different for every protocol, we're only interested in Z-Wave, and for Z-Wave it's 1 byte long
-    radio_info: PtiRadioInfo                # 1 byte
-    status_0: PtiStatus0                    # 1 byte
-    appended_info_cfg: PtiAppendedInfoCfg   # 1 byte
-
-@dataclass
-class PtiFrame:
-    hw_start: int                       # 1 byte
-    ota_packet_data: bytes              # variable size
-    hw_end: int                         # 1 byte
-    appended_info: PtiAppendedInfo      # variable size
+    is_rx: int  # 1 bit (b6) -> Rx = 1, Tx = 0
+    length: int # 3 bits (b5 b4 b3) -> Size of APPENDED_INFO - 3 (I think that's because APPENDED_INFO_CFG, STATUS_0 and RADIO_INFO are mandatory)
+    version: int  # 3 bits (b2 b1 b0) -> from version 1 onward the RSSI (Rx only) will have to be compensated by subtracting 0x32 to get the actual RSSI
 
     @classmethod
-    def from_bytes(cls, frame: bytes) -> PtiFrame | None:
+    def from_int(cls, data: int) -> PtiAppendedInfoCfg:
+        return PtiAppendedInfoCfg(
+            is_rx=      (data & 0b01000000) >> 6,
+            length=     (data & 0b00111000) >> 3,
+            version=    (data & 0b00000111) >> 0
+        )
 
-        # sanity check
-        if len(frame) < 6: # 6 is the minimum possible size for a Z-Wave PTI frame (hw_start + no ota_packet_data + hw_end + appended_info = 1 + 0 + 1 + 4 = 6).
-            return None
+    def to_int(self) -> int:
+        return int(
+            ((self.is_rx    & 0b00000001) << 6) +
+            ((self.length   & 0b00000111) << 3) +
+            ((self.version  & 0b00000111) << 0)
+        )
 
+
+@dataclass
+class PtiAppendedInfo:
+    rssi: int # 1 byte -> Rx only (not present in Tx, we set it to 0 for convenience when manipulating this dataclass, we omit it when using to_bytes)
+    # syncword: int                         # 4 bytes -> BLE only, Rx and Tx
+    radio_config: PtiRadioConfigZwave  # 0/1/2 bytes -> different for every protocol, we're only interested in Z-Wave, and for Z-Wave it's 1 byte long
+    radio_info: PtiRadioInfo  # 1 byte
+    status_0: PtiStatus0  # 1 byte
+    appended_info_cfg: PtiAppendedInfoCfg  # 1 byte
+
+    @classmethod
+    def from_bytes(cls, frame: bytes) -> PtiAppendedInfo | None:
         # we must parse the PTI frame backward because appended_info contains information on the radio frame.
         current_index: int = -1
 
-        # APPENDED_INFO (variable size)
-
         # APPENDED_INFO_CFG (1 byte)
-        pti_appended_info_cfg = PtiAppendedInfoCfg(
-            is_rx=      (frame[current_index] & 0b01000000) >> 6,
-            length=     (frame[current_index] & 0b00111000) >> 3,
-            version=    (frame[current_index] & 0b00000111) >> 0
-        )
+        pti_appended_info_cfg = PtiAppendedInfoCfg.from_int(frame[current_index])
         current_index -= 1
 
         # STATUS_0 (1 byte)
-        pti_status0 = PtiStatus0(
-            error_code=     (frame[current_index] & 0b11110000) >> 4,
-            protocol_id=    (frame[current_index] & 0b00001111) >> 0
-        )
+        pti_status0 = PtiStatus0.from_int(frame[current_index])
         current_index -= 1
 
         # we should not go any further if protocol_id does not match Z-Wave
@@ -328,17 +397,11 @@ class PtiFrame:
             return None
 
         # RADIO_INFO (1 byte)
-        pti_radio_info = PtiRadioInfo(
-            is_antenna_selected=    (frame[current_index] & 0b10000000) >> 7,
-            is_syncword_selected=   (frame[current_index] & 0b01000000) >> 6,
-            channel_number=         (frame[current_index] & 0b00111111) >> 0
-        )
+        pti_radio_info = PtiRadioInfo.from_int(frame[current_index])
         current_index -= 1
 
         # RADIO_CONFIG (0/1/2 byte(s)) it's 1 byte for Z-Wave
-        pti_radio_config = PtiRadioConfigZwave(
-            z_wave_region_id=        (frame[current_index] & 0b00011111) >> 0
-        )
+        pti_radio_config = PtiRadioConfigZwave.from_int(frame[current_index])
         current_index -= 1
 
         # RSSI (0/1 byte) depends on pti_appended_info_cfg.is_rx
@@ -346,10 +409,9 @@ class PtiFrame:
         if pti_appended_info_cfg.is_rx == 1:
             rssi = frame[current_index]
             if pti_appended_info_cfg.version >= 1:
-                rssi -= 0x32
-            current_index -= 1
+                rssi -= 0x32 # since PTI version 1 and onward the RSSI must be offset by 0x32
 
-        pti_appended_info = PtiAppendedInfo(
+        return PtiAppendedInfo(
             rssi=rssi,
             radio_config=pti_radio_config,
             radio_info=pti_radio_info,
@@ -357,14 +419,55 @@ class PtiFrame:
             appended_info_cfg=pti_appended_info_cfg
         )
 
+    def to_bytes(self) -> bytes:
+        appended_info_values = [
+            self.radio_config.to_int(),
+            self.radio_info.to_int(),
+            self.status_0.to_int(),
+            self.appended_info_cfg.to_int()
+        ]
+        if self.appended_info_cfg.is_rx == 1:
+            rssi = self.rssi
+            if self.appended_info_cfg.version >= 1:
+                rssi += 0x32 # since PTI version 1 and onward the RSSI must be offset by 0x32
+            appended_info_values.insert(0, rssi) # add RSSI at the start
+        return bytes(appended_info_values)
+
+    def  __len__(self) -> int:
+        # at most the PTI appended info is 10 bytes in size,
+        # for Z-Wave it will only be 5 bytes maximum (Rx) and 4 bytes maximum (Tx)
+        return self.appended_info_cfg.length + 3 # 3 bytes are mandatory (APPENDED_INFO_CFG, STATUS_0 and RADIO_INFO)
+
+
+@dataclass
+class PtiFrame:
+    hw_start: int  # 1 byte
+    ota_packet_data: bytes  # variable size
+    hw_end: int  # 1 byte
+    appended_info: PtiAppendedInfo  # variable size
+
+    @classmethod
+    def from_bytes(cls, frame: bytes) -> PtiFrame | None:
+
+        # sanity check
+        if len(frame) < 6:  # 6 is the minimum possible size for a Z-Wave PTI frame (hw_start + no ota_packet_data + hw_end + appended_info = 1 + 0 + 1 + 4 = 6).
+            return None
+
+        # we must parse the PTI frame backward because PTI appended_info contains crucial information about the encapsulated frame.
+
+        # APPENDED_INFO (variable size)
+        pti_appended_info = PtiAppendedInfo.from_bytes(frame)
+        if pti_appended_info is None:
+            # parsing of PtiAppendedInfo failed
+            return None
+
         # HW_END (1 byte)
+        hw_end_position = -1 - len(pti_appended_info) # to get the position of HW_END we must subtract 1 to the length of the appended_info
         # We're only interested in Rx Success and Tx Success, so 0xF9 and 0xFD
-        hw_end = frame[current_index]
-        # we don't decrement current_index here because in Python when using this syntax: `[left_operand:right_operand]`
-        # to extract part of a list the right_operand is excluded.
+        hw_end = frame[hw_end_position]
 
         # OTA_PACKET_DATA (variable size)
-        ota_packet_data = frame[1:current_index]
+        ota_packet_data = frame[1:hw_end_position] # in Python when using this syntax: `[left_operand:right_operand]` to extract part of a list the right_operand is excluded.
 
         # HW_START (1 byte)
         hw_start = frame[0]
@@ -375,3 +478,13 @@ class PtiFrame:
             hw_end=hw_end,
             appended_info=pti_appended_info
         )
+
+    def to_bytes(self) -> bytes:
+        frame = struct.pack("<B", self.hw_start)
+        frame += self.ota_packet_data
+        frame += struct.pack("<B", self.hw_end)
+        frame += self.appended_info.to_bytes()
+        return frame
+
+    def  __len__(self) -> int:
+        return len(self.ota_packet_data) + len(self.appended_info) + 2 # + 2 because of the HW_START and HW_END symbols
