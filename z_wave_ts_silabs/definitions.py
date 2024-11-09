@@ -51,27 +51,95 @@ class ZwaveAppProductType(IntEnum):
     # zwave_soc_key_fob = 9
 
 
+class DchSymbol(IntEnum):
+    START = 0x5B  # [
+    END = 0x5D  # ]
+
+
+class DchType(IntEnum):
+    PTI_TX = 0x29
+    PTI_RX = 0x2A
+    PTI_OTHER = 0x2B
+
+
+PtiDchTypes = [ DchType.PTI_TX, DchType.PTI_RX, DchType.PTI_OTHER ]
+
+
+class PtiHwStart(IntEnum):
+    RX_START = 0xF8
+    RX_END = 0xFC
+
+
+class PtiHwEnd(IntEnum):
+    RX_SUCCESS = 0xF9
+    RX_ABORT = 0xFA
+    TX_SUCCESS = 0xFD
+    TX_ABORT = 0xFE
+
+
+class PtiProtocolID(IntEnum):
+    ZWAVE = 0x06
+
+
+class PtiRxErrorCodeZwave(IntEnum):
+    SUCCESS = 0x0  # Success
+    CRC_ERROR = 0x1  # CRC Failed or invalid packet length, Packet had a CRC error. This is the only case when we know for sure that the packet was corrupted.
+    DROPPED = 0x2  # Dropped/Overflow, Packet was dropped for reasons other than the other errors, including Rx overflow.  E.g. Packets that appear successful but ended prematurely during filtering are dropped.
+    # RESERVED = 0x3
+    ADDRESS_FILTERED = 0x4  # Packet was not addressed to this node. For Z-Wave, this refers to the HomeId only.
+    # RESERVED = 0x5
+    # RESERVED = 0x6
+    # RESERVED = 0x7
+    # RESERVED = 0x8
+    # RESERVED = 0x9
+    # RESERVED = 0xA
+    ZWAVE_BEAM_ACCEPTED = 0xB  # Packet was a Z-Wave Beam packet deemed pertinent to the receiving node (despite being filtered).
+    ZWAVE_BEAM_IGNORED = 0xC  # Packet was a Z-Wave Beam packet filtered as not pertinent to the receiving node.
+    # RESERVED = 0xD
+    USER_ABORT = 0xE
+    # RESERVED = 0xF
+
+
+class PtiTxErrorCodeZwave(IntEnum):
+    SUCCESS = 0x0
+    ABORT = 0x1
+    UNDERFLOW = 0x2
+    USER_ABORT = 0x3
+    # RESERVED = 0x4
+    # RESERVED = 0x5
+    # RESERVED = 0x6
+    # RESERVED = 0x7
+    # RESERVED = 0x8
+    # RESERVED = 0x9
+    # RESERVED = 0xA
+    # RESERVED = 0xB
+    # RESERVED = 0xC
+    # RESERVED = 0xD
+    # RESERVED = 0xE
+    # RESERVED = 0xF
+
+
 # see https://github.com/SiliconLabs/simplicity_sdk/blob/sisdk-2024.6/platform/radio/rail_lib/protocol/zwave/rail_zwave.h
 class RAILZwaveRegionID(IntEnum):
-    INV = 0 # INVALID region ID in RAIL
-    EU = 1
-    US = 2
-    ANZ = 3
-    HK = 4
-    MY = 5
-    IN = 6
-    JP = 7
-    RU = 8
-    IL = 9
-    KR = 10
-    CN = 11
-    US_LR1 = 12
-    US_LR2 = 13
-    US_LR3 = 14
+    INV = 0x00  # INVALID region ID in RAIL
+    EU = 0x01  # European Union
+    US = 0x02  # United States
+    ANZ = 0x03  # Australia/New Zealand
+    HK = 0x04  # Hong Kong
+    MY = 0x05  # Malaysia
+    IN = 0x06  # India
+    JP = 0x07  # Japan
+    RU = 0x08  # Russian Federation
+    IL = 0x09  # Israel
+    KR = 0x0A  # Korea
+    CN = 0x0B  # China
+    US_LR1 = 0x0C  # United States Long Range 1
+    US_LR2 = 0x0D  # United States Long Range 2
+    US_LR3 = 0x0E  # United States Long Range 3
     US_LR_END_DEVICE = US_LR3
-    EU_LR1 = 15
-    EU_LR2 = 16
-    EU_LR3 = 17
+    EU_LR1 = 0x0F  # Europe Long Range 1
+    EU_LR2 = 0x10  # Europe Long Range 2
+    EU_LR3 = 0x11  # Europe Long Range 3
     EU_LR_END_DEVICE = EU_LR3
 
     # RAIL allows up to 4 channels per region (channel hopping).

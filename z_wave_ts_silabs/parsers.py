@@ -4,21 +4,9 @@ from enum import IntEnum
 import struct
 import logging
 
+from .definitions import DchSymbol, PtiDchTypes, PtiProtocolID
+
 _logger = logging.getLogger(__name__)
-
-
-class DchSymbol(IntEnum):
-    DCH_START_SYMBOL = 0x5B  # [
-    DCH_END_SYMBOL = 0x5D  # ]
-
-
-class DchType(IntEnum):
-    DCH_TYPE_PTI_TX = 0x29
-    DCH_TYPE_PTI_RX = 0x2A
-    DCH_TYPE_PTI_OTHER = 0x2B
-
-
-DCH_TYPES = [DchType.DCH_TYPE_PTI_TX, DchType.DCH_TYPE_PTI_RX, DchType.DCH_TYPE_PTI_OTHER]
 
 
 #
@@ -69,7 +57,7 @@ class DchPacket:
         if len(packet) == 0:
             return None
 
-        if packet[0] != DchSymbol.DCH_START_SYMBOL or packet[-1] != DchSymbol.DCH_END_SYMBOL:
+        if packet[0] != DchSymbol.START or packet[-1] != DchSymbol.END:
             # this packet is not DCH
             return None
 
@@ -142,7 +130,7 @@ class DchFrame:
         current_index += 5
 
         # check if it's a valid DCH frame before going any further
-        if start_symbol != DchSymbol.DCH_START_SYMBOL:
+        if start_symbol != DchSymbol.START:
             return None
 
         # the DCH length field does not take into account the start and stop symbols
@@ -155,7 +143,7 @@ class DchFrame:
 
         # retrieve end symbol now to check if it's a valid DCH frame before going any further
         stop_symbol = frame[total_length - 1]
-        if stop_symbol != DchSymbol.DCH_END_SYMBOL:
+        if stop_symbol != DchSymbol.END:
             return None
 
         # check the DCH version
@@ -179,7 +167,7 @@ class DchFrame:
             return None
 
         # we don't care about stuff not related to PTI
-        if dch_type not in DCH_TYPES:
+        if dch_type not in PtiDchTypes:
             return None
 
         payload = PtiFrame.from_bytes(frame[current_index:total_length - 1])  # -1 here because of the stop symbol
@@ -213,80 +201,6 @@ class DchFrame:
 
     def __len__(self):
         return self.length + 2 # + 2 to take into account the start and stop symbols.
-
-class PtiHwStart(IntEnum):
-    PTI_HW_START_RX_START = 0xF8
-    PTI_HW_START_RX_END = 0xFC
-
-
-class PtiHwEnd(IntEnum):
-    PTI_HW_END_RX_SUCCESS = 0xF9
-    PTI_HW_END_RX_ABORT = 0xFA
-    PTI_HW_END_TX_SUCCESS = 0xFD
-    PTI_HW_END_TX_ABORT = 0xFE
-
-
-class PtiProtocolID(IntEnum):
-    PTI_PROTOCOL_ID_ZWAVE = 0x06
-
-
-class PtiRxErrorCodeZwave(IntEnum):
-    PTI_RX_ERROR_CODE_SUCCESS = 0x0  # Success
-    PTI_RX_ERROR_CODE_CRC_ERROR = 0x1  # CRC Failed or invalid packet length, Packet had a CRC error. This is the only case when we know for sure that the packet was corrupted.
-    PTI_RX_ERROR_CODE_DROPPED = 0x2  # Dropped/Overflow, Packet was dropped for reasons other than the other errors, including Rx overflow.  E.g. Packets that appear successful but ended prematurely during filtering are dropped.
-    # PTI_RX_ERROR_CODE_RESERVED            = 0x3
-    PTI_RX_ERROR_CODE_ADDRESS_FILTERED = 0x4  # Packet was not addressed to this node. For Z-Wave, this refers to the HomeId only.
-    # PTI_RX_ERROR_CODE_RESERVED            = 0x5
-    # PTI_RX_ERROR_CODE_RESERVED            = 0x6
-    # PTI_RX_ERROR_CODE_RESERVED            = 0x7
-    # PTI_RX_ERROR_CODE_RESERVED            = 0x8
-    # PTI_RX_ERROR_CODE_RESERVED            = 0x9
-    # PTI_RX_ERROR_CODE_RESERVED            = 0xA
-    PTI_RX_ERROR_CODE_ZWAVE_BEAM_ACCEPTED = 0xB  # Packet was a Z-Wave Beam packet deemed pertinent to the receiving node (despite being filtered).
-    PTI_RX_ERROR_CODE_ZWAVE_BEAM_IGNORED = 0xC  # Packet was a Z-Wave Beam packet filtered as not pertinent to the receiving node.
-    # PTI_RX_ERROR_CODE_RESERVED            = 0xD
-    PTI_RX_ERROR_CODE_USER_ABORT = 0xE
-    # PTI_RX_ERROR_CODE_RESERVED            = 0xF
-
-
-class PtiTxErrorCodeZwave(IntEnum):
-    PTI_TX_ERROR_CODE_SUCCESS = 0x0
-    PTI_TX_ERROR_CODE_ABORT = 0x1
-    PTI_TX_ERROR_CODE_UNDERFLOW = 0x2
-    PTI_TX_ERROR_CODE_USER_ABORT = 0x3
-    # PTI_RX_ERROR_CODE_RESERVED    = 0x4
-    # PTI_RX_ERROR_CODE_RESERVED    = 0x5
-    # PTI_RX_ERROR_CODE_RESERVED    = 0x6
-    # PTI_RX_ERROR_CODE_RESERVED    = 0x7
-    # PTI_RX_ERROR_CODE_RESERVED    = 0x8
-    # PTI_RX_ERROR_CODE_RESERVED    = 0x9
-    # PTI_RX_ERROR_CODE_RESERVED    = 0xA
-    # PTI_RX_ERROR_CODE_RESERVED    = 0xB
-    # PTI_RX_ERROR_CODE_RESERVED    = 0xC
-    # PTI_RX_ERROR_CODE_RESERVED    = 0xD
-    # PTI_RX_ERROR_CODE_RESERVED    = 0xE
-    # PTI_RX_ERROR_CODE_RESERVED    = 0xF
-
-
-class PtiZwaveRegionId(IntEnum):
-    PTI_ZWAVE_REGION_ID_UNKNOWN = 0x00  # Unknown
-    PTI_ZWAVE_REGION_ID_EU = 0x01  # European Union
-    PTI_ZWAVE_REGION_ID_US = 0x02  # United States
-    PTI_ZWAVE_REGION_ID_ANZ = 0x03  # Australia/New Zealand
-    PTI_ZWAVE_REGION_ID_HK = 0x04  # Hong Kong
-    PTI_ZWAVE_REGION_ID_MA = 0x05  # Malaysia
-    PTI_ZWAVE_REGION_ID_IN = 0x06  # India
-    PTI_ZWAVE_REGION_ID_JP = 0x07  # Japan
-    PTI_ZWAVE_REGION_ID_RU = 0x08  # Russian Federation
-    PTI_ZWAVE_REGION_ID_IS = 0x09  # Israel
-    PTI_ZWAVE_REGION_ID_KR = 0x0A  # Korea
-    PTI_ZWAVE_REGION_ID_CN = 0x0B  # China
-    PTI_ZWAVE_REGION_ID_US_LR1 = 0x0C  # United States Long Range 1
-    PTI_ZWAVE_REGION_ID_US_LR2 = 0x0D  # United States Long Range 2
-    PTI_ZWAVE_REGION_ID_US_LR3 = 0x0E  # United States Long Range 3 (also named EndDevice)
-    PTI_ZWAVE_REGION_ID_EU_LR1 = 0x0F  # Europe Long Range 1
-    PTI_ZWAVE_REGION_ID_EU_LR2 = 0x10  # Europe Long Range 2
-    PTI_ZWAVE_REGION_ID_EU_LR3 = 0x11  # Europe Long Range 3 (also named EndDevice)
 
 
 @dataclass
@@ -393,7 +307,7 @@ class PtiAppendedInfo:
         current_index -= 1
 
         # we should not go any further if protocol_id does not match Z-Wave
-        if pti_status0.protocol_id != PtiProtocolID.PTI_PROTOCOL_ID_ZWAVE:
+        if pti_status0.protocol_id != PtiProtocolID.ZWAVE:
             return None
 
         # RADIO_INFO (1 byte)
