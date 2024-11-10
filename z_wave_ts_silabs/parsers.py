@@ -108,6 +108,16 @@ class DchFrame:
             raise Exception(f"version {self.version} is not supported")
 
     @classmethod
+    def get_v2_header_size(cls) -> int:
+        # a DCHv2 frame header is 13 bytes in length (not taking into account the DCH start/end symbols and the payload)
+        return 13
+
+    @classmethod
+    def get_v3_header_size(cls) -> int:
+        # a DCHv3 frame header is 20 bytes in length (not taking into account the DCH start/end symbols and the payload)
+        return 20
+
+    @classmethod
     def from_bytes(cls, frame: bytes) -> DchFrame | None:
         start_symbol: int
         length: int
@@ -133,31 +143,30 @@ class DchFrame:
         if start_symbol != DchSymbol.START:
             return None
 
+        # check that the given frame matches at least the total length, +2 is added to length because
         # the DCH length field does not take into account the start and stop symbols
-        # total_length exists so that the length variable extracted from the raw frame is not altered.
-        total_length = length + 2
-        # check that the given frame matches at least the total length
-        if len(frame) < total_length:
+        if len(frame) < length + 2:
             _logger.debug("DCH frame length mismatch")
             return None
 
         # retrieve end symbol now to check if it's a valid DCH frame before going any further
-        stop_symbol = frame[total_length - 1]
+        stop_symbol_index = length + 1 # +1 to take into account the DCH start symbol
+        stop_symbol = frame[stop_symbol_index]
         if stop_symbol != DchSymbol.END:
             return None
 
         # check the DCH version
         if version == 2:
-            if total_length <= 15:
-                # a DCHv2 frame is 15 bytes in length at minimum, if it there won't be a payload afterward
+            if length <= DchFrame.get_v2_header_size():
+                # no payload to parse
                 return None
             flags = None  # there's no flag
             timestamp, dch_type, sequence_number = struct.unpack("<6sHB", frame[current_index:current_index + 9])
             current_index += 9
 
         elif version == 3:
-            if total_length <= 22:
-                # a DCHv3 frame is 22 bytes in length at minimum,  there won't be a payload afterward
+            if length <= DchFrame.get_v3_header_size():
+                # no payload to parse
                 return None
             timestamp, dch_type, flags, sequence_number = struct.unpack("<QHIH",
                                                                         frame[current_index:current_index + 16])
@@ -170,7 +179,7 @@ class DchFrame:
         if dch_type not in PtiDchTypes:
             return None
 
-        payload = PtiFrame.from_bytes(frame[current_index:total_length - 1])  # -1 here because of the stop symbol
+        payload = PtiFrame.from_bytes(frame[current_index:stop_symbol_index]) # stop symbol is excluded
         if payload is None:
             return None
 
