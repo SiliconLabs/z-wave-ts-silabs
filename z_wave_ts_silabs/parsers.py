@@ -330,7 +330,9 @@ class PtiAppendedInfo:
         # RSSI (0/1 byte) depends on pti_appended_info_cfg.is_rx
         rssi = None
         if pti_appended_info_cfg.is_rx == 1:
-            rssi = frame[current_index]
+            # rssi is a signed value, and since struct.unpack needs a bytes object we need to convert it first
+            rssi_byte = bytes([frame[current_index]])
+            rssi = struct.unpack("<b", rssi_byte)[0]
 
         return PtiAppendedInfo(
             rssi=rssi,
@@ -341,15 +343,16 @@ class PtiAppendedInfo:
         )
 
     def to_bytes(self) -> bytes:
-        appended_info_values = [
+        appended_info = struct.pack(
+            "<BBBB",
             self.radio_config.to_int(),
             self.radio_info.to_int(),
             self.status_0.to_int(),
             self.appended_info_cfg.to_int()
-        ]
+        )
         if self.rssi:
-            appended_info_values.insert(0, self.rssi) # add RSSI at the start
-        return bytes(appended_info_values)
+            appended_info = self.rssi.to_bytes(signed=True) + appended_info # add RSSI at the start
+        return bytes(appended_info)
 
     def  __len__(self) -> int:
         # at most the PTI appended info is 10 bytes in size,
