@@ -85,7 +85,7 @@ class DevWpk(object):
         except:
             raise Exception(f"Error trying to connect to {hostname}")
         self.telnet_prompt = self.telnet_client.read_some().decode('ascii')
-        self.target_dsk = None
+        self.target_dsk: str | None = None
         self.logger = logging.getLogger(f"{self.__class__.__name__}-{self.serial_no}")
         self._pti_thread: threading.Thread | None = None
         self._pti_thread_stop_event: threading.Event = threading.Event()
@@ -256,7 +256,6 @@ class DevWpk(object):
         else:
             self.logger.info(f"NO WPK TIME SET UP")
 
-
     def setup_as_time_client(self, ip_client: str):
         self._run_admin(f"time client {ip_client}")
         match = re.search(
@@ -266,19 +265,30 @@ class DevWpk(object):
         if match is None:
             raise Exception("Could not set up time client")
 
-    # does more than flashing
-    def flash_target(self, firmware_path: str, signing_key_path: str = None, encrypt_key_path: str = None):
-        # Z-Wave devices require all of this
+    def clear_flash(self):
         self.commander_cli.device_recover()
         self.commander_cli.device_pageerase('@userdata')
-        if signing_key_path and encrypt_key_path:
-            self.commander_cli.flash_tokenfiles('znet', (signing_key_path, encrypt_key_path))
-        self.commander_cli.flash_token('znet', 'MFG_ZWAVE_COUNTRY_FREQ:0xFF')
-        self.commander_cli.flash(firmware_path)
+
+    def get_target_dsk(self) -> str:
         cmd_output = self.commander_cli.device_zwave_qrcode()
         qr_code = re.search(r'[0-9]{90,}', cmd_output.splitlines()[0])
         if qr_code:
             self.target_dsk = qr_code.group()[12:53]
+        return self.target_dsk
+
+    # does more than flashing
+    def flash_target(self, firmware_path: str, signing_key_path: str = None, encrypt_key_path: str = None):
+        # clear the main flash of the device and the MFG tokens
+        self.clear_flash()
+
+        # actual flashing of bootloader keys and firmware
+        if signing_key_path and encrypt_key_path:
+            self.commander_cli.flash_tokenfiles('znet', (signing_key_path, encrypt_key_path))
+        self.commander_cli.flash_token('znet', 'MFG_ZWAVE_COUNTRY_FREQ:0xFF')
+        self.commander_cli.flash(firmware_path)
+
+        # store the target dsk in self.target_dsk for later use (the Z-Wave CLI on End Devices provides a similar option).
+        self.get_target_dsk()
 
     @staticmethod
     def _create_pcap_file(filename: str) -> None:
