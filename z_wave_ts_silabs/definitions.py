@@ -67,7 +67,7 @@ PtiDchTypes = [ DchType.PTI_TX, DchType.PTI_RX, DchType.PTI_OTHER ]
 
 class PtiHwStart(IntEnum):
     RX_START = 0xF8
-    RX_END = 0xFC
+    TX_START = 0xFC
 
 
 class PtiHwEnd(IntEnum):
