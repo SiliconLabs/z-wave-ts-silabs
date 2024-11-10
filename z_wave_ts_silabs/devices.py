@@ -393,7 +393,7 @@ class DevWpk(object):
                 #             f"dch_version: {dch_frame.version} | "
                 #             f"timestamp_us: {self.time_server.reference_time + dch_frame.get_timestamp_us()} | "
                 #             f"zwave_frame: {dch_frame.payload.ota_packet_data.hex(' ')} | "
-                #             f"rssi: {dch_frame.payload.appended_info.rssi} | "
+                #             f"rssi: {dch_frame.payload.appended_info.get_rssi_value()} | "
                 #             f"region: {dch_frame.payload.appended_info.radio_config.z_wave_region_id} | "
                 #             f"channel_number: {dch_frame.payload.appended_info.radio_info.channel_number} | "
                 #             f"direction: {"Rx" if dch_frame.payload.appended_info.appended_info_cfg.is_rx else "Tx"} | "

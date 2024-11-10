@@ -319,11 +319,9 @@ class PtiAppendedInfo:
         current_index -= 1
 
         # RSSI (0/1 byte) depends on pti_appended_info_cfg.is_rx
-        rssi = 0
+        rssi = None
         if pti_appended_info_cfg.is_rx == 1:
             rssi = frame[current_index]
-            if pti_appended_info_cfg.version >= 1:
-                rssi -= 0x32 # since PTI version 1 and onward the RSSI must be offset by 0x32
 
         return PtiAppendedInfo(
             rssi=rssi,
@@ -340,17 +338,21 @@ class PtiAppendedInfo:
             self.status_0.to_int(),
             self.appended_info_cfg.to_int()
         ]
-        if self.appended_info_cfg.is_rx == 1:
-            rssi = self.rssi
-            if self.appended_info_cfg.version >= 1:
-                rssi += 0x32 # since PTI version 1 and onward the RSSI must be offset by 0x32
-            appended_info_values.insert(0, rssi) # add RSSI at the start
+        if self.rssi:
+            appended_info_values.insert(0, self.rssi) # add RSSI at the start
         return bytes(appended_info_values)
 
     def  __len__(self) -> int:
         # at most the PTI appended info is 10 bytes in size,
         # for Z-Wave it will only be 5 bytes maximum (Rx) and 4 bytes maximum (Tx)
         return self.appended_info_cfg.length + 3 # 3 bytes are mandatory (APPENDED_INFO_CFG, STATUS_0 and RADIO_INFO)
+
+    def get_rssi_value(self) -> int:
+        if not self.rssi:
+            return 0 # Tx
+        if self.appended_info_cfg.version >= 1:
+            return self.rssi - 0x32 # since PTI version 1 and onward the RSSI must be offset by 0x32
+        return self.rssi
 
 
 @dataclass
