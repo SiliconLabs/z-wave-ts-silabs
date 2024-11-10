@@ -15,11 +15,20 @@ class DevZwaveCli(DevZwave):
           :param wpk: The wpk with the radio board acting as an End Device
           """
           super().__init__(ctxt, device_number, wpk, region, app_name)
-          self.telnet_client = telnetlib.Telnet(wpk.hostname, '4901', 1)
+          self.telnet_client: telnetlib.Telnet | None = None
+
+     def start(self):
+          super().start()
+          self.telnet_client = telnetlib.Telnet(self.wpk.hostname, '4901', 1)
           # send empty command to check if everything is working correctly
           if '>' not in self._run_cmd(''):
                raise Exception("This application does not have a CLI")
-     
+
+     def stop(self):
+          super().stop()
+          self.telnet_client.close()
+          self.telnet_client = None
+
      def _run_cmd(self, command: str) -> str:
           self.telnet_client.write(bytes(f'{command}\n' ,encoding='ascii'))
           return self.telnet_client.read_until(b'\n> ', timeout=1).decode('ascii')
