@@ -28,7 +28,6 @@ class DevZwaveGwZpc(DevZwave):
         self.uic_image_provider_process: UicImageProvider | None = None
         self.mqtt_client: MqttClientZpc | None = None
         # TODO: maybe create a class with the fields below (Some of these states need to be shared with the MQTT client):
-        self.network_next_node_id: int | None = None
         self.network_dict: dict | None = None
         self.ota_status: dict | None = None
         self.command_status: dict | None = None
@@ -53,8 +52,6 @@ class DevZwaveGwZpc(DevZwave):
 
         self.node_id = int(self.zpc_process.node_id)
         self.logger.debug(f'Node ID: {self.node_id}')
-
-        self.network_next_node_id = self.node_id + 1
 
         # according to: uic/components/unify_dotdot_attribute_store/src/unify_dotdot_attribute_store_node_state.cpp
         # Nodes can be in these states
@@ -153,88 +150,80 @@ class DevZwaveGwZpc(DevZwave):
 
     # ZPC state machine has a 40 sec timemout on state transitions if nothing happens to go back to idle
     def wait_for_node_connection(self, device: DevZwave, timeout: float = 40):
-        node_id = self.network_next_node_id
-        
         end_time = time.time() + timeout
-        self.logger.info(f'waiting for connection of node: {node_id}')
-        
-        while (time.time() < end_time) and not self._is_node_connected(node_id):
-            os.sched_yield() # let the MQTT client thread run
-        
-        if not self._is_node_connected(node_id):
-            raise Exception(f"timeout waiting for connection of node: {node_id}")
-        
-        self.logger.info(f'node: {node_id} connected')
-
-        # do not forget to increment self.network_next_node_id before returning
-        self.network_next_node_id += 1
-
-        device.node_id = node_id
-        device.home_id = self.home_id
-
-    # no default value for timeout, it depends on the type of tests
-    def wait_for_node_list_connection(self, device_list: list[DevZwave], timeout: float):
-        end_time = time.time() + timeout
-
-        node_id_list = [ x for x in range(self.network_next_node_id, self.network_next_node_id + len(device_list)) ]        
-        self.logger.info(f'waiting for connection of nodes: {node_id_list}')
-
-        # dict to store the nodes states
-        is_node_id_connected = {}
-        for node_id in node_id_list:
-            is_node_id_connected[node_id] = False
+        self.logger.info(f'waiting for connection of node: {device}')
 
         while time.time() < end_time:
-            for node_id in is_node_id_connected.keys():
-                is_node_id_connected[node_id] = self._is_node_connected(node_id)
+            if device.get_node_id() != 0 and self._is_node_connected(device.node_id):
+                break
+            os.sched_yield() # let the MQTT client thread run
 
-            if all(is_node_id_connected.values()):
+        if not self._is_node_connected(device.node_id):
+            raise Exception(f"timeout waiting for connection of node: {device}")
+
+        if len(device.get_home_id()) == 0: # retrieves the home ID
+            raise Exception(f"node: {device} has no home id")
+
+        self.logger.info(f'node: {device} connected with node ID: {device.node_id}')
+        self.logger.info(f'node: {device} connected with home ID: {device.home_id}')
+
+    # no default value for timeout, it depends on the type of test
+    def wait_for_node_list_connection(self, device_list: list[DevZwave], timeout: float):
+        end_time = time.time() + timeout
+        self.logger.info(f'waiting for connection of nodes: {device_list}')
+
+        # dict to store the nodes states
+        is_device_connected = {}
+        for device in device_list:
+            is_device_connected[device] = False
+
+        while time.time() < end_time:
+            for device in device_list:
+                if device.get_node_id() != 0:
+                    is_device_connected[device] = self._is_node_connected(device.node_id)
+
+            if all(is_device_connected.values()):
                 break
 
             os.sched_yield() # let the MQTT client thread run
         
-        if not all(is_node_id_connected.values()):
-            raise Exception(f"timeout waiting for connection of node(s): { [ k for k,v in is_node_id_connected.items() if not v ] }")
-        
-        self.logger.info(f'nodes: {node_id_list} connected')
+        if not all(is_device_connected.values()):
+            raise Exception(f"timeout waiting for connection of node(s): { [ k for k,v in is_device_connected.items() if not v ] }")
 
-        # do not forget to increment self.network_next_node_id before returning
-        self.network_next_node_id += len(device_list)
+        for device in device_list:
+            if len(device.get_home_id()) == 0: # retrieves the home ID
+                raise Exception(f"node: {device} has no home id")
 
-        # this is where it gets tricky, how do we know which device is the one with a particular homeid ?
-        # for now we do something super stupid but we'll have to find a way to do that smart.
-        for device, node_id in zip(device_list, node_id_list):
-            device.node_id = node_id
-            device.home_id = self.home_id
+        self.logger.info(f'nodes: {device_list} connected')
 
     def wait_for_node_disconnection(self, device: DevZwave, timeout: float = 40):
-        node_id = device.node_id
         end_time = time.time() + timeout
-        self.logger.info(f'waiting for disconnection of nodes: {node_id}')
+        self.logger.info(f'waiting for disconnection of node: {device}')
         
-        while (time.time() < end_time) and not self._is_node_disconnected(node_id):
+        while time.time() < end_time:
+            if self._is_node_disconnected(device.node_id):
+                break
             os.sched_yield() # let the MQTT client thread run
 
-        if not self._is_node_disconnected(node_id):
-            raise Exception(f"timeout waiting for disconnection of node: {node_id}")
+        if not self._is_node_disconnected(device.node_id):
+            raise Exception(f"timeout waiting for disconnection of node: {device}")
         
-        self.logger.info(f'node: {node_id} disconnected')
+        self.logger.info(f'node: {device} disconnected')
 
     # secured OTA should not take more than 10 minutes
     def wait_for_ota_update_to_finish(self, device: DevZwave, timeout: float = 600):
-        node_id = device.node_id
         end_time = time.time() + timeout
         
         while time.time() < end_time:
-            if self.ota_status[node_id] is True:
+            if self.ota_status[device.node_id] is True:
                 break
-            elif self.ota_status[node_id] is False:
+            elif self.ota_status[device.node_id] is False:
                 raise Exception("OTA was aborted")
             os.sched_yield() # let the MQTT client thread run
         
-        if not self.ota_status[node_id]:
-            raise Exception(f"timeout waiting for OTA update of node: {node_id}")
-        self.logger.info(f'node: {node_id} OTA update successful')
+        if not self.ota_status[device.node_id]:
+            raise Exception(f"timeout waiting for OTA update of node: {device}")
+        self.logger.info(f'node: {device} OTA update successful')
 
 
 class MqttClientZpc(object):
