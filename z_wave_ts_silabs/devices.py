@@ -440,12 +440,13 @@ class DevWpk(object):
             self._pti_thread_stop_event.clear()
         self._pti_thread = threading.Thread(target=self._pti_logger_thread, args=(logger_name,))
         self._pti_thread.daemon = True
-        # TODO: check that the thread is running
         self._pti_thread.start()
 
     def stop_pti_logger(self):
-        self._pti_thread_stop_event.set()
-        self._pti_thread.join(1)  # TODO: check if still running and set timeout
+        if self._pti_thread is not None:
+            self._pti_thread_stop_event.set()
+            self._pti_thread.join(1)
+            self._pti_thread = None
 
     def start_rtt_logger(self, logger_name: str) -> None:
         self.commander_cli.spawn_rtt_logger_background_process(logger_name)
