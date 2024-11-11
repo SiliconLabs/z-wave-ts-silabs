@@ -1,5 +1,5 @@
 import pytest
-from z_wave_ts_silabs import DeviceFactory, ZwaveRegion, DevZwave
+from z_wave_ts_silabs import DeviceFactory, ZwaveRegion, DevZwaveSwitchOnOff
 
 
 @pytest.mark.parametrize('region', ['REGION_EU'])
@@ -165,13 +165,13 @@ def test_switch_on_off_unsecure_ota(device_factory: DeviceFactory, region: Zwave
     zpc.wait_for_ota_update_to_finish(end_device_1)
 
 
-@pytest.mark.parametrize('region', ['REGION_EU'])
+@pytest.mark.parametrize('region', ['REGION_US', 'REGION_JP', 'REGION_EU_LR'])
 def test_switch_on_off_smartstart_inclusion(device_factory: DeviceFactory, region: ZwaveRegion):
     zpc = device_factory.zpc(region)
     # TODO: uic_upvl should be implicitly started when updating the SmartStart List.
     zpc.start_uic_upvl()
 
-    end_device_list: list[DevZwave] = []
+    end_device_list: list[DevZwaveSwitchOnOff] = []
     dsk_list: list[str] = []
 
     nb_end_devices = 1
@@ -195,9 +195,8 @@ def test_switch_on_off_smartstart_inclusion(device_factory: DeviceFactory, regio
     for dsk in dsk_list:
         zpc.mqtt_client.smartstart_list_remove(dsk)
 
-    zpc.stop()
     for ed in end_device_list:
-        ed.stop()
+        ed.send_nif()
 
 
 @pytest.mark.parametrize('region', ['REGION_EU'])
