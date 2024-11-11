@@ -187,7 +187,9 @@ class CommanderCli(object):
         self._rtt_logger_background_process = BackgroundProcess(ctxt=self._ctxt, name=process_name, cmd_line=cmd_line)
 
     def kill_rtt_logger_background_process(self):
-        self._rtt_logger_background_process.stop()
+        if self._rtt_logger_background_process:
+            self._rtt_logger_background_process.stop()
+            self._rtt_logger_background_process = None
 
 
 class Mosquitto(BackgroundProcess):
