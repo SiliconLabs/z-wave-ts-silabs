@@ -16,7 +16,7 @@ from . import telnetlib
 from .session_context import SessionContext
 from .parsers import DchPacket
 from .processes import CommanderCli
-from .definitions import ZwaveAppProductType, ZwaveRegion, ZwaveApp
+from .definitions import ZwaveAppProductType, ZwaveRegion, ZwaveApp, ZpalRadioRegion
 
 # ZLF is used by Zniffer and Zniffer is a C# app thus:
 # https://learn.microsoft.com/en-us/dotnet/api/system.datetime.ticks?view=net-8.0#remarks
@@ -277,14 +277,19 @@ class DevWpk(object):
         return self.target_dsk
 
     # does more than flashing
-    def flash_target(self, firmware_path: str, signing_key_path: str = None, encrypt_key_path: str = None):
+    def flash_target(self, region: str, firmware_path: str, signing_key_path: str = None, encrypt_key_path: str = None):
         # clear the main flash of the device and the MFG tokens
         self.clear_flash()
 
-        # actual flashing of bootloader keys and firmware
+        # flash the region token
+        zpal_radio_region = ZpalRadioRegion[region]
+        self.commander_cli.flash_token('znet', f'MFG_ZWAVE_COUNTRY_FREQ:0x{zpal_radio_region.value:02X}')
+
+        # flash the bootloader keys and firmware
         if signing_key_path and encrypt_key_path:
             self.commander_cli.flash_tokenfiles('znet', (signing_key_path, encrypt_key_path))
-        self.commander_cli.flash_token('znet', 'MFG_ZWAVE_COUNTRY_FREQ:0xFF')
+
+        # flash the firmware
         self.commander_cli.flash(firmware_path)
 
         # store the target dsk in self.target_dsk for later use (the Z-Wave CLI on End Devices provides a similar option).
@@ -492,7 +497,6 @@ class DevZwave(metaclass=ABCMeta):
             if (
                 (self.app_type in file) and
                 (self.radio_board in file) and
-                (self.region in file) and
                 (file.endswith('.hex')) and
                 not ('DEBUG' in file)
             ):
@@ -511,7 +515,12 @@ class DevZwave(metaclass=ABCMeta):
             btl_encrypt_key = ctxt.zwave_btl_encrypt_key_end_device
 
         self.logger.debug(f'flashing: {self.firmware_file} with: {btl_encrypt_key}, {btl_signing_key}')
-        self.wpk.flash_target(f'{ctxt.zwave_binaries}/{self.firmware_file}', signing_key_path=btl_signing_key, encrypt_key_path=btl_encrypt_key)
+        self.wpk.flash_target(
+            region=region,
+            firmware_path=f'{ctxt.zwave_binaries}/{self.firmware_file}',
+            signing_key_path=btl_signing_key,
+            encrypt_key_path=btl_encrypt_key
+        )
 
         self.gbl_v255_file = f'{Path(self.firmware_file).stem}_v255.gbl'
         if not os.path.exists(f'{ctxt.zwave_binaries}/{self.gbl_v255_file}'):

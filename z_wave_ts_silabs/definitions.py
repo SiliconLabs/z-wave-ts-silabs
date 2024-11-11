@@ -25,18 +25,33 @@ ZwaveApp = Literal[ZwaveNcpApp, ZwaveSocApp]
 
 ZwaveRegion = Literal[
     'REGION_EU',
-    'REGION_EU_LR`',
     'REGION_US',
-    'REGION_US_LR',
     'REGION_ANZ',
     'REGION_HK',
     'REGION_IN',
     'REGION_IL',
     'REGION_RU',
     'REGION_CN',
+    'REGION_US_LR`',
+    'REGION_EU_LR',
     'REGION_JP',
     'REGION_KR'
 ]
+
+# ZwaveRegion and ZpalRadioRegion should stay aligned
+class ZpalRadioRegion(IntEnum):
+    REGION_EU = 0
+    REGION_US = 1
+    REGION_ANZ = 2
+    REGION_HK = 3
+    REGION_IN = 5
+    REGION_IL = 6
+    REGION_RU = 7
+    REGION_CN = 8
+    REGION_US_LR = 9
+    REGION_EU_LR = 11
+    REGION_JP = 32
+    REGION_KR = 33
 
 # see ZAF/ApplicationUtilities/ZW_product_id_enum.h in zw-protocol: typedef enum _PRODUCT_PLUS_ID_ENUM_
 class ZwaveAppProductType(IntEnum):
