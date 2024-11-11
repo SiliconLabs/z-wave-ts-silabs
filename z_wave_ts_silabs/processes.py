@@ -350,7 +350,13 @@ class Zpc(BackgroundProcess):
 
         uic_config_file_path = f"{ctxt.current_test_logdir}/uic.cfg"
         with open(uic_config_file_path, "w") as uic_cfg:
-            uic_cfg.write(self._generate_uic_configuration_file(ctxt=ctxt, region=region, log_level='d', tx_power='0', protocol_pref='1,2'))
+            uic_cfg.write(self._generate_uic_configuration_file(
+                ctxt=ctxt,
+                region=region.replace('REGION_', ''),
+                log_level='d',
+                tx_power='0',
+                protocol_pref='2,1' if 'LR' in region else '1,2'
+            ))
 
         cmd_line = f'{ctxt.uic}/build/applications/zpc/zpc --conf {uic_config_file_path}'
         if update_file is not None:

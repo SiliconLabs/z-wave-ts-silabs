@@ -377,7 +377,7 @@ class MqttClientZpc(object):
         # ProtocolControllerUnid can be set to "" since we're using a single physical controller
         # TODO: we could ask for a specific Unid (Node ID) here when including a node.
         # TODO: as for ProtocolControllerUnid we already have it so we can pass it inside the payload
-        payload = { "DSK": dsk, "Include": True, "ProtocolControllerUnid": "", "Unid": "", "PreferredProtocols": ["Z-Wave", "Z-Wave Long Range"] }
+        payload = { "DSK": dsk, "Include": True, "ProtocolControllerUnid": "", "Unid": "", "PreferredProtocols": [] }
         payload = bytes(json.dumps(payload), encoding='ascii')
         self.mqttc.publish(topic, payload, qos=1)
 
