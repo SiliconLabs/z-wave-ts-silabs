@@ -571,7 +571,9 @@ class DevZwave(Device):
 
     # Uiid are used by Unify
     def uiid(self) -> str:
-        return f"ZWave-0000-{ZwaveAppProductType[self.app_type].value:04}-0004-00-01"
+        if 'soc' in self.app_name(): # End Device Only
+            return f"ZWave-0000-{ZwaveAppProductType[self.app_name()].value:04}-0004-00-01"
+        return ''
 
     # Unid are used by Unify
     def unid(self) -> str | None:
