@@ -64,13 +64,12 @@ class DevZwaveCli(DevZwave):
 
      def get_node_id(self) -> int:
           match = re.search(
-               r'\[I\] (?P<node_id>\d+)',
+               r'\[I\] (?P<node_id>[0-9A-F]{4})',
                self._run_cmd('get_node_id')
           )
           if match is not None:
-               node_id = match.groupdict()['node_id']
-               self.logger.debug(f"node_id: {node_id}")
-               self.node_id = int(node_id)
+               self.node_id = int(match.groupdict()['node_id'], base=16)
+               self.logger.debug(f"node_id: {self.node_id}")
           return super().get_node_id()
 
      def get_home_id(self) -> str:
