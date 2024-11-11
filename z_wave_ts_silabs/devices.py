@@ -16,7 +16,7 @@ from . import telnetlib
 from .session_context import SessionContext
 from .parsers import DchPacket
 from .processes import CommanderCli
-from .definitions import ZwaveAppProductType, ZwaveRegion, ZwaveApp, ZpalRadioRegion
+from .definitions import AppName, ZwaveAppProductType, ZwaveRegion, ZpalRadioRegion
 
 # ZLF is used by Zniffer and Zniffer is a C# app thus:
 # https://learn.microsoft.com/en-us/dotnet/api/system.datetime.ticks?view=net-8.0#remarks
@@ -472,71 +472,93 @@ class DevCluster(object):
             wpk.is_free = True
 
 
-class DevZwave(metaclass=ABCMeta):
-    """Base class for Z-Wave devices."""
+class Device(metaclass=ABCMeta):
+    """Base class for any device"""
 
     @classmethod
     @abstractmethod
-    def zwave_app(cls):
+    def app_name(cls) -> AppName:
         raise NotImplementedError
+
+    def __init__(self, ctxt: SessionContext, device_number: int, wpk: DevWpk, region: ZwaveRegion):
+        self._ctxt: SessionContext = ctxt
+        self._device_number: int = device_number
+        self.wpk: DevWpk = wpk
+        self.region: str = region
+
+        # the path to the firmware of the device
+        self._firmware_file: str | None = None
+
+        # the name that will be used by the logger for this device
+        self._name =f'{self.__class__.__name__}-{self._device_number}'
+        self.logger = logging.getLogger(self._name)
+
+        self._radio_board = self.wpk.radio_board.lower()
+        self.logger.debug(self._radio_board)
+
+        for file in os.listdir(ctxt.zwave_binaries):
+            if (
+                    (self.app_name() in file) and
+                    (self._radio_board in file) and
+                    (file.endswith('.hex')) and
+                    not ('DEBUG' in file)
+            ):
+                self._firmware_file = file
+                break
+
+        if self._firmware_file is None:
+            raise Exception(f'No suitable firmware was found for {self._name}')
+
+    @abstractmethod
+    def start(self):
+        raise NotImplementedError
+
+    @abstractmethod
+    def stop(self):
+        raise NotImplementedError
+
+
+class DevZwave(Device):
+    """Base class for Z-Wave devices."""
     
-    def __init__(self, ctxt: SessionContext, device_number: int, wpk: DevWpk, region: ZwaveRegion, app_type: ZwaveApp, debug: bool = False):
+    def __init__(self, ctxt: SessionContext, device_number: int, wpk: DevWpk, region: ZwaveRegion, debug: bool = False):
         """Initializes the device.
         :param device_number: Device number (helps with logger)
         :param wpk: WPK hosting the radio board
         :param region: Z-Wave region 
         """
-        self._ctxt: SessionContext = ctxt
-        self._device_number: int = device_number
-        self.wpk: DevWpk = wpk
-        self.region: str = region
-        self.app_type: ZwaveApp = app_type
-        self._name = f'{self._device_number}-{self.app_type}' # derive the name from the device number and the app type
-        self.firmware_file: str | None = None
+        super().__init__(ctxt, device_number, wpk, region)
+
+        # file used for OTA/OTW updates
         self.gbl_v255_file: str | None = None
         self.home_id: str | None = None
         self.node_id: int | None = None
 
-        self.logger = logging.getLogger(f'{self.__class__.__name__}-{self._name}')
-        self.radio_board = self.wpk.radio_board.lower()
-        self.logger.debug(self.radio_board)
-
-        devinfo: TargetDevInfo = self.wpk.target_devinfo
         # Unify exposes this as an attribute called: SerialNumber, thus the name
-        self.serial_number = f"h'{devinfo.unique_id.upper()}"
+        self.serial_number = f"h'{self.wpk.target_devinfo.unique_id.upper()}"
 
-        for file in os.listdir(ctxt.zwave_binaries):
-            if (
-                (self.app_type in file) and
-                (self.radio_board in file) and
-                (file.endswith('.hex')) and
-                not ('DEBUG' in file)
-            ):
-                self.firmware_file = file
-                break
-
-        if self.firmware_file is None:
-            raise Exception(f'No suitable firmware was found for {self._name}')
+        # self._firmware_file is handled by the Device class, it specifically puts aside firmware with DEBUG in their file name
+        # TODO: handle debug firmwares
 
         # TODO: we should check ZGM130 -> ncp controller needs to be flashed with sample keys
-        if 'ncp_serial_api_controller' in self.app_type:
+        if 'ncp_serial_api_controller' in self.app_name():
             btl_signing_key = ctxt.zwave_btl_signing_key_controller
             btl_encrypt_key = ctxt.zwave_btl_encrypt_key_controller
         else:
             btl_signing_key = ctxt.zwave_btl_signing_key_end_device
             btl_encrypt_key = ctxt.zwave_btl_encrypt_key_end_device
 
-        self.logger.debug(f'flashing: {self.firmware_file} with: {btl_encrypt_key}, {btl_signing_key}')
+        self.logger.debug(f'flashing: {self._firmware_file} with: {btl_encrypt_key}, {btl_signing_key}')
         self.wpk.flash_zwave_target(
             region=region,
-            firmware_path=f'{ctxt.zwave_binaries}/{self.firmware_file}',
+            firmware_path=f'{ctxt.zwave_binaries}/{self._firmware_file}',
             signing_key_path=btl_signing_key,
             encrypt_key_path=btl_encrypt_key
         )
 
-        self.gbl_v255_file = f'{Path(self.firmware_file).stem}_v255.gbl'
+        self.gbl_v255_file = f'{Path(self._firmware_file).stem}_v255.gbl'
         if not os.path.exists(f'{ctxt.zwave_binaries}/{self.gbl_v255_file}'):
-            raise Exception(f'could not find matching v255.gbl file in {ctxt.zwave_binaries}/ for {self.firmware_file}')
+            raise Exception(f'could not find matching v255.gbl file in {ctxt.zwave_binaries}/ for {self._firmware_file}')
 
     def start(self):
         self.start_log_capture()

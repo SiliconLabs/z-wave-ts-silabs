@@ -3,15 +3,13 @@ from dataclasses import dataclass
 from typing import Literal
 from enum import IntEnum
 
-ZwaveNcpApp = Literal[
+AppName = Literal[
+    'railtest',
     'zwave_ncp_serial_api_controller',
     'zwave_ncp_serial_api_end_device',
     'zwave_ncp_serial_api_test_controller',
     'zwave_ncp_zniffer',
     'zwave_ncp_zniffer_pti',
-]
-
-ZwaveSocApp = Literal[
     'zwave_soc_door_lock_keypad',
     'zwave_soc_led_bulb',
     'zwave_soc_multilevel_sensor',
@@ -20,8 +18,6 @@ ZwaveSocApp = Literal[
     'zwave_soc_switch_on_off',
     'zwave_soc_wall_controller'
 ]
-
-ZwaveApp = Literal[ZwaveNcpApp, ZwaveSocApp]
 
 ZwaveRegion = Literal[
     'REGION_EU',
@@ -38,6 +34,7 @@ ZwaveRegion = Literal[
     'REGION_KR'
 ]
 
+
 # ZwaveRegion and ZpalRadioRegion should stay aligned
 class ZpalRadioRegion(IntEnum):
     REGION_EU = 0
@@ -52,6 +49,7 @@ class ZpalRadioRegion(IntEnum):
     REGION_EU_LR = 11
     REGION_JP = 32
     REGION_KR = 33
+
 
 # see ZAF/ApplicationUtilities/ZW_product_id_enum.h in zw-protocol: typedef enum _PRODUCT_PLUS_ID_ENUM_
 class ZwaveAppProductType(IntEnum):

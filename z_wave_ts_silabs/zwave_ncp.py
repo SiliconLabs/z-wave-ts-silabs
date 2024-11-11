@@ -1,13 +1,13 @@
 from .processes import Socat
-from .definitions import ZwaveRegion, ZwaveNcpApp, ZwaveApp
+from .definitions import AppName, ZwaveRegion
 from .devices import DevZwave, DevWpk
 from .session_context import SessionContext
 
 
 class DevZwaveNcp(DevZwave):
 
-    def __init__(self, ctxt: SessionContext, device_number: int, wpk: DevWpk, region: ZwaveRegion, app_name: ZwaveNcpApp) -> None:
-        super().__init__(ctxt, device_number, wpk, region, app_name)
+    def __init__(self, ctxt: SessionContext, device_number: int, wpk: DevWpk, region: ZwaveRegion) -> None:
+        super().__init__(ctxt, device_number, wpk, region)
 
         self.socat_process: Socat | None = None
         self.pty: str | None = None
@@ -29,5 +29,5 @@ class DevZwaveNcp(DevZwave):
 class DevZwaveNcpSerialApiController(DevZwaveNcp):
 
     @classmethod
-    def zwave_app(cls) -> ZwaveApp:
+    def app_name(cls) -> AppName:
         return 'zwave_ncp_serial_api_controller'

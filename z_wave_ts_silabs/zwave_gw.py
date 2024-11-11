@@ -4,7 +4,7 @@ import json
 import time
 import paho.mqtt.client as mqtt
 
-from .definitions import ZwaveRegion, ZwaveApp, ZwaveNcpApp
+from .definitions import AppName, ZwaveRegion
 from .devices import DevZwave, DevWpk
 from .processes import Zpc, UicUpvl, UicImageProvider
 from .session_context import SessionContext
@@ -14,10 +14,10 @@ class DevZwaveGwZpc(DevZwave):
     """ZPC Z-Wave Gateway (based on UnifySDK)."""
 
     @classmethod
-    def zwave_app(cls) -> ZwaveApp:
+    def app_name(cls) -> AppName:
         return 'zwave_ncp_serial_api_controller'
 
-    def __init__(self, ctxt: SessionContext, device_number: int, wpk: DevWpk, region: ZwaveRegion, app_name: ZwaveNcpApp) -> None:
+    def __init__(self, ctxt: SessionContext, device_number: int, wpk: DevWpk, region: ZwaveRegion) -> None:
         """Initializes the device.
         :param device_number: The device name
         :param wpk: The wpk with the radio board acting as NCP
@@ -33,7 +33,7 @@ class DevZwaveGwZpc(DevZwave):
         self.command_status: dict | None = None
         self.dsk_list: dict | None = None
 
-        super().__init__(ctxt, device_number, wpk, region, app_name)
+        super().__init__(ctxt, device_number, wpk, region)
 
     # should be called by the device factory
     def start(self):

@@ -2,19 +2,19 @@ import re
 from typing import Literal
 
 from . import telnetlib
-from .definitions import ZwaveRegion, ZwaveSocApp, ZwaveApp
+from .definitions import AppName, ZwaveRegion
 from .devices import DevZwave, DevWpk
 from .session_context import SessionContext
 
 
 class DevZwaveCli(DevZwave):
     
-     def __init__(self, ctxt: SessionContext, device_number: int, wpk: DevWpk, region: ZwaveRegion, app_name: ZwaveSocApp):
+     def __init__(self, ctxt: SessionContext, device_number: int, wpk: DevWpk, region: ZwaveRegion):
           """Instantiates a Z-Wave CLI device.
           :param device_number: Device number
           :param wpk: The wpk with the radio board acting as an End Device
           """
-          super().__init__(ctxt, device_number, wpk, region, app_name)
+          super().__init__(ctxt, device_number, wpk, region)
           self.telnet_client: telnetlib.Telnet | None = None
 
      def start(self):
@@ -86,7 +86,7 @@ class DevZwaveCli(DevZwave):
 class DevZwaveDoorLockKeypad(DevZwaveCli):
 
      @classmethod
-     def zwave_app(cls) -> ZwaveApp:
+     def app_name(cls) -> AppName:
           return 'zwave_soc_door_lock_keypad'
 
      def enable_sleeping(self):
@@ -108,14 +108,14 @@ class DevZwaveDoorLockKeypad(DevZwaveCli):
 class DevZwaveLedBulb(DevZwaveCli):
 
      @classmethod
-     def zwave_app(cls) -> ZwaveApp:
+     def app_name(cls) -> AppName:
           return 'zwave_soc_led_bulb'
 
 
 class DevZwaveMultilevelSensor(DevZwaveCli):
 
      @classmethod
-     def zwave_app(cls) -> ZwaveApp:
+     def app_name(cls) -> AppName:
           return 'zwave_soc_multilevel_sensor'
 
      def enable_sleeping(self):
@@ -128,7 +128,7 @@ class DevZwaveMultilevelSensor(DevZwaveCli):
 class DevZwavePowerStrip(DevZwaveCli):
 
      @classmethod
-     def zwave_app(cls) -> ZwaveApp:
+     def app_name(cls) -> AppName:
           return 'zwave_soc_power_strip'
 
      def toggle_endpoint(self, endpoint: Literal[1, 2]):
@@ -144,7 +144,7 @@ class DevZwavePowerStrip(DevZwaveCli):
 class DevZwaveSensorPIR(DevZwaveCli):
 
      @classmethod
-     def zwave_app(cls) -> ZwaveApp:
+     def app_name(cls) -> AppName:
           return 'zwave_soc_sensor_pir'
 
      def enable_sleeping(self):
@@ -160,7 +160,7 @@ class DevZwaveSensorPIR(DevZwaveCli):
 class DevZwaveSwitchOnOff(DevZwaveCli):
 
      @classmethod
-     def zwave_app(cls) -> ZwaveApp:
+     def app_name(cls) -> AppName:
           return 'zwave_soc_switch_on_off'
 
      def toggle_led(self):
@@ -173,7 +173,7 @@ class DevZwaveSwitchOnOff(DevZwaveCli):
 class DevZwaveWallController(DevZwaveCli):
 
      @classmethod
-     def zwave_app(cls) -> ZwaveApp:
+     def app_name(cls) -> AppName:
           return 'zwave_soc_wall_controller'
 
      def send_central_scene_key(self, key_number: Literal[1, 2, 3], key_action: Literal['press', 'hold', 'release']):

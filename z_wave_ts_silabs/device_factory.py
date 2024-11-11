@@ -1,5 +1,5 @@
-from .definitions import ZwaveApp, ZwaveRegion
-from .devices import DevZwave, DevCluster
+from .definitions import ZwaveRegion
+from .devices import Device, DevCluster
 from .session_context import SessionContext
 from .zwave_cli import DevZwaveDoorLockKeypad, DevZwaveLedBulb, DevZwaveMultilevelSensor, DevZwavePowerStrip, DevZwaveSensorPIR, DevZwaveSwitchOnOff, DevZwaveWallController
 from .zwave_ncp import DevZwaveNcpSerialApiController
@@ -16,11 +16,11 @@ class DeviceFactory(object):
         self._counter: int = 0
         self._ctxt = ctxt
         self._cluster: DevCluster = cluster
-        self._devices: list[DevZwave] = []
+        self._devices: list[Device] = []
 
-    def _spawn[T: DevZwave](self, device_cls: type[T], region: ZwaveRegion) -> T:
-        assert issubclass(device_cls, DevZwave)
-        device = device_cls(self._ctxt, self._counter, self._cluster.get_free_wpk(), region, device_cls.zwave_app())
+    def _spawn[T: Device](self, device_cls: type[T], region: ZwaveRegion) -> T:
+        assert issubclass(device_cls, Device)
+        device = device_cls(self._ctxt, self._counter, self._cluster.get_free_wpk(), region)
 
         self._counter += 1
         self._devices.append(device)
