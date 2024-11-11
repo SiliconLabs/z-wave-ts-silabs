@@ -276,10 +276,10 @@ class MqttClientZpc(object):
             ('State/Attributes/NetworkStatus/Reported' in msg.topic) and
             (self.zpc.home_id in msg.topic)
         ):
-            match = re.search(r"ucl\/by-unid\/zw-(?P<homeid>([A-F]|[0-9]){8})-(?P<nodeid>(\d{4}))", msg.topic)
+            match = re.search(r"ucl\/by-unid\/zw-(?P<homeid>([0-9A-F]{8}))-(?P<nodeid>([0-9A-F]{4}))", msg.topic)
             if match is not None:
                 home_id = match.groupdict()['homeid']
-                node_id = int(match.groupdict()['nodeid'])
+                node_id = int(match.groupdict()['nodeid'], base=16)
                 if (msg.payload is not None) and (msg.payload != b''):
                     msg_payload = json.loads(msg.payload)
                     if self.zpc.home_id == home_id:
@@ -323,9 +323,9 @@ class MqttClientZpc(object):
             'CurrentVersion/Reported' in msg.topic
         ):
             # f"ucl/by-unid/{self.node_id_to_unid(node_id)}/ep0/OTA/Attributes/UIID/ZWave-0000-0002-0004-00-01/CurrentVersion/Reported"
-            match = re.search(r"ucl\/by-unid\/zw-(?P<homeid>([A-F]|[0-9]){8})-(?P<nodeid>(\d{4}))", msg.topic)
+            match = re.search(r"ucl\/by-unid\/zw-(?P<homeid>([0-9A-F]{8}))-(?P<nodeid>([0-9A-F]{4}))", msg.topic)
             if match is not None:
-                node_id = int(match.groupdict()['nodeid'])
+                node_id = int(match.groupdict()['nodeid'], base=16)
                 if (msg.payload is not None) and (msg.payload != b''):
                     msg_payload = json.loads(msg.payload)
                     if msg_payload['value'] == "255.0.0":
@@ -338,9 +338,9 @@ class MqttClientZpc(object):
             'OTA' in msg.topic and
             'LastError/Reported' in msg.topic
         ):
-            match = re.search(r"ucl\/by-unid\/zw-(?P<homeid>([A-F]|[0-9]){8})-(?P<nodeid>(\d{4}))", msg.topic)
+            match = re.search(r"ucl\/by-unid\/zw-(?P<homeid>([0-9A-F]{8}))-(?P<nodeid>([0-9A-F]{4}))", msg.topic)
             if match is not None:
-                node_id = int(match.groupdict()['nodeid'])
+                node_id = int(match.groupdict()['nodeid'], base=16)
                 if (msg.payload is not None) and (msg.payload != b''):
                     msg_payload = json.loads(msg.payload)
                     if msg_payload['value'] != "Success":
