@@ -73,6 +73,16 @@ class DevZwaveCli(DevZwave):
                self.node_id = int(node_id)
           return super().get_node_id()
 
+     def get_home_id(self) -> str:
+          match = re.search(
+               r'\[I\] (?P<home_id>[0-9A-F]{8})',
+               self._run_cmd('get_home_id')
+          )
+          if match is not None:
+               self.home_id = match.groupdict()['home_id']
+               self.logger.debug(f"home_id: {self.home_id}")
+          return super().get_home_id()
+
 
 class DevZwaveDoorLockKeypad(DevZwaveCli):
 
