@@ -560,3 +560,8 @@ class DevZwave(metaclass=ABCMeta):
         if self.node_id:
             return self.node_id
         return 0
+
+    def get_home_id(self) -> str:
+        if self.home_id:
+            return self.home_id
+        return ''
