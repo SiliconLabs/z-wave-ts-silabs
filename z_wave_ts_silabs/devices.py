@@ -281,8 +281,11 @@ class DevWpk(object):
         # clear the main flash of the device and the MFG tokens
         self.clear_flash()
 
+        # this is for compatibility reasons with tools that use only the abbreviation for the region and not the full REGION_<abbreviation>.
+        zpal_radio_region_str = '_'.join(['REGION', region]) if 'REGION_' not in region else region
+
         # flash the region token
-        zpal_radio_region = ZpalRadioRegion[region]
+        zpal_radio_region = ZpalRadioRegion[zpal_radio_region_str]
         self.commander_cli.flash_token('znet', f'MFG_ZWAVE_COUNTRY_FREQ:0x{zpal_radio_region.value:02X}')
 
         # flash the bootloader keys and firmware
