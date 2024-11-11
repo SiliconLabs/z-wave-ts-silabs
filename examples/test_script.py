@@ -210,3 +210,24 @@ def test_wall_controller_basic_set(device_factory: DeviceFactory, region: ZwaveR
     zpc.wait_for_node_connection(end_device_1)
 
     # TODO: test a cli command for this app
+
+
+@pytest.mark.parametrize('region', ['REGION_EU'])
+def test_railtest_after_inclusion(device_factory: DeviceFactory, region: ZwaveRegion):
+    zpc = device_factory.zpc(region)
+    end_device_1 = device_factory.switch_on_off(region)
+    railtest = device_factory.railtest(region)
+
+    # unsecure inclusion (easier for railtest afterward)
+    zpc.add_node()
+    end_device_1.set_learn_mode()
+    zpc.wait_for_node_connection(end_device_1)
+
+    # manually building a Z-Wave packet for REGION_EU on data_rate: 100K
+    packet = bytes.fromhex(zpc.get_home_id()) # home ID
+    length = 4 + 1 + 2 + 1 + 1 + 1 + 2 # Home ID + Src Node ID + Frame Control + Length + Dst Node ID + Data Payload (NOP) + FCS
+    packet += bytes([zpc.get_node_id(), 65, 0, length, end_device_1.get_node_id(), 0]) # 65 is ack required + singlecast / Railtest will add the CRC
+
+    railtest.tx(packet, region, 0) # RAIL channel 0 is 100K in EU
+    railtest.tx(packet, region, 0, break_crc=True) # Send the same frame with a wrong CRC, it should not be acked
+    railtest.tx(packet, region, 0) # send it again, it should be acked
