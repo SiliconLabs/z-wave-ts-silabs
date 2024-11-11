@@ -1,5 +1,6 @@
 from .definitions import ZwaveRegion
 from .devices import Device, DevCluster
+from .railtest import DevRailtest
 from .session_context import SessionContext
 from .zwave_cli import DevZwaveDoorLockKeypad, DevZwaveLedBulb, DevZwaveMultilevelSensor, DevZwavePowerStrip, DevZwaveSensorPIR, DevZwaveSwitchOnOff, DevZwaveWallController
 from .zwave_ncp import DevZwaveNcpSerialApiController
@@ -137,3 +138,5 @@ class DeviceFactory(object):
         """
         return self._spawn(DevZwaveMultilevelSensor, region)
 
+    def railtest(self, region: ZwaveRegion = 'REGION_EU') -> DevRailtest:
+        return self._spawn(DevRailtest, region)
