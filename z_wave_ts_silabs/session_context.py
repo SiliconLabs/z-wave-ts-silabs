@@ -49,6 +49,10 @@ class SessionContext:
         self.current_test_index = 0
         self.previous_test_name: Path | None = None
 
+        # used in DevZwave devices to enable RTT logs and PTI traces.
+        self.current_test_rtt_enabled: bool = True
+        self.current_test_pti_enabled: bool = True
+
         # create the session log directory
         self.logdir.mkdir(parents=True, exist_ok=True)
 

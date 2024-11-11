@@ -562,12 +562,16 @@ class DevZwave(Device):
             raise Exception(f'could not find matching v255.gbl file in {ctxt.zwave_binaries}/ for {self._firmware_file}')
 
     def start(self):
-        self.start_log_capture()
-        self.start_zlf_capture()
+        if self._ctxt.current_test_rtt_enabled:
+            self.start_log_capture()
+        if self._ctxt.current_test_pti_enabled:
+            self.start_zlf_capture()
 
     def stop(self):
-        self.stop_log_capture()
-        self.stop_zlf_capture()
+        if self._ctxt.current_test_rtt_enabled:
+            self.stop_log_capture()
+        if self._ctxt.current_test_pti_enabled:
+            self.stop_zlf_capture()
 
     # Uiid are used by Unify
     def uiid(self) -> str:
