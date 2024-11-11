@@ -126,7 +126,7 @@ def test_switch_on_off_secure_ota(device_factory: DeviceFactory, region: ZwaveRe
     zpc.wait_for_ota_update_to_finish(end_device_1)
 
 
-@pytest.mark.parametrize('region', ['REGION_EU'])
+@pytest.mark.parametrize('region', ['REGION_US', 'REGION_JP', 'REGION_EU_LR'])
 def test_switch_on_off_unsecure_inclusion_exclusion(device_factory: DeviceFactory, region: ZwaveRegion):
     zpc = device_factory.zpc(region)
     end_device_1 = device_factory.switch_on_off(region)
