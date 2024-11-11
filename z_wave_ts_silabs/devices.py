@@ -269,34 +269,43 @@ class DevWpk(object):
         self.commander_cli.device_recover()
         self.commander_cli.device_pageerase('@userdata')
 
-    def get_target_dsk(self) -> str:
+    def get_zwave_dsk_from_flash(self) -> str:
         cmd_output = self.commander_cli.device_zwave_qrcode()
         qr_code = re.search(r'[0-9]{90,}', cmd_output.splitlines()[0])
         if qr_code:
             self.target_dsk = qr_code.group()[12:53]
         return self.target_dsk
 
+    def flash_target(self, firmware_path: str):
+        self.commander_cli.flash(firmware_path)
+
     # does more than flashing
-    def flash_target(self, region: str, firmware_path: str, signing_key_path: str = None, encrypt_key_path: str = None):
+    def flash_zwave_target(self, region: str, firmware_path: str, signing_key_path: str = None, encrypt_key_path: str = None):
         # clear the main flash of the device and the MFG tokens
         self.clear_flash()
 
-        # this is for compatibility reasons with tools that use only the abbreviation for the region and not the full REGION_<abbreviation>.
-        zpal_radio_region_str = '_'.join(['REGION', region]) if 'REGION_' not in region else region
-
         # flash the region token
-        zpal_radio_region = ZpalRadioRegion[zpal_radio_region_str]
-        self.commander_cli.flash_token('znet', f'MFG_ZWAVE_COUNTRY_FREQ:0x{zpal_radio_region.value:02X}')
+        self.flash_zwave_region_token(region)
 
         # flash the bootloader keys and firmware
         if signing_key_path and encrypt_key_path:
-            self.commander_cli.flash_tokenfiles('znet', (signing_key_path, encrypt_key_path))
+            self.flash_zwave_bootloader_tokenfiles(signing_key_path, encrypt_key_path)
 
         # flash the firmware
-        self.commander_cli.flash(firmware_path)
+        self.flash_target(firmware_path)
 
         # store the target dsk in self.target_dsk for later use (the Z-Wave CLI on End Devices provides a similar option).
-        self.get_target_dsk()
+        self.get_zwave_dsk_from_flash()
+
+    def flash_zwave_region_token(self, region: str):
+        # this is for compatibility reasons with tools that use only the abbreviation for the region and not the full REGION_<abbreviation>.
+        zpal_radio_region_str = '_'.join(['REGION', region]) if 'REGION_' not in region else region
+
+        zpal_radio_region = ZpalRadioRegion[zpal_radio_region_str]
+        self.commander_cli.flash_token('znet', f'MFG_ZWAVE_COUNTRY_FREQ:0x{zpal_radio_region.value:02X}')
+
+    def flash_zwave_bootloader_tokenfiles(self, signing_key_path: str, encrypt_key_path: str):
+        self.commander_cli.flash_tokenfiles('znet', (signing_key_path, encrypt_key_path))
 
     @staticmethod
     def _create_pcap_file(filename: str) -> None:
@@ -518,7 +527,7 @@ class DevZwave(metaclass=ABCMeta):
             btl_encrypt_key = ctxt.zwave_btl_encrypt_key_end_device
 
         self.logger.debug(f'flashing: {self.firmware_file} with: {btl_encrypt_key}, {btl_signing_key}')
-        self.wpk.flash_target(
+        self.wpk.flash_zwave_target(
             region=region,
             firmware_path=f'{ctxt.zwave_binaries}/{self.firmware_file}',
             signing_key_path=btl_signing_key,
