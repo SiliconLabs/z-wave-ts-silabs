@@ -454,6 +454,18 @@ class DevWpk(object):
     def stop_rtt_logger(self):
         self.commander_cli.kill_rtt_logger_background_process()
 
+    def target_power_on(self):
+        self._run_admin("target power on")
+
+    def target_power_off(self):
+        self._run_admin("target power off")
+
+    def is_target_status_ok(self) -> bool:
+        target_status = self._run_admin("target status")
+        if re.search(r'OK', target_status):
+            return True
+        return False
+
 
 class DevCluster(object):
 
@@ -509,6 +521,10 @@ class Device(metaclass=ABCMeta):
 
         if self._firmware_file is None:
             raise Exception(f'No suitable firmware was found for {self._name}')
+
+        # Make sure the radio board (target) connected to the WPK is powered on before leaving Device.__init__()
+        if not self.wpk.is_target_status_ok():
+            self.wpk.target_power_on()
 
     @abstractmethod
     def start(self):
