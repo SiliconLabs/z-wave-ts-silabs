@@ -65,14 +65,8 @@ def cleanup_background_processes():
 
 @pytest.fixture(scope="function", autouse=True)
 def setup_logs(session_ctxt: SessionContext, request: pytest.FixtureRequest):
-    if request.node.name == session_ctxt.previous_test_name:
-            session_ctxt.current_test_index += 1
-    else:
-        session_ctxt.current_test_index = 0
-    session_ctxt.current_test_logdir = f"{session_ctxt.logdir}/{request.node.name}-{session_ctxt.current_test_index}"
+    # request.node.originalname contains the test name:
+    session_ctxt.current_test_logdir = f"{session_ctxt.logdir}/{request.node.originalname}"
     # the mkdir below should never raise an error since function names should be unique in a test file
     os.mkdir(session_ctxt.current_test_logdir)
     _logger.debug(f'current test log directory: {session_ctxt.current_test_logdir}')
-    yield
-    # store the name of the test that we just ran
-    session_ctxt.previous_test_name = request.node.name
