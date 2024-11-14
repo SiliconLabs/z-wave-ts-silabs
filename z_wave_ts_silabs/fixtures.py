@@ -65,8 +65,8 @@ def cleanup_background_processes():
 
 @pytest.fixture(scope="function", autouse=True)
 def setup_logs(session_ctxt: SessionContext, request: pytest.FixtureRequest):
-    # request.node.originalname contains the test name:
-    session_ctxt.current_test_logdir = f"{session_ctxt.logdir}/{request.node.originalname}"
+    # request.node.name contains the test name with the parameters if any:
+    session_ctxt.current_test_logdir = f"{session_ctxt.logdir}/{request.node.name}"
     # the mkdir below should never raise an error since function names should be unique in a test file
     os.mkdir(session_ctxt.current_test_logdir)
     _logger.debug(f'current test log directory: {session_ctxt.current_test_logdir}')
