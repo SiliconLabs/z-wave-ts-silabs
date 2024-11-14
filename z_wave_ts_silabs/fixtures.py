@@ -30,12 +30,12 @@ def session_ctxt() -> SessionContext:
 
 @pytest.fixture(scope="session", autouse=True)
 def hw_cluster(session_ctxt: SessionContext, hw_cluster_name: str) -> DevCluster:
-    cluster = session_ctxt.clusters[hw_cluster_name]
+    wpk_list = session_ctxt.clusters[hw_cluster_name]
     dev_wpks: list[DevWpk] = []
     # This object is used to synchronize the timestamps of all WPK in the cluster
     time_server: DevTimeServer = DevTimeServer()
 
-    for wpk in cluster.wpks:
+    for wpk in wpk_list:
         dev_wpks.append(
             DevWpk(session_ctxt, wpk.serial, f"jlink{wpk.serial}.silabs.com", time_server=time_server)
         )

@@ -5,7 +5,15 @@ from dataclasses import dataclass, asdict
 from datetime import datetime
 from pathlib import Path
 
-from .clusters import Cluster
+
+@dataclass
+class Wpk:
+    serial: str
+    board: str
+
+    @staticmethod
+    def from_json_list(wpk_list: list[dict]) -> list[Wpk]:
+        return [ Wpk(elt['serial'], elt['board']) for elt in wpk_list ]
 
 
 @dataclass
@@ -39,7 +47,7 @@ class SessionContext:
 
     def __post_init__(self):
         # clusters holds every cluster described in the JSON file under the form of Cluster objects
-        self.clusters: dict[str, Cluster] = {}
+        self.clusters: dict[str, list[Wpk]] = {}
         # TODO: logdir may have to be handled by a fixture instead, it's only useful to construct current_test_logdir
         self.logdir: Path = Path.cwd() / f"logs/{datetime.now().strftime('%Y_%m_%d-%H_%M_%S')}"
         # current_test_logdir is used by most classes to store logs, but also other files such as configuration files for ZPC.
@@ -57,5 +65,5 @@ class SessionContext:
         with open(self.clusters_json, 'r') as f:
             clusters_dict = json.load(f)
 
-            for k, v in clusters_dict.items():
-                self.clusters[k] = Cluster.from_dict(k, v)
+            for name, wpk_list in clusters_dict.items():
+                self.clusters[name] = Wpk.from_json_list(wpk_list)

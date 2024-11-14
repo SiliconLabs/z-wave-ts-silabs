@@ -1,403 +1,146 @@
 {
-  "manual-0": {
-    "wpks": [
-      {
-        "board":  "brd4205b",
-        "serial": "440311231"
-      },
-      {
-        "board":  "brd4205b",
-        "serial": "440311455"
-      },
-      {
-        "board":  "brd4205b",
-        "serial": "440311485"
-      }
-    ]
-  },
-  "stdv1-1": {
-    "wpks": [
-      {
-        "board":  "brd4205b",
-        "serial": "440311460"
-      },
-      {
-        "board":  "brd4205b",
-        "serial": "440311477"
-      },
-      {
-        "board":  "brd4205b",
-        "serial": "440311471"
-      },
-      {
-        "board":  "brd4205b",
-        "serial": "440311458"
-      },
-      {
-        "board":  "brd4205b",
-        "serial": "440311495"
-      },
-      {
-        "board":  "brd4205b",
-        "serial": "440311492"
-      }
-    ],
-    "rpis": [
-      {
-        "hostname": "rns-zw-cluster-stdv1-1-rpi",
-        "GPIO_mapping": [
-          {
-            "serial": "440311460",
-            "BTN0": 2,
-            "BTN1": 3,
-            "BTN2": 14,
-            "BTN3": 15
-          },
-          {
-            "serial": "440311477",
-            "BTN0": 17,
-            "BTN1": 18,
-            "BTN2": 27,
-            "BTN3": 22
-          },
-          {
-            "serial": "440311471",
-            "BTN0": 23,
-            "BTN1": 24,
-            "BTN2": 10,
-            "BTN3": 9
-          },
-          {
-            "serial":"440311458",
-            "BTN0": 25,
-            "BTN1": 11,
-            "BTN2": 8,
-            "BTN3": 7
-          },
-          {
-            "serial": "440311495",
-            "BTN0": 5,
-            "BTN1": 6,
-            "BTN2": 12,
-            "BTN3": 13
-          },
-          {
-            "serial": "440311492",
-            "BTN0": 19,
-            "BTN1": 16,
-            "BTN2": 20,
-            "BTN3": 26
-          }
-        ]
-      }
-    ] 
-  },
-  "stdv1-2": {
-    "wpks": [
-      {
-        "board":  "brd4205b",
-        "serial": "440317504"
-      },
-      {
-        "board":  "brd4205b",
-        "serial": "440332355"
-      },
-      {
-        "board":  "brd4205b",
-        "serial": "440317379"
-      },
-      {
-        "board":  "brd4205b",
-        "serial": "440317510"
-      },
-      {
-        "board":  "brd4205b",
-        "serial": "440317518"
-      },
-      {
-        "board":  "brd4205b",
-        "serial": "440332402"
-      }
-    ],
-    "rpis": [
-      {
-        "hostname": "rns-zw-cluster-stdv1-2-rpi",
-        "GPIO_mapping": [
-          {
-            "serial": "440317504",
-            "BTN0": 2,
-            "BTN1": 3,
-            "BTN2": 14,
-            "BTN3": 15
-          },
-          {
-            "serial": "440332355",
-            "BTN0": 17,
-            "BTN1": 18,
-            "BTN2": 27,
-            "BTN3": 22
-          },
-          {
-            "serial": "440317379",
-            "BTN0": 23,
-            "BTN1": 24,
-            "BTN2": 10,
-            "BTN3": 9
-          },
-          {
-            "serial":"440317510",
-            "BTN0": 25,
-            "BTN1": 11,
-            "BTN2": 8,
-            "BTN3": 7
-          },
-          {
-            "serial": "440317518",
-            "BTN0": 5,
-            "BTN1": 6,
-            "BTN2": 12,
-            "BTN3": 13
-          },
-          {
-            "serial": "440332402",
-            "BTN0": 19,
-            "BTN1": 16,
-            "BTN2": 20,
-            "BTN3": 26
-          }
-        ]
-      }
-    ]
-  },
-  "stdv1-3": {
-    "wpks": [
-      {
-        "board":  "brd4401c",
-        "serial": "440332367"
-      },
-      {
-        "board":  "brd4401c",
-        "serial": "440332389"
-      },
-      {
-        "board":  "brd4401c",
-        "serial": "440332377"
-      },
-      {
-        "board":  "brd4401c",
-        "serial": "440332380"
-      },
-      {
-        "board":  "brd4401c",
-        "serial": "440332390"
-      },
-      {
-        "board":  "brd4401c",
-        "serial": "440332397"
-      }
-    ],
-    "rpis": [
-      {
-        "hostname": "rns-zw-cluster-stdv1-3-rpi",
-        "GPIO_mapping": [
-          {
-            "serial": "440332367",
-            "BTN0": 2,
-            "BTN1": 3,
-            "BTN2": 14,
-            "BTN3": 15
-          },
-          {
-            "serial": "440332389",
-            "BTN0": 17,
-            "BTN1": 18,
-            "BTN2": 27,
-            "BTN3": 22
-          },
-          {
-            "serial": "440332377",
-            "BTN0": 23,
-            "BTN1": 24,
-            "BTN2": 10,
-            "BTN3": 9
-          },
-          {
-            "serial":"440332380",
-            "BTN0": 25,
-            "BTN1": 11,
-            "BTN2": 8,
-            "BTN3": 7
-          },
-          {
-            "serial": "440332390",
-            "BTN0": 5,
-            "BTN1": 6,
-            "BTN2": 12,
-            "BTN3": 13
-          },
-          {
-            "serial": "440332397",
-            "BTN0": 19,
-            "BTN1": 16,
-            "BTN2": 20,
-            "BTN3": 26
-          }
-        ]
-      }
-    ]
-  },
-  "stdv1-4": {
-    "wpks": [
-      {
-        "board":  "brd4401c",
-        "serial": "440332282"
-      },
-      {
-        "board":  "brd4401c",
-        "serial": "440332358"
-      },
-      {
-        "board":  "brd4401c",
-        "serial": "440332369"
-      },
-      {
-        "board":  "brd4401c",
-        "serial": "440332388"
-      },
-      {
-        "board":  "brd4401c",
-        "serial": "440332386"
-      },
-      {
-        "board":  "brd4401c",
-        "serial": "440332396"
-      }
-    ],
-    "rpis": [
-      {
-        "hostname": "rns-zw-cluster-stdv1-4-rpi",
-        "GPIO_mapping": [
-          {
-            "serial": "440332282",
-            "BTN0": 2,
-            "BTN1": 3,
-            "BTN2": 14,
-            "BTN3": 15
-          },
-          {
-            "serial": "440332358",
-            "BTN0": 17,
-            "BTN1": 18,
-            "BTN2": 27,
-            "BTN3": 22
-          },
-          {
-            "serial": "440332369",
-            "BTN0": 23,
-            "BTN1": 24,
-            "BTN2": 10,
-            "BTN3": 9
-          },
-          {
-            "serial":"440332388",
-            "BTN0": 25,
-            "BTN1": 11,
-            "BTN2": 8,
-            "BTN3": 7
-          },
-          {
-            "serial": "440332386",
-            "BTN0": 5,
-            "BTN1": 6,
-            "BTN2": 12,
-            "BTN3": 13
-          },
-          {
-            "serial": "440332396",
-            "BTN0": 19,
-            "BTN1": 16,
-            "BTN2": 20,
-            "BTN3": 26
-          }
-        ]
-      }
-    ]
-  },
-  "stdv1-5": {
-    "wpks": [
-      {
-        "board":  "brd4207a",
-        "serial": "440332394"
-      },
-      {
-        "board":  "brd4207a",
-        "serial": "440332393"
-      },
-      {
-        "board":  "brd4207a",
-        "serial": "440332374"
-      },
-      {
-        "board":  "brd4207a",
-        "serial": "440317515"
-      },
-      {
-        "board":  "brd4207a",
-        "serial": "440317521"
-      },
-      {
-        "board":  "brd4206a",
-        "serial": "440332395"
-      }
-    ],
-    "rpis": [
-      {
-        "hostname": "rns-zw-cluster-stdv1-5-rpi",
-        "GPIO_mapping": [
-          {
-            "serial": "440332394",
-            "BTN0": 2,
-            "BTN1": 3,
-            "BTN2": 14,
-            "BTN3": 15
-          },
-          {
-            "serial": "440332393",
-            "BTN0": 17,
-            "BTN1": 18,
-            "BTN2": 27,
-            "BTN3": 22
-          },
-          {
-            "serial": "440332374",
-            "BTN0": 23,
-            "BTN1": 24,
-            "BTN2": 10,
-            "BTN3": 9
-          },
-          {
-            "serial":"440317515",
-            "BTN0": 25,
-            "BTN1": 11,
-            "BTN2": 8,
-            "BTN3": 7
-          },
-          {
-            "serial": "440317521",
-            "BTN0": 5,
-            "BTN1": 6,
-            "BTN2": 12,
-            "BTN3": 13
-          },
-          {
-            "serial": "440332395",
-            "BTN0": 19,
-            "BTN1": 16,
-            "BTN2": 20,
-            "BTN3": 26
-          }
-        ]
-      }
-    ]
-  }
+  "manual-0": [
+    {
+      "serial": "440311231",
+      "board":  "brd4205b"
+    },
+    {
+      "serial": "440311455",
+      "board":  "brd4205b"
+    },
+    {
+      "serial": "440311485",
+      "board":  "brd4205b"
+    }
+  ],
+  "stdv1-1": [
+    {
+      "serial": "440311460",
+      "board":  "brd4205b"
+    },
+    {
+      "serial": "440311477",
+      "board":  "brd4205b"
+    },
+    {
+      "serial": "440311471",
+      "board":  "brd4205b"
+    },
+    {
+      "serial": "440311458",
+      "board":  "brd4205b"
+    },
+    {
+      "serial": "440311495",
+      "board":  "brd4205b"
+    },
+    {
+      "serial": "440311492",
+      "board":  "brd4205b"
+    }
+  ],
+  "stdv1-2": [
+    {
+      "serial": "440317504",
+      "board":  "brd4205b"
+    },
+    {
+      "serial": "440332355",
+      "board":  "brd4205b"
+    },
+    {
+      "serial": "440317379",
+      "board":  "brd4205b"
+    },
+    {
+      "serial": "440317510",
+      "board":  "brd4205b"
+    },
+    {
+      "serial": "440317518",
+      "board":  "brd4205b"
+    },
+    {
+      "serial": "440332402",
+      "board":  "brd4205b"
+    }
+  ],
+  "stdv1-3": [
+    {
+      "serial": "440332367",
+      "board":  "brd4401c"
+    },
+    {
+      "serial": "440332389",
+      "board":  "brd4401c"
+    },
+    {
+      "serial": "440332377",
+      "board":  "brd4401c"
+    },
+    {
+      "serial": "440332380",
+      "board":  "brd4401c"
+    },
+    {
+      "serial": "440332390",
+      "board":  "brd4401c"
+    },
+    {
+      "serial": "440332397",
+      "board":  "brd4401c"
+    }
+  ],
+  "stdv1-4": [
+    {
+      "serial": "440332282",
+      "board":  "brd4401c"
+    },
+    {
+      "serial": "440332358",
+      "board":  "brd4401c"
+    },
+    {
+      "serial": "440332369",
+      "board":  "brd4401c"
+    },
+    {
+      "serial": "440332388",
+      "board":  "brd4401c"
+    },
+    {
+      "serial": "440332386",
+      "board":  "brd4401c"
+    },
+    {
+      "serial": "440332396",
+      "board":  "brd4401c"
+    }
+  ],
+  "stdv1-5": [
+    {
+      "serial": "440332394",
+      "board":  "brd4207a"
+    },
+    {
+      "serial": "440332393",
+      "board":  "brd4207a"
+    },
+    {
+      "serial": "440332374",
+      "board":  "brd4207a"
+    },
+    {
+      "serial": "440317515",
+      "board":  "brd4207a"
+    },
+    {
+      "serial": "440317521",
+      "board":  "brd4207a"
+    },
+    {
+      "serial": "440332395",
+      "board":  "brd4206a"
+    }
+  ]
 }

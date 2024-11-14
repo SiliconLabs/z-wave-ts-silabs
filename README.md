@@ -49,21 +49,6 @@ It will be used by uic-image-provider to load `images.json` which
 contains a list describing the update files available. The test framework will copy these files
 in `uic-image-provider/updates`.
 
-## Rpi
-
-the Rpi are set up to act as button manipulators. the idea is to control them remotely using pigpiod.
-
-`systemctl enable --now pigpiod.service`
-
-on the WPK expander pins the buttons are mapped like this:
-
-- BTN0: EXP7
-- BTN1: EXP9
-- BTN2: EXP15
-- BTN3: EXP16
-
-NOTE: we could run ZPC directly on the Pi as executors as well, using socat.
-
 ## Troubleshooting
 
 If for any reason a test was interrupted by a signal during a call to commander-cli.
