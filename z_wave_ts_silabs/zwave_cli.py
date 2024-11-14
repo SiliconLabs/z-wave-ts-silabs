@@ -18,14 +18,12 @@ class DevZwaveCli(DevZwave):
           self.telnet_client: telnetlib.Telnet | None = None
 
      def start(self):
-          super().start()
           self.telnet_client = telnetlib.Telnet(self.wpk.hostname, '4901', 1)
           # send empty command to check if everything is working correctly
           if '>' not in self._run_cmd(''):
                raise Exception("This application does not have a CLI")
 
      def stop(self):
-          super().stop()
           self.telnet_client.close()
           self.telnet_client = None
 

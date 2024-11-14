@@ -535,7 +535,7 @@ class Device(metaclass=ABCMeta):
         raise NotImplementedError
 
 
-class DevZwave(Device):
+class DevZwave(Device, metaclass=ABCMeta):
     """Base class for Z-Wave devices."""
     
     def __init__(self, ctxt: SessionContext, device_number: int, wpk: DevWpk, region: ZwaveRegion, debug: bool = False):
@@ -576,18 +576,6 @@ class DevZwave(Device):
         self.gbl_v255_file = f'{Path(self._firmware_file).stem}_v255.gbl'
         if not os.path.exists(f'{ctxt.zwave_binaries}/{self.gbl_v255_file}'):
             raise Exception(f'could not find matching v255.gbl file in {ctxt.zwave_binaries}/ for {self._firmware_file}')
-
-    def start(self):
-        if self._ctxt.current_test_rtt_enabled:
-            self.start_log_capture()
-        if self._ctxt.current_test_pti_enabled:
-            self.start_zlf_capture()
-
-    def stop(self):
-        if self._ctxt.current_test_rtt_enabled:
-            self.stop_log_capture()
-        if self._ctxt.current_test_pti_enabled:
-            self.stop_zlf_capture()
 
     # Uiid are used by Unify
     def uiid(self) -> str:

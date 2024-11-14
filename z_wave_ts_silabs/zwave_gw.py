@@ -37,7 +37,6 @@ class DevZwaveGwZpc(DevZwave):
 
     # should be called by the device factory
     def start(self):
-        super().start() # important: otherwise the rtt and pti loggers are not started
         if self.zpc_process is not None and self.zpc_process.is_alive:
             raise Exception("ZPC process is already running")
 
@@ -119,7 +118,6 @@ class DevZwaveGwZpc(DevZwave):
 
     # should be called everytime a test involves ZPC
     def stop(self):
-        super().stop() # important: otherwise the rtt and pti loggers are never stopped
         # just in case a user forgets to stop these services
         self.stop_uic_image_provider()
         self.stop_uic_upvl()
