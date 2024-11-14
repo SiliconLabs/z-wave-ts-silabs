@@ -10,10 +10,11 @@ from pathlib import Path
 class Wpk:
     serial: str
     board: str
+    ip: bool = True # we consider that the WPK can be accessed through IP by default
 
     @staticmethod
     def from_json_list(wpk_list: list[dict]) -> list[Wpk]:
-        return [ Wpk(elt['serial'], elt['board']) for elt in wpk_list ]
+        return [ Wpk(elt['serial'], elt['board'], bool(elt['ip']) if elt.get('ip') else False) for elt in wpk_list ]
 
 
 @dataclass
