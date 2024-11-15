@@ -38,7 +38,8 @@ class DevZwaveGwZpc(DevZwave):
     # should be called by the device factory
     def start(self):
         if self.zpc_process is not None and self.zpc_process.is_alive:
-            raise Exception("ZPC process is already running")
+            self.logger.debug(f"start() was called on a running instance of {self.__class__.__name__}")
+            return
 
         self.logger.debug('zpc process starting')
         self.zpc_process = Zpc(self._ctxt, self.region, self.wpk.hostname)
@@ -67,7 +68,7 @@ class DevZwaveGwZpc(DevZwave):
     # start the ZPC process in ncp_update mode, the stop() method should be called before calling this else it will fail
     def ncp_update(self):
         if self.zpc_process is not None and self.zpc_process.is_alive:
-            raise Exception("ZPC process is already running")
+            raise Exception("ZPC process is already running, cannot proceed with OTW update of NCP firmware")
 
         self.logger.debug('zpc_ncp_update process starting')
         self.zpc_process = Zpc(self._ctxt, self.region, self.wpk.hostname, self.gbl_v255_file)
@@ -82,12 +83,18 @@ class DevZwaveGwZpc(DevZwave):
         self.zpc_process = None
 
     def start_uic_upvl(self):
+        if self.uic_upvl_process is not None:
+            return
+
         self.uic_upvl_process = UicUpvl(self._ctxt)
         if not self.uic_upvl_process.is_alive:
             raise Exception("uic_upvl process did not start or died unexpectedly")
 
 
     def start_uic_image_provider(self, devices_to_update: list[DevZwave]):
+        if self.uic_image_provider_process is not None:
+            return
+
         devices = [ ]
         
         for dev in devices_to_update:
@@ -107,24 +114,37 @@ class DevZwaveGwZpc(DevZwave):
         # so we're going to look for that information in the MQTT client
 
     def stop_uic_upvl(self):
-        if self.uic_upvl_process is not None:
-            self.uic_upvl_process.stop()
-            self.uic_upvl_process = None
+        if self.uic_upvl_process is None:
+            return
+
+        self.uic_upvl_process.stop()
+        self.uic_upvl_process = None
 
     def stop_uic_image_provider(self):
-        if self.uic_image_provider_process is not None:
-            self.uic_image_provider_process.stop()
-            self.uic_image_provider_process = None
+        if self.uic_image_provider_process is None:
+            return
+
+        self.uic_image_provider_process.stop()
+        self.uic_image_provider_process = None
 
     # should be called everytime a test involves ZPC
     def stop(self):
+        if self.zpc_process is None:
+            self.logger.debug(f"stop() was called on a stopped instance of {self.__class__.__name__}")
+            return
+
         # just in case a user forgets to stop these services
         self.stop_uic_image_provider()
         self.stop_uic_upvl()
+
+        # make sure the mqtt_client is running before calling stop (it should be)
         if self.mqtt_client is not None:
             self.mqtt_client.stop()
-        if self.zpc_process is not None:
-            self.zpc_process.stop()
+            self.mqtt_client = None
+
+        # finally kill the ZPC process
+        self.zpc_process.stop()
+        self.zpc_process = None
 
     def __del__(self):
         self.stop()

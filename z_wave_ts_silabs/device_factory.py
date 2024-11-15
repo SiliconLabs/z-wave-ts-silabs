@@ -33,6 +33,15 @@ class DeviceFactory(object):
 
         return device
 
+    def _finalize(self):
+        for device in self._devices:
+            try:
+                device.stop()
+                if isinstance(device, DevZwave):
+                    self._execute_stop_ctxt_checks(device)
+            except TimeoutError:
+                pass
+
     def _execute_start_ctxt_checks(self, device: DevZwave):
         if self._ctxt.current_test_pti_enabled:
             device.start_zlf_capture()
@@ -44,15 +53,6 @@ class DeviceFactory(object):
             device.stop_zlf_capture()
         if self._ctxt.current_test_rtt_enabled:
             device.stop_log_capture()
-
-    def _finalize(self):
-        for device in self._devices:
-            try:
-                device.stop()
-                if isinstance(device, DevZwave):
-                    self._execute_start_ctxt_checks(device)
-            except TimeoutError:
-                pass
 
     def finalize(self):
         self._finalize()

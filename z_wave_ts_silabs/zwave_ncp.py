@@ -13,12 +13,20 @@ class DevZwaveNcp(DevZwave):
         self.pty: str | None = None
 
     def start(self):
+        if self.socat_process is not None:
+            self.logger.debug(f"start() was called on a running instance of {self.__class__.__name__}")
+            return
+
         self.socat_process = Socat(self._ctxt, self.wpk.hostname, 4901)
         if not self.socat_process.is_alive:
             raise Exception("socat process did not start or died unexpectedly")
         self.pty = self.socat_process.pty_path
 
     def stop(self):
+        if self.socat_process is None:
+            self.logger.debug(f"stop() was called on a stopped instance of {self.__class__.__name__}")
+            return
+
         self.socat_process.stop()
         self.socat_process = None
         self.pty = None

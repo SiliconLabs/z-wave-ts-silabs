@@ -29,6 +29,10 @@ class DevRailtest(Device):
         return self.telnet_client.read_until(b'\r\n> ', timeout=1).decode('ascii')
 
     def start(self):
+        if self.telnet_client is not None:
+            self.logger.debug(f"start() was called on a running instance of {self.__class__.__name__}")
+            return
+
         self.telnet_client = telnetlib.Telnet(self.wpk.hostname, '4901', 1)
         # send empty command to check if everything is working correctly
         if '>' not in self._run_cmd(''):
@@ -44,6 +48,10 @@ class DevRailtest(Device):
         self._run_cmd(f'setPower 1 raw') # sets the output power to its lowest value
 
     def stop(self):
+        if self.telnet_client is None:
+            self.logger.debug(f"stop() was called on a stopped instance of {self.__class__.__name__}")
+            return
+
         self.telnet_client.close()
 
     # the setTxPayload CLI takes a string as argument and cannot take a big string, so we have to split it into chunks.
