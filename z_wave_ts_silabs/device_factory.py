@@ -79,7 +79,7 @@ class DeviceFactory(object):
         """
         return self._spawn(DevZwaveNcpSerialApiController, region)
 
-    def door_lock_key_pad(self, region: ZwaveRegion = 'REGION_EU') -> DevZwaveDoorLockKeypad:
+    def door_lock_keypad(self, region: ZwaveRegion = 'REGION_EU') -> DevZwaveDoorLockKeypad:
         """Create a new DoorLockKeyPad device.
 
         Args:

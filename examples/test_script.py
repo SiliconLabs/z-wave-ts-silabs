@@ -13,7 +13,7 @@ def test_ncp_serial_api_controller_standalone(device_factory: DeviceFactory, reg
 @pytest.mark.parametrize('region', ['REGION_EU'])
 def test_door_lock_keypad_basic_set(device_factory: DeviceFactory, region: ZwaveRegion):
     zpc = device_factory.zpc(region)
-    end_device_1 = device_factory.door_lock_key_pad(region)
+    end_device_1 = device_factory.door_lock_keypad(region)
 
     # secure inclusion
     zpc.add_node(end_device_1.get_dsk())
