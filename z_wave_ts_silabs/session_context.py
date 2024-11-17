@@ -1,10 +1,10 @@
 from __future__ import annotations
-import os
 import json
-from dataclasses import dataclass, asdict
+from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
 
+type Clusters = dict[str, list[Wpk]]
 
 @dataclass
 class Wpk:
@@ -19,36 +19,33 @@ class Wpk:
 
 @dataclass
 class SessionContext:
-    clusters_json: str = "clusters.json"
-    commander_cli: str = "/opt/silabs/commander-cli/commander-cli"
-    uic: str = "/opt/silabs/uic"
-    zwave_binaries: str = "dist/bin"
-    zwave_btl_encrypt_key_controller: str = "platform/SiliconLabs/PAL/BootLoader/controller-keys/controller_encrypt.key"
-    zwave_btl_signing_key_controller: str = "platform/SiliconLabs/PAL/BootLoader/controller-keys/controller_sign.key-tokens.txt"
-    zwave_btl_encrypt_key_end_device: str = "platform/SiliconLabs/PAL/BootLoader/sample-keys/sample_encrypt.key"
-    zwave_btl_signing_key_end_device: str = "platform/SiliconLabs/PAL/BootLoader/sample-keys/sample_sign.key-tokens.txt"
+    clusters_json: Path = Path('clusters.json') # clusters.json file which contains the description of available clusters
+    commander_cli: Path = Path('/opt/silabs/commander-cli/commander-cli') # commander-cli binary
+    uic: Path = Path('/opt/silabs/uic') # UIC directory, MUST contain a build directory with executables of zpc, uic-image-provider and uic-upvl
+    zwave_binaries: Path = Path('dist/bin') # directory with all Z-Wave firmwares binaries (and railtest too, maybe it should have its own entry)
+    zwave_btl_encrypt_key_controller: Path = Path('platform/SiliconLabs/PAL/BootLoader/controller-keys/controller_encrypt.key') # bootloader encryption/decryption key on controller (needed for OTW updates)
+    zwave_btl_signing_key_controller: Path = Path('platform/SiliconLabs/PAL/BootLoader/controller-keys/controller_sign.key-tokens.txt') # bootloader signing key on controller (needed for OTW updates)
+    zwave_btl_encrypt_key_end_device: Path = Path('platform/SiliconLabs/PAL/BootLoader/sample-keys/sample_encrypt.key') # bootloader encryption/decryption key on end devices (needed for OTA updates)
+    zwave_btl_signing_key_end_device: Path = Path('platform/SiliconLabs/PAL/BootLoader/sample-keys/sample_sign.key-tokens.txt') # bootloader signing key on end devices (needed for OTA updates)
 
     @staticmethod
-    def from_json(config_file_path: str) -> SessionContext:
-        context = SessionContext()
-        json_config: dict | None = None
-        try:
-            with open(config_file_path, 'r') as f:
-                json_config = json.loads(f.read())
-                possible_entries = asdict(context).keys()
-                for entry in possible_entries:
-                    if json_config.get(entry):
-                        setattr(context, entry, json_config[entry])
-        except FileNotFoundError:
-            pass
+    def from_json(config_file_path: Path) -> SessionContext:
 
-        print(f'rootdir: {os.getcwd()}, configfile: {config_file_path if json_config else "none"}')
+        with config_file_path.open('r') as f:
+            json_config: dict = json.loads(f.read())
 
-        return context
+        return SessionContext(
+            clusters_json=Path(json_config['clusters_json']),
+            commander_cli=Path(json_config['commander_cli']),
+            uic=Path(json_config['uic']),
+            zwave_binaries=Path(json_config['zwave_binaries']),
+            zwave_btl_encrypt_key_controller = Path(json_config['zwave_btl_encrypt_key_controller']),
+            zwave_btl_signing_key_controller = Path(json_config['zwave_btl_signing_key_controller']),
+            zwave_btl_encrypt_key_end_device = Path(json_config['zwave_btl_encrypt_key_end_device']),
+            zwave_btl_signing_key_end_device = Path(json_config['zwave_btl_signing_key_end_device']),
+        )
 
     def __post_init__(self):
-        # clusters holds every cluster described in the JSON file under the form of Cluster objects
-        self.clusters: dict[str, list[Wpk]] = {}
         # TODO: logdir may have to be handled by a fixture instead, it's only useful to construct current_test_logdir
         self.logdir: Path = Path.cwd() / f"logs/{datetime.now().strftime('%Y_%m_%d-%H_%M_%S')}"
         # current_test_logdir is used by most classes to store logs, but also other files such as configuration files for ZPC.
@@ -60,11 +57,3 @@ class SessionContext:
 
         # create the session log directory
         self.logdir.mkdir(parents=True, exist_ok=True)
-
-        # now we load the cluster list from the JSON file.
-        # we don't use a try block on purpose, a FileNotFoundException will be raised if the cluster JSON file is not found
-        with open(self.clusters_json, 'r') as f:
-            clusters_dict = json.load(f)
-
-            for name, wpk_list in clusters_dict.items():
-                self.clusters[name] = Wpk.from_json_list(wpk_list)

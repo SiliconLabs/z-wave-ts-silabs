@@ -469,16 +469,20 @@ class DevWpk(object):
 
 class DevCluster(object):
 
-    def __init__(self, name: str, wpk_list: list[DevWpk]):
-        self.name: str = name
+    def __init__(self, name: str | None, wpk_list: list[DevWpk]):
+        self.name: str | None = name
         self.wpk_list: list[DevWpk] = wpk_list
 
     def get_free_wpk(self) -> DevWpk:
+        if self.name is None:
+            raise Exception(f"No cluster name was provided, check your configuration")
+
         for wpk in self.wpk_list:
             if wpk.is_free is True:
                 wpk.is_free = False
                 return wpk
-        raise Exception(f"All WPKs in cluster: {self.name} are reserved")
+
+        raise Exception(f"All WPKs in cluster: {self.name} are reserved") # if self.name is None then the cluster name could not be found
 
     def free_all_wpk(self) -> None:
         for wpk in self.wpk_list:
