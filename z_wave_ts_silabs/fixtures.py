@@ -73,9 +73,17 @@ def hw_cluster(session_ctxt: SessionContext, hw_clusters: Clusters, hw_cluster_n
     yield DevCluster(hw_cluster_name, dev_wpks)
 
 
+@pytest.fixture(scope="function", autouse=True)
+def updated_session_ctxt(session_ctxt: SessionContext, log_dir: Path) -> SessionContext:
+    # the log_dir fixture MUST either be provided by another package or by a conftest.py file.
+    session_ctxt.current_test_logdir = log_dir
+    _logger.debug(f'current test log directory: {session_ctxt.current_test_logdir}')
+    yield session_ctxt
+
+
 @pytest.fixture(scope='function')
-def device_factory(session_ctxt: SessionContext, hw_cluster: DevCluster) -> DeviceFactory:
-    factory = DeviceFactory(session_ctxt, hw_cluster)
+def device_factory(updated_session_ctxt: SessionContext, hw_cluster: DevCluster) -> DeviceFactory:
+    factory = DeviceFactory(updated_session_ctxt, hw_cluster)
     yield factory
     factory.finalize()
 
@@ -92,12 +100,3 @@ def cleanup_background_processes():
     BackgroundProcess.stop_all()
     yield
     BackgroundProcess.stop_all()
-
-
-@pytest.fixture(scope="function", autouse=True)
-def setup_logs(session_ctxt: SessionContext, request: pytest.FixtureRequest):
-    # request.node.name contains the test name with the parameters if any:
-    session_ctxt.current_test_logdir = f"{session_ctxt.logdir}/{request.node.name}"
-    # the mkdir below should never raise an error since function names should be unique in a test file
-    os.mkdir(session_ctxt.current_test_logdir)
-    _logger.debug(f'current test log directory: {session_ctxt.current_test_logdir}')

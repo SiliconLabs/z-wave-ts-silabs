@@ -1,7 +1,6 @@
 from __future__ import annotations
 import json
 from dataclasses import dataclass
-from datetime import datetime
 from pathlib import Path
 
 type Clusters = dict[str, list[Wpk]]
@@ -46,8 +45,6 @@ class SessionContext:
         )
 
     def __post_init__(self):
-        # TODO: logdir may have to be handled by a fixture instead, it's only useful to construct current_test_logdir
-        self.logdir: Path = Path.cwd() / f"logs/{datetime.now().strftime('%Y_%m_%d-%H_%M_%S')}"
         # current_test_logdir is used by most classes to store logs, but also other files such as configuration files for ZPC.
         self.current_test_logdir: Path | None = None
 
@@ -55,5 +52,3 @@ class SessionContext:
         self.current_test_rtt_enabled: bool = True
         self.current_test_pti_enabled: bool = True
 
-        # create the session log directory
-        self.logdir.mkdir(parents=True, exist_ok=True)
