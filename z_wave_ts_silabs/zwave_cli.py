@@ -88,6 +88,19 @@ class DevZwaveCli(DevZwave):
                self.logger.debug(f"home_id: {self.home_id}")
           return super().get_home_id()
 
+     # TODO: process output
+     def node_id_filtering_enforce(self, enforce : bool):
+          self._run_cmd(f'node_id_filtering_enforce { 1 if enforce else 0 }')
+
+     def node_id_filtering_add(self, node_id : int):
+          self._run_cmd(f'node_id_filtering_add {node_id}')
+
+     def node_id_filtering_remove(self, node_id : int):
+          self._run_cmd(f'node_id_filtering_remove {node_id}')
+
+     def node_id_filtering_clear(self):
+          self._run_cmd('node_id_filtering_clear')
+
 
 class DevZwaveDoorLockKeypad(DevZwaveCli):
 
