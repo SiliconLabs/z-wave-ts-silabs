@@ -1,10 +1,9 @@
 from __future__ import annotations
 from dataclasses import dataclass
-from enum import IntEnum
 import struct
 import logging
 
-from .definitions import DchSymbol, PtiDchTypes, PtiProtocolID
+from .definitions import DchSymbol, PtiDchTypes, PtiProtocolID, PtiHwStart, PtiHwEnd
 
 _logger = logging.getLogger(__name__)
 
@@ -416,3 +415,15 @@ class PtiFrame:
 
     def  __len__(self) -> int:
         return len(self.ota_packet_data) + len(self.appended_info) + 2 # + 2 because of the HW_START and HW_END symbols
+
+    def is_rx_success(self) -> bool:
+        return (self.hw_start == PtiHwStart.RX_START) and (self.hw_end == PtiHwEnd.RX_SUCCESS)
+
+    def is_tx_success(self) -> bool:
+        return (self.hw_start == PtiHwStart.TX_START) and (self.hw_end == PtiHwEnd.TX_SUCCESS)
+
+    def is_rx_or_tx_success(self) -> bool:
+        if self.appended_info.appended_info_cfg.is_rx:
+            return self.is_rx_success()
+        else:
+            return self.is_tx_success()
