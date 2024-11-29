@@ -24,6 +24,7 @@ def read(filename):
 setup(
     name=NAME,
     version=VERSION,
+    python_requires='>=3.12',
     description="Python interface for Silicon Labs Z-Wave devices",
     author="Luis Thomas",
     author_email="luis.thomas@silabs.com",
