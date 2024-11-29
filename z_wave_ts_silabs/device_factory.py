@@ -4,7 +4,7 @@ from .devices import Device, DevCluster, DevZwave
 from .railtest import DevRailtest
 from .session_context import SessionContext
 from .zwave_cli import DevZwaveDoorLockKeypad, DevZwaveLedBulb, DevZwaveMultilevelSensor, DevZwavePowerStrip, DevZwaveSensorPIR, DevZwaveSwitchOnOff, DevZwaveWallController
-from .zwave_ncp import DevZwaveNcpSerialApiController
+from .zwave_ncp import DevZwaveNcpSerialApiController, DevZwaveNcpSerialApiEndDevice, DevZwaveNcpZniffer, DevZwaveNcpZnifferPti
 from .zwave_gw import DevZwaveGwZpc
 
 
@@ -78,6 +78,17 @@ class DeviceFactory(object):
             New instance of DevZwaveNcpSerialApiController.
         """
         return self._spawn(DevZwaveNcpSerialApiController, region)
+
+    def serial_api_end_device(self, region: ZwaveRegion = 'REGION_EU') -> DevZwaveNcpSerialApiEndDevice:
+        """Create a new SerialAPIEndDevice device.
+
+        Args:
+            region (Region): Z-Wave region
+
+        Returns:
+            New instance of DevZwaveNcpSerialApiEndDevice.
+        """
+        return self._spawn(DevZwaveNcpSerialApiEndDevice, region)
 
     def door_lock_keypad(self, region: ZwaveRegion = 'REGION_EU') -> DevZwaveDoorLockKeypad:
         """Create a new DoorLockKeyPad device.
@@ -158,3 +169,9 @@ class DeviceFactory(object):
 
     def railtest(self, region: ZwaveRegion = 'REGION_EU') -> DevRailtest:
         return self._spawn(DevRailtest, region)
+
+    def zniffer(self, region: ZwaveRegion = 'REGION_EU') -> DevZwaveNcpZniffer:
+        return self._spawn(DevZwaveNcpZniffer, region)
+
+    def zniffer_pti(self, region: ZwaveRegion = 'REGION_EU') -> DevZwaveNcpZnifferPti:
+        return self._spawn(DevZwaveNcpZnifferPti, region)

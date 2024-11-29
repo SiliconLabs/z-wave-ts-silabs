@@ -53,8 +53,15 @@ class DevZwaveNcpZniffer(DevZwaveNcp):
         return 'zwave_ncp_zniffer'
 
 
-class DevZwaveNcpZnifferPti(DevZwaveNcp):
+# the Zniffer PTI application does not have a SAPI link, it bears NCP in its name but it's not a NCP app.
+class DevZwaveNcpZnifferPti(DevZwave):
 
     @classmethod
     def app_name(cls) -> AppName:
         return 'zwave_ncp_zniffer_pti'
+
+    def start(self):
+        pass
+
+    def stop(self):
+        pass
