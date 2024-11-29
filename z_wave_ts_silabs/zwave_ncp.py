@@ -31,3 +31,24 @@ class DevZwaveNcpSerialApiController(DevZwaveNcp):
     @classmethod
     def app_name(cls) -> AppName:
         return 'zwave_ncp_serial_api_controller'
+
+
+class DevZwaveNcpSerialApiEndDevice(DevZwaveNcp):
+
+    @classmethod
+    def app_name(cls) -> AppName:
+        return 'zwave_ncp_serial_api_end_device'
+
+
+class DevZwaveNcpZniffer(DevZwaveNcp):
+
+    @classmethod
+    def app_name(cls) -> AppName:
+        return 'zwave_ncp_zniffer'
+
+
+class DevZwaveNcpZnifferPti(DevZwaveNcp):
+
+    @classmethod
+    def app_name(cls) -> AppName:
+        return 'zwave_ncp_zniffer_pti'

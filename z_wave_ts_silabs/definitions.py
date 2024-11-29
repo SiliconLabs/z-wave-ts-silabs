@@ -7,7 +7,6 @@ AppName = Literal[
     'railtest',
     'zwave_ncp_serial_api_controller',
     'zwave_ncp_serial_api_end_device',
-    'zwave_ncp_serial_api_test_controller',
     'zwave_ncp_zniffer',
     'zwave_ncp_zniffer_pti',
     'zwave_soc_door_lock_keypad',
