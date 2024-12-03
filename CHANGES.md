@@ -26,3 +26,13 @@ Release v0.2
 - Has a better look and feel for tests through the use introduction of a device_factory fixture for spawning nodes
 - Has a better interface for choosing on which cluster should the current test session run on (--hw-cluster cli option)
 - Supports macOS natively
+
+Release v0.3
+------------
+
+- Removed automatic reset of WPK on each test
+- Removed pytest-rerunfailures as it may actually hide some issues
+- Has better DCH and PTI parsers, they were updated to be used in other projects
+- Supports all Z-Wave regions
+- Supports all NCP applications, their serial interfaces are exposed through socat
+- Supports railtest application for frame injection among other use case
