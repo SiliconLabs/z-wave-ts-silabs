@@ -68,7 +68,7 @@ def hw_cluster(session_ctxt: SessionContext, hw_clusters: Clusters, hw_cluster_n
     if hw_clusters.get(hw_cluster_name) is not None:
         for wpk in hw_clusters[hw_cluster_name]:
             dev_wpks.append(
-                DevWpk(session_ctxt, wpk.serial, f"jlink{wpk.serial}.silabs.com", time_server=time_server)
+                DevWpk(session_ctxt, wpk.serial, f"jlink{wpk.serial}.{session_ctxt.domain_name}", time_server=time_server)
             )
     yield DevCluster(hw_cluster_name, dev_wpks)
 

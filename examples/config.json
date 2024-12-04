@@ -6,5 +6,6 @@
   "zwave_btl_encrypt_key_controller": "bootloader/controller_encrypt.key",
   "zwave_btl_signing_key_controller": "bootloader/controller_sign.key-tokens.txt",
   "zwave_btl_encrypt_key_end_device": "bootloader/sample_encrypt.key",
-  "zwave_btl_signing_key_end_device": "bootloader/sample_sign.key-tokens.txt"
+  "zwave_btl_signing_key_end_device": "bootloader/sample_sign.key-tokens.txt",
+  "domain_name": "silabs.com"
 }
