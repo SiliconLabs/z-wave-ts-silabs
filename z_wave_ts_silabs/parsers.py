@@ -131,8 +131,9 @@ class DchFrame:
         # will be used to track our current position in the frame
         current_index: int = 0
 
-        # sanity check on the given frame, this should never happen in normal conditions
-        if len(frame) == 0:
+        # sanity check on the given frame, this should never happen in normal conditions, we need to be able to parse
+        # at least the first 5 bytes to retrieve DCH information
+        if len(frame) < 5:
             return None
 
         start_symbol, length, version = struct.unpack("<BHH", frame[current_index:5])
@@ -161,6 +162,8 @@ class DchFrame:
                 return None
             flags = None  # there's no flag
             timestamp, dch_type, sequence_number = struct.unpack("<6sHB", frame[current_index:current_index + 9])
+            if isinstance(timestamp, bytes):
+                timestamp = int.from_bytes(timestamp)
             current_index += 9
 
         elif version == 3:
@@ -197,7 +200,7 @@ class DchFrame:
     def to_bytes(self) -> bytes:
         frame = struct.pack("<BHH", self.start_symbol, self.length, self.version)
         if self.version == 2:
-            frame += struct.pack("<6sHB", self.timestamp, self.dch_type, self.sequence_number)
+            frame += struct.pack("<6sHB", self.timestamp.to_bytes(length=6), self.dch_type, self.sequence_number)
         elif self.version == 3:
             frame += struct.pack("<QHIH", self.timestamp, self.dch_type, self.flags, self.sequence_number)
         else:
@@ -294,7 +297,7 @@ class PtiAppendedInfoCfg:
 
 @dataclass
 class PtiAppendedInfo:
-    rssi: int # 1 byte -> Rx only (not present in Tx, we set it to 0 for convenience when manipulating this dataclass, we omit it when using to_bytes)
+    rssi: int | None # 1 byte -> Rx only (not present in Tx, we set it to 0 for convenience when manipulating this dataclass, we omit it when using to_bytes)
     # syncword: int                         # 4 bytes -> BLE only, Rx and Tx
     radio_config: PtiRadioConfigZwave  # 0/1/2 bytes -> different for every protocol, we're only interested in Z-Wave, and for Z-Wave it's 1 byte long
     radio_info: PtiRadioInfo  # 1 byte
