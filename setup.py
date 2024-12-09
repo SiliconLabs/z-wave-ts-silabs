@@ -33,7 +33,6 @@ setup(
     keywords=["Z-Wave"],
     install_requires=[
         "paho-mqtt",
-        "pigpio",
         "pytest"
     ],
     entry_points={
