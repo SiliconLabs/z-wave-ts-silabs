@@ -1,5 +1,5 @@
 #pragma author luthomas
-// #pragme descrption ZLF (Binary DCH)
+// #pragme description ZLF (Binary DCH)
 
 import std.mem;
 
