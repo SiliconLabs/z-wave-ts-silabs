@@ -174,6 +174,7 @@ class DevZwaveGwZpc(DevZwave):
         while time.time() < end_time:
             if device.get_node_id() != 0 and self._is_node_connected(device.node_id):
                 break
+            time.sleep(0.5) # 500ms delay because Z-Wave inclusions can be very long.
             os.sched_yield() # let the MQTT client thread run
 
         if not self._is_node_connected(device.node_id):
