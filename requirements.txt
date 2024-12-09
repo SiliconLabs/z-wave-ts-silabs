@@ -1,5 +1,4 @@
 paho-mqtt
-pigpio
 pytest
 setuptools
 z_wave_ts_silabs@git+ssh://git@github.com/SiliconLabs/z-wave-ts-silabs.git@next
