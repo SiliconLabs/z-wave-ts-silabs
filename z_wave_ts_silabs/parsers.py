@@ -352,8 +352,11 @@ class PtiAppendedInfo:
             self.status_0.to_int(),
             self.appended_info_cfg.to_int()
         )
-        if self.rssi:
-            appended_info = self.rssi.to_bytes(signed=True) + appended_info # add RSSI at the start
+        if self.appended_info_cfg.is_rx == 1:
+            rssi = 0
+            if self.rssi:
+                rssi = self.rssi
+            appended_info = rssi.to_bytes(signed=True) + appended_info # add RSSI at the start
         return bytes(appended_info)
 
     def  __len__(self) -> int:
