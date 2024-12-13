@@ -9,22 +9,15 @@ import logging
 import threading
 from abc import ABCMeta, abstractmethod
 from pathlib import Path
-from datetime import datetime
 from dataclasses import dataclass
 
 from . import telnetlib
 from .session_context import SessionContext
 from .parsers import DchPacket
 from .processes import CommanderCli
-from .definitions import AppName, ZwaveAppProductType, ZwaveRegion, ZpalRadioRegion, RAILZwaveRegions, \
-    RAILZwaveRegionID_to_ZwavePCAPRegionID, RAILZwaveBaud_to_ZwavePCAPDataRate, ZwavePCAPDataRate
-
-# ZLF is used by Zniffer and Zniffer is a C# app thus:
-# https://learn.microsoft.com/en-us/dotnet/api/system.datetime.ticks?view=net-8.0#remarks
-# since C# stores ticks and a tick occurs every 100ns according to the above link,
-# we need to offset each timestamp with the base unix timestamp,
-# which should be equal to: January 1, 1970 12:00:00 AM (or 00:00:00 in 24h format)
-BASE_UNIX_TIMESTAMP_IN_TICKS = int((datetime.fromtimestamp(0) - datetime.min).total_seconds() * 10_000_000)
+from .definitions import AppName, ZwaveAppProductType, ZwaveRegion, ZpalRadioRegion
+from .pcap import PcapFileWriter
+from .zlf import ZlfFileWriter
 
 
 @dataclass
@@ -308,159 +301,11 @@ class DevWpk(object):
     def flash_zwave_bootloader_tokenfiles(self, signing_key_path: str, encrypt_key_path: str):
         self.commander_cli.flash_tokenfiles('znet', (signing_key_path, encrypt_key_path))
 
-    @staticmethod
-    def _create_pcap_file(filename: str) -> None:
-        """Creates a new pcap file.
-        :param filename: File path
-        """
-        # we follow this specification: https://ietf-opsawg-wg.github.io/draft-ietf-opsawg-pcap/draft-ietf-opsawg-pcap.html#name-general-file-structure
-        with open(filename, 'wb') as file:
-            file.write(struct.pack("<IHHQII",
-                                   0xA1B2C3D4,  # Magic Number (4 bytes) 0xA1B2C3D4 -> s and us | 0xA1B23C4D -> s and ns
-                                   2,               # Major version (2 bytes) the current standard is 2
-                                   4,               # Minor version (2 bytes) the current standard is 4
-                                   0,               # Reserved 1 (4 bytes) and Reserved 2 (4 bytes) both set to 0
-                                   4096,            # SnapLen (4 bytes) max number of octets captured from each packet, must not be 0
-                                   297              # LinkType and additional information (4 bytes), we only set the link type to LINKTYPE_ZWAVE_TAP: 297
-                                   ))
-
-    @staticmethod
-    def _dump_to_pcap_file(filename: str, dch_packet: DchPacket, reference_time: int) -> None:
-        """Dumps frame to pcap file.
-        :param filename: File path
-        :param dch_packet: parsed DCH packet from WSTK/WPK/TB containing Z-Wave frames
-        """
-        if dch_packet is None:
-            return
-
-        with open(filename, 'ab') as file:
-            for frame in dch_packet.frames:
-
-                # TODO: place all this in another function maybe ?
-                # extract RAIL radio information
-                rail_region_id = frame.payload.appended_info.radio_config.z_wave_region_id
-                rail_channel_number = frame.payload.appended_info.radio_info.channel_number
-                rail_region = RAILZwaveRegions[rail_region_id]
-                rail_baud = rail_region.channels[rail_channel_number].baud
-                rail_rssi = frame.payload.appended_info.get_rssi_value()
-                # convert RAIL radio information to PCAP format
-                pcap_region_id = RAILZwaveRegionID_to_ZwavePCAPRegionID[rail_region_id]
-                pcap_data_rate = RAILZwaveBaud_to_ZwavePCAPDataRate[rail_baud]
-                pcap_frequency = rail_region.channels[rail_channel_number].frequency
-                # FCS: 1 for R1 and R2, 2 for R3
-                # TODO: create an enum or a map for that instead of hardcoded values
-                pcap_fcs = 2 if pcap_data_rate == ZwavePCAPDataRate.R3.value else 1
-                pcap_rss = float(rail_rssi)
-
-                # https://ietf-opsawg-wg.github.io/draft-ietf-opsawg-pcap/draft-ietf-opsawg-pcap.html#name-packet-record
-                cur_time = (reference_time + frame.timestamp)
-                cur_time_second = cur_time // (10 ** 6)
-                cur_time_microsecond = cur_time % (10 ** 6)
-                # 32 is TAP header + TAP TLVs
-                packet_length = 32 + len(frame.payload.ota_packet_data)
-
-                # PCAP Packet Record
-                file.write(
-                    struct.pack(
-                        "<IIII",
-                        cur_time_second,    # Timestamp (seconds)
-                        cur_time_microsecond,   # Timestamp (microseconds)
-                        packet_length,          # Captured packet length
-                        packet_length           # Original packet length
-                    )
-                )
-
-                # PCAP Packet Data
-                # TAP header
-                file.write(
-                    struct.pack(
-                        "<BBH",
-                        1,  # version
-                        0,      # reserved (0)
-                        7       # length of TLVs section (7 32bit words with all 3 TLVs)
-                    )
-                )
-
-                # TAP TLVs
-                # Frame Check Sequence
-                file.write(
-                    struct.pack(
-                        "<HHB3s",
-                        0,                      # Type = FCS (0)
-                        1,                          # length of FCS TLV = 1
-                        pcap_fcs,                   # FCS Type
-                        int(0).to_bytes(length=3)   # padding (0)
-                    )
-                )
-
-                # Receive Signal Strength
-                file.write(
-                    struct.pack(
-                        "<HHf",
-                        1,      # Type = RSS (1)
-                        4,          # length of RSS TLV = 1
-                        pcap_rss    # RSS in dBm
-                    )
-                )
-
-                # Radio Frequency Information
-                file.write(
-                    struct.pack(
-                        "<HHHHI",
-                        2,          # Type = RF INFO (2)
-                        8,              # length of RF INFO TLV = 8
-                        pcap_region_id, # Region
-                        pcap_data_rate, # Data Rate
-                        pcap_frequency  # Frequency in kHzs
-                    )
-                )
-
-                # Z-Wave payload
-                file.write(frame.payload.ota_packet_data)
-
-    @staticmethod
-    def _create_zlf_file(filename: str) -> None:
-        """Creates a new zlf file.
-        :param filename: File path
-        """
-        with open(filename, "wb") as file:
-            file.write(bytes([104]))  # ZLF_VERSION
-            file.write(bytes([0x00] * (2048 - 3)))
-            file.write(bytes([0x23, 0x12]))
-
-    @staticmethod
-    def _dump_to_zlf_file(filename: str, dch_packet: bytes) -> None:
-        """Dumps frame to ZLF file.
-        :param filename: File path
-        :param dch_packet: DCH packet directly from WSTK/WPK/TB
-        """
-        # Hacky timestamp stuff from C# datetime format. a Datetime format is made of a kind part on 2 bits
-        # and a tick part on the remainder 62 bits.
-
-        # convert nanoseconds to ticks.
-        zlf_timestamp = time.time_ns() // 100
-        # set the kind to: UTC https://learn.microsoft.com/en-us/dotnet/api/system.datetimekind?view=net-8.0#fields
-        zlf_timestamp |= (1 << 63)
-        # add base unix timestamp in tick to current
-        zlf_timestamp += BASE_UNIX_TIMESTAMP_IN_TICKS
-        with open(filename, "ab") as file:
-            data_chunk = bytearray()
-            data_chunk.extend(zlf_timestamp.to_bytes(8, 'little'))
-            # properties: 0x00 is RX | 0x01 is TX (but we set it to 0x00 all the time)
-            data_chunk.append(0x00)
-            data_chunk.extend((len(dch_packet)).to_bytes(4, 'little'))
-            data_chunk.extend(dch_packet)
-            # api_type: some value in Zniffer, it has to be there.
-            data_chunk.append(0xF5)
-            file.write(data_chunk)
-
     def _pti_logger_thread(self, logger_name: str):
-        filename = f"{self._ctxt.current_test_logdir}/{logger_name}.zlf"
-        filename_pcap = f"{self._ctxt.current_test_logdir}/{logger_name}.pcap"
         # get sub logger here from self, and re-direct output in file.
         # redirect output from port 4905.
-        DevWpk._create_zlf_file(filename)
-        DevWpk._create_pcap_file(filename_pcap)
+        zlf_file = ZlfFileWriter(self._ctxt.current_test_logdir / f"{logger_name}.zlf")
+        pcap_file = PcapFileWriter(self._ctxt.current_test_logdir / f"{logger_name}.pcap")
         dch_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         dch_socket.connect((self.hostname, self.dch_port))
 
@@ -477,10 +322,9 @@ class DevWpk(object):
                 dch_packet = dch_socket.recv(2048)
                 if dch_packet == b'':
                     continue
-                    # raise Exception('DCH socket connection broken')
-                self._dump_to_zlf_file(filename, dch_packet)
+                zlf_file.write_datachunk(dch_packet)
                 dch_packet = DchPacket.from_bytes(dch_packet)
-                self._dump_to_pcap_file(filename_pcap, dch_packet, self.time_server.reference_time)
+                pcap_file.write_packet(dch_packet, self.time_server.reference_time)
                 # if dch_packet is not None:
                 #     self.logger.info(f"dch packet nb: {len(dch_packet.frames)}")
                 #     for dch_frame in dch_packet.frames:
