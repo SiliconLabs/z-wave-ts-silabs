@@ -194,65 +194,11 @@ class RAILZwaveRegionID(IntEnum):
         return list(filter(lambda r: r.is_4ch(), iter(RAILZwaveRegionID)))
 
 
-# as defined in https://gitlab.com/exegin/zwave-g9959-tap/
-class ZwavePCAPRegionID(IntEnum):
-    EU = 0x01   # 1 = European Union
-    US = 0x02   # 2 = United States
-    HK = 0x03   # 3 = Hong Kong
-    ANZ = 0x04  # 4 = Australia and New Zealand
-    MY = 0x05   # 5 = Malaysia
-    IN = 0x06   # 6 = India
-    JP = 0x07   # 7 = Japan
-    IL = 0x08   # 8 = Israel
-    KR = 0x09   # 9 = Korea
-    RU = 0x0A   # 10 = Russia
-    CN = 0x0B   # 11 = China
-    # Not defined in the exegin spec
-    EU_LR = 0x0C
-    US_LR = 0x0D
-
-RAILZwaveRegionID_to_ZwavePCAPRegionID: dict[int, int] = {
-    RAILZwaveRegionID.EU.value: ZwavePCAPRegionID.EU.value,
-    RAILZwaveRegionID.US.value: ZwavePCAPRegionID.US.value,
-    RAILZwaveRegionID.HK.value: ZwavePCAPRegionID.HK.value,
-    RAILZwaveRegionID.ANZ.value: ZwavePCAPRegionID.ANZ.value,
-    RAILZwaveRegionID.MY.value: ZwavePCAPRegionID.MY.value,
-    RAILZwaveRegionID.IN.value: ZwavePCAPRegionID.IN.value,
-    RAILZwaveRegionID.JP.value: ZwavePCAPRegionID.JP.value,
-    RAILZwaveRegionID.IL.value: ZwavePCAPRegionID.IL.value,
-    RAILZwaveRegionID.KR.value: ZwavePCAPRegionID.KR.value,
-    RAILZwaveRegionID.RU.value: ZwavePCAPRegionID.RU.value,
-    RAILZwaveRegionID.CN.value: ZwavePCAPRegionID.CN.value,
-    RAILZwaveRegionID.EU_LR1.value: ZwavePCAPRegionID.EU_LR.value,
-    RAILZwaveRegionID.EU_LR2.value: ZwavePCAPRegionID.EU_LR.value,
-    RAILZwaveRegionID.EU_LR3.value: ZwavePCAPRegionID.EU_LR.value,
-    RAILZwaveRegionID.US_LR1.value: ZwavePCAPRegionID.US_LR.value,
-    RAILZwaveRegionID.US_LR2.value: ZwavePCAPRegionID.US_LR.value,
-    RAILZwaveRegionID.US_LR3.value: ZwavePCAPRegionID.US_LR.value,
-}
-
-
 class RAILZwaveBaud(IntEnum):
     BAUD_9600 = 0       # R1
     BAUD_40K = 1        # R2
     BAUD_100K = 2       # R3
     BAUD_100K_LR = 3    # R3 for LR ? (RAIL treats the baud rate of LR with a different enum value)
-
-
-class ZwavePCAPDataRate(IntEnum):
-    R1 = 1  # 9.6 kbit/s
-    R2 = 2  # 40 kbit/s
-    R3 = 3  # 100 kbit/s
-    # not defined in the exegin spec (not sure if really useful though)
-    R4 = 4  # 100 kbit/s Long Range
-
-
-RAILZwaveBaud_to_ZwavePCAPDataRate: dict[int, int] = {
-    RAILZwaveBaud.BAUD_9600.value: ZwavePCAPDataRate.R1.value,
-    RAILZwaveBaud.BAUD_40K.value: ZwavePCAPDataRate.R2.value,
-    RAILZwaveBaud.BAUD_100K.value: ZwavePCAPDataRate.R3.value,
-    RAILZwaveBaud.BAUD_100K_LR.value: ZwavePCAPDataRate.R4.value
-}
 
 
 @dataclass
@@ -379,3 +325,76 @@ RAILZwaveRegions: dict[int, RAILZwaveRegion] = {
         3: None
     })
 }
+
+
+class ZwavePcapTapTLVType(IntEnum):
+    FCS = 0
+    RSS = 1
+    RF_INFO = 2
+
+
+class ZwavePcapTapTLVLength(IntEnum):
+    FCS = 1
+    RSS = 1
+    RF_INFO = 2
+
+
+class ZwavePcapFcsType(IntEnum):
+    RESERVED = 0
+    NON_CORRECTING_FCS_8_BIT = 1
+    CRC_CCITT_16_BIT = 2
+
+
+# as defined in https://gitlab.com/exegin/zwave-g9959-tap/
+class ZwavePcapRegionID(IntEnum):
+    EU = 0x01   # 1 = European Union
+    US = 0x02   # 2 = United States
+    HK = 0x03   # 3 = Hong Kong
+    ANZ = 0x04  # 4 = Australia and New Zealand
+    MY = 0x05   # 5 = Malaysia
+    IN = 0x06   # 6 = India
+    JP = 0x07   # 7 = Japan
+    IL = 0x08   # 8 = Israel
+    KR = 0x09   # 9 = Korea
+    RU = 0x0A   # 10 = Russia
+    CN = 0x0B   # 11 = China
+    # Not defined in the exegin spec
+    EU_LR = 0x0C
+    US_LR = 0x0D
+
+RAILZwaveRegionID_to_ZwavePcapRegionID: dict[int, int] = {
+    RAILZwaveRegionID.EU.value: ZwavePcapRegionID.EU.value,
+    RAILZwaveRegionID.US.value: ZwavePcapRegionID.US.value,
+    RAILZwaveRegionID.HK.value: ZwavePcapRegionID.HK.value,
+    RAILZwaveRegionID.ANZ.value: ZwavePcapRegionID.ANZ.value,
+    RAILZwaveRegionID.MY.value: ZwavePcapRegionID.MY.value,
+    RAILZwaveRegionID.IN.value: ZwavePcapRegionID.IN.value,
+    RAILZwaveRegionID.JP.value: ZwavePcapRegionID.JP.value,
+    RAILZwaveRegionID.IL.value: ZwavePcapRegionID.IL.value,
+    RAILZwaveRegionID.KR.value: ZwavePcapRegionID.KR.value,
+    RAILZwaveRegionID.RU.value: ZwavePcapRegionID.RU.value,
+    RAILZwaveRegionID.CN.value: ZwavePcapRegionID.CN.value,
+    RAILZwaveRegionID.EU_LR1.value: ZwavePcapRegionID.EU_LR.value,
+    RAILZwaveRegionID.EU_LR2.value: ZwavePcapRegionID.EU_LR.value,
+    RAILZwaveRegionID.EU_LR3.value: ZwavePcapRegionID.EU_LR.value,
+    RAILZwaveRegionID.US_LR1.value: ZwavePcapRegionID.US_LR.value,
+    RAILZwaveRegionID.US_LR2.value: ZwavePcapRegionID.US_LR.value,
+    RAILZwaveRegionID.US_LR3.value: ZwavePcapRegionID.US_LR.value,
+}
+
+
+class ZwavePcapDataRate(IntEnum):
+    R1 = 1  # 9.6 kbit/s
+    R2 = 2  # 40 kbit/s
+    R3 = 3  # 100 kbit/s
+    # not defined in the exegin spec (not sure if really useful though)
+    R4 = 4  # 100 kbit/s Long Range
+
+
+RAILZwaveBaud_to_ZwavePcapDataRate: dict[int, int] = {
+    RAILZwaveBaud.BAUD_9600.value: ZwavePcapDataRate.R1.value,
+    RAILZwaveBaud.BAUD_40K.value: ZwavePcapDataRate.R2.value,
+    RAILZwaveBaud.BAUD_100K.value: ZwavePcapDataRate.R3.value,
+    RAILZwaveBaud.BAUD_100K_LR.value: ZwavePcapDataRate.R4.value
+}
+

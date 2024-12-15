@@ -51,3 +51,43 @@ class ZlfFileWriter(object):
             # api_type: some value in Zniffer, it has to be there, 0xF5 is for PTI.
             data_chunk.append(0xF5)
             file.write(data_chunk)
+
+
+class ZlfFileReader(object):
+    def __init__(self, file_path: Path):
+        self.file_path = file_path
+        if not self.file_path.exists():
+            raise FileNotFoundError
+        self.datachunks = self._open()
+        self.current_index = 0
+
+    def _open(self) -> bytes:
+        with open(self.file_path, "rb") as file:
+            file_content = file.read()
+            assert file_content[:_ZLF_HEADER_SIZE] == _ZLF_HEADER
+            return file_content[_ZLF_HEADER_SIZE:]
+
+    def read_datachunk(self) -> DchPacket | None:
+        if self.current_index >= len(self.datachunks):
+            return None
+
+        timestamp = self.datachunks[self.current_index:self.current_index+8]
+        self.current_index += 8
+
+        properties = self.datachunks[self.current_index]
+        self.current_index += 1
+
+        length = int.from_bytes(self.datachunks[self.current_index:self.current_index+4], byteorder='little')
+        self.current_index += 4
+
+        payload = self.datachunks[self.current_index:self.current_index+length]
+        self.current_index += length
+
+        payload_type = self.datachunks[self.current_index]
+        self.current_index += 1
+
+        dch_packet: DchPacket | None = None
+        if payload_type == 0xF5:
+            dch_packet = DchPacket.from_bytes(payload)
+
+        return dch_packet
