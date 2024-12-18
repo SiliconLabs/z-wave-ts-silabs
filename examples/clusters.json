@@ -142,5 +142,47 @@
       "serial": "440332395",
       "board": "brd4206a"
     }
+  ],
+  "stdv2-1": [
+    {
+      "serial": "440292785",
+      "board": "brd4401c"
+    },
+    {
+      "serial": "440335970",
+      "board": "brd4401c"
+    },
+    {
+      "serial": "440336939",
+      "board": "brd4401c"
+    },
+    {
+      "serial": "440288129",
+      "board": "brd4401c"
+    },
+    {
+      "serial": "440292751",
+      "board": "brd4401c"
+    },
+    {
+      "serial": "440288220",
+      "board": "brd4401c"
+    },
+    {
+      "serial": "440311488",
+      "board": "brd4401c"
+    },
+    {
+      "serial": "440311203",
+      "board": "brd4401c"
+    },
+    {
+      "serial": "440288240",
+      "board": "brd4401c"
+    },
+    {
+      "serial": "440332385",
+      "board": "brd4401c"
+    }
   ]
 }
