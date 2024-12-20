@@ -156,6 +156,9 @@ class DevWpk(object):
     def target_reset(self):
         """Resets the radio board plugged into the WPK."""
         self._run_admin("target reset 1")
+        # Make sure the radio board (target) connected to the WPK is powered on before leaving target_reset()
+        if not self.is_target_status_ok():
+            self.logger.debug("target status is not ok after target reset")
 
     @property
     def radio_board(self) -> str:
