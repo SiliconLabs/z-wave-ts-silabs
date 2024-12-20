@@ -22,6 +22,8 @@ class DevRailtest(Device):
 
     def rail_region_id(self, region: str):
         rail_region = region.replace('REGION_', '') if 'REGION_' in region else region
+        if '_LR' in rail_region:
+            rail_region = rail_region.replace('_LR', '_LR3')
         return RAILZwaveRegionID[rail_region].value - 1 # RAILZwaveRegionID are all offset by 1 in railtest CLI
 
     def _run_cmd(self, command: str) -> str:
