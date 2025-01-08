@@ -159,6 +159,7 @@ class DevWpk(object):
         # Make sure the radio board (target) connected to the WPK is powered on before leaving target_reset()
         if not self.is_target_status_ok():
             self.logger.debug("target status is not ok after target reset")
+        time.sleep(0.01) # wait 10ms before returning to leave enough time for the chip to boot up
 
     @property
     def radio_board(self) -> str:
