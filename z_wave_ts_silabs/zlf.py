@@ -15,7 +15,7 @@ _ZLF_HEADER_SIZE: int = 2048
 _ZLF_HEADER: bytes = bytes([0x68] + [0x00] * (_ZLF_HEADER_SIZE-3) + [0x23, 0x12])
 
 _ZLF_DATACHUNK_HEADER_SIZE: int = 5
-_ZLF_API_TYPE_ZNIFFER: int = 0xF5
+_ZLF_API_TYPE_ZNIFFER: int = 0xF5 #  0xF5 is for PTI
 
 
 class ZlfFileWriter(object):
@@ -48,8 +48,8 @@ class ZlfFileWriter(object):
             data_chunk.append(0x00)
             data_chunk.extend((len(dch_packet)).to_bytes(4, 'little'))
             data_chunk.extend(dch_packet)
-            # api_type: some value in Zniffer, it has to be there, 0xF5 is for PTI.
-            data_chunk.append(0xF5)
+            # api_type: some value in Zniffer, it has to be there
+            data_chunk.append(_ZLF_API_TYPE_ZNIFFER)
             file.write(data_chunk)
 
 
