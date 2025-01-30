@@ -83,7 +83,7 @@ class DevWpk(object):
         self.logger = logging.getLogger(f"{self.__class__.__name__}-{self.serial_no}")
         self._pti_thread: threading.Thread | None = None
         self._pti_thread_stop_event: threading.Event = threading.Event()
-        self._target_devinfo: TargetDevInfo | None = None
+        self.target_devinfo: TargetDevInfo = self._get_target_devinfo()
 
         # set dch version to 3
         if self.dch_message_version != 3:
@@ -180,7 +180,11 @@ class DevWpk(object):
         raise Exception("Could not get radio board name")
 
     def _get_target_devinfo(self) -> TargetDevInfo:
-        device_info_output = self.commander_cli.device_info()
+        device_info_output = ''
+        try:
+            device_info_output = self.commander_cli.device_info()
+        except Exception as e:
+            self.logger.debug(f"Could not get device info: {e}")
         part_number = flash_size = sram_size = eui64 = ''
         for line in device_info_output.splitlines():
             if 'Part Number' in line:
@@ -192,15 +196,6 @@ class DevWpk(object):
             if 'Unique ID' in line:
                 eui64 = line.split(':')[1].strip()
         return TargetDevInfo(part_number, flash_size, sram_size, eui64)
-
-    @property
-    def target_devinfo(self) -> TargetDevInfo:
-        """Gets the target's cached Dev Info.
-        :return: TargetDevInfo dataclass
-        """
-        if self._target_devinfo is None:
-            self._target_devinfo = self._get_target_devinfo()
-        return self._target_devinfo
 
     @property
     def dch_message_version(self) -> int:
