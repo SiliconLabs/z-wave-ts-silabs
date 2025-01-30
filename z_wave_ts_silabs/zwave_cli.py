@@ -36,7 +36,12 @@ class DevZwaveCli(DevZwave):
           self.telnet_client = None
 
      def _run_cmd(self, command: str) -> str:
-          self.telnet_client.write(bytes(f'{command}\n' ,encoding='ascii'))
+          try:
+               self.telnet_client.write(bytes(f'{command}\n' ,encoding='ascii'))
+          except BrokenPipeError as e: # single retry of the command
+               self.telnet_client.close()
+               self.telnet_client = telnetlib.Telnet(self.wpk.hostname, '4901', 1)
+               self.telnet_client.write(bytes(f'{command}\n' ,encoding='ascii'))
           return self.telnet_client.read_until(b'\n> ', timeout=1).decode('ascii')
 
      def set_learn_mode(self) -> None:

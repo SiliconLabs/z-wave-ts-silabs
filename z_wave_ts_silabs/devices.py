@@ -133,7 +133,12 @@ class DevWpk(object):
         :param command: String command
         :return: string result
         """
-        self.telnet_client.write(bytes(f'{command}\r\n' ,encoding='ascii'))
+        try:
+            self.telnet_client.write(bytes(f'{command}\r\n' ,encoding='ascii'))
+        except BrokenPipeError as e: # single retry of the command
+            self.telnet_client.close()
+            self.telnet_client = telnetlib.Telnet(self.hostname, port=self.admin_port)
+            self.telnet_client.write(bytes(f'{command}\r\n' ,encoding='ascii'))
         return self.telnet_client.read_until(bytes(f'\r\n{self.telnet_prompt}', encoding='ascii'), timeout=1).decode('ascii')
 
     def reset(self):
