@@ -1,7 +1,6 @@
 from __future__ import annotations
 import os
 import re
-import struct
 import time
 import select
 import socket
@@ -54,8 +53,6 @@ class DevTimeServer(object):
 
 class DevWpk(object):
     """Represents a WPK board. 
-    inspired from DevWstk class in witef-core,
-    this one here uses commander instead of the Jlink lib.
     """
 
     VCOM_PORT_OFFSET = 1
@@ -79,7 +76,6 @@ class DevWpk(object):
         except:
             raise Exception(f"Error trying to connect to {hostname}")
         self.telnet_prompt = self.telnet_client.read_some().decode('ascii')
-        self.target_dsk: str | None = None
         self.logger = logging.getLogger(f"{self.__class__.__name__}-{self.serial_no}")
         self._pti_thread: threading.Thread | None = None
         self._pti_thread_stop_event: threading.Event = threading.Event()
@@ -267,13 +263,6 @@ class DevWpk(object):
         self.commander_cli.device_recover()
         self.commander_cli.device_pageerase('@userdata')
 
-    def get_zwave_dsk_from_flash(self) -> str:
-        cmd_output = self.commander_cli.device_zwave_qrcode()
-        qr_code = re.search(r'[0-9]{90,}', cmd_output.splitlines()[0])
-        if qr_code:
-            self.target_dsk = qr_code.group()[12:53]
-        return self.target_dsk
-
     def flash_target(self, firmware_path: str):
         self.commander_cli.flash(firmware_path)
 
@@ -292,8 +281,6 @@ class DevWpk(object):
         # flash the firmware
         self.flash_target(firmware_path)
 
-        # store the target dsk in self.target_dsk for later use (the Z-Wave CLI on End Devices provides a similar option).
-        self.get_zwave_dsk_from_flash()
 
     def flash_zwave_region_token(self, region: str):
         # this is for compatibility reasons with tools that use only the abbreviation for the region and not the full REGION_<abbreviation>.

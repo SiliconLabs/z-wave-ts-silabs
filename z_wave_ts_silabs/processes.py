@@ -167,9 +167,6 @@ class CommanderCli(object):
     def device_pageerase(self, region: str):
         return self._run_commander_cli(f'device pageerase --region {region}')
 
-    def device_zwave_qrcode(self):
-        return self._run_commander_cli(f'device zwave-qrcode --timeout 2000')
-
     def flash(self, firmware_path):
         return self._run_commander_cli(f'flash {firmware_path}')
 
