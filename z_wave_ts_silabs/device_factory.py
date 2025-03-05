@@ -4,7 +4,7 @@ from .devices import Device, DevCluster, DevZwave
 from .railtest import DevRailtest
 from .session_context import SessionContext
 from .zwave_cli import DevZwaveDoorLockKeypad, DevZwaveLedBulb, DevZwaveMultilevelSensor, DevZwavePowerStrip, DevZwaveSensorPIR, DevZwaveSwitchOnOff, DevZwaveWallController
-from .zwave_ncp import DevZwaveNcpSerialApiController, DevZwaveNcpSerialApiEndDevice, DevZwaveNcpZniffer, DevZwaveNcpZnifferPti
+from .zwave_ncp import DevZwaveNcpSerialApiController, DevZwaveNcpSerialApiEndDevice, DevZwaveNcpZniffer
 
 
 # This class is responsible for spawning the different types of devices. (Nodes in z-wave-test-system).
@@ -160,6 +160,3 @@ class DeviceFactory(object):
 
     def zniffer(self, region: ZwaveRegion = 'REGION_EU') -> DevZwaveNcpZniffer:
         return self._spawn(DevZwaveNcpZniffer, region)
-
-    def zniffer_pti(self, region: ZwaveRegion = 'REGION_EU') -> DevZwaveNcpZnifferPti:
-        return self._spawn(DevZwaveNcpZnifferPti, region)

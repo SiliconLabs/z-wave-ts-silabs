@@ -290,12 +290,12 @@ def test_device_power_on_and_off(session_ctxt: SessionContext, device_factory: D
     railtest.tx(packet, region, 0) # send it again, it should be acked
 
 @pytest.mark.parametrize('region', ['REGION_EU'])
-def test_with_zniffer_pti(session_ctxt: SessionContext, device_factory: DeviceFactory, region: ZwaveRegion):
+def test_with_zniffer(session_ctxt: SessionContext, device_factory: DeviceFactory, region: ZwaveRegion):
     controller = device_factory.serial_api_controller(region)
     zpc = ZwaveGwZpc(controller.region, session_ctxt, controller.pty, controller.logger)
 
     end_device_1 = device_factory.switch_on_off(region)
-    zniffer_pti = device_factory.zniffer_pti(region)
+    zniffer = device_factory.zniffer(region)
 
     # unsecure inclusion
     zpc.add_node()
