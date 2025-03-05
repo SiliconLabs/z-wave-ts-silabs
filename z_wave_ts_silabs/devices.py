@@ -448,7 +448,7 @@ class Device(metaclass=ABCMeta):
 class DevZwave(Device, metaclass=ABCMeta):
     """Base class for Z-Wave devices."""
     
-    def __init__(self, ctxt: SessionContext, device_number: int, wpk: DevWpk, region: ZwaveRegion, debug: bool = False):
+    def __init__(self, ctxt: SessionContext, device_number: int, wpk: DevWpk, region: ZwaveRegion):
         """Initializes the device.
         :param device_number: Device number (helps with logger)
         :param wpk: WPK hosting the radio board
@@ -463,9 +463,6 @@ class DevZwave(Device, metaclass=ABCMeta):
 
         # Unify exposes this as an attribute called: SerialNumber, thus the name
         self.serial_number = f"h'{self.wpk.target_devinfo.unique_id.upper()}"
-
-        # self._firmware_file is handled by the Device class, it specifically puts aside firmware with DEBUG in their file name
-        # TODO: handle debug firmwares
 
         # TODO: we should check ZGM130 -> ncp controller needs to be flashed with sample keys
         if 'ncp_serial_api_controller' in self.app_name():
