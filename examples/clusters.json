@@ -1,18 +1,4 @@
 {
-  "manual-0": [
-    {
-      "serial": "440332391",
-      "board": "brd4205b"
-    },
-    {
-      "serial": "440311455",
-      "board": "brd4205b"
-    },
-    {
-      "serial": "440311485",
-      "board": "brd4205b"
-    }
-  ],
   "stdv1-1": [
     {
       "serial": "440311460",
