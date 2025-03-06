@@ -185,30 +185,22 @@ class CommanderCli(object):
 
 class Mosquitto(BackgroundProcess):
 
-    def __init__(self, ctxt: SessionContext, sock_path: Path) -> None:
+    def __init__(self, ctxt: SessionContext) -> None:
         mosquitto_path = shutil.which('mosquitto', path=os.environ['PATH']+':/usr/sbin')
         if mosquitto_path is None:
             raise Exception('mosquitto not found on system')
 
-        mosquitto_config_file_path = f"{ctxt.current_test_logdir}/mosquitto.conf"
-        with open(mosquitto_config_file_path, 'w') as f:
-            f.write(
-                f"allow_anonymous true\n"
-                f"listener 0 {sock_path}\n"
-            )
-
-        cmd_line = f"{mosquitto_path} -c {mosquitto_config_file_path}"
-        super().__init__(ctxt, 'mosquitto', cmd_line)
+        super().__init__(ctxt, 'mosquitto', mosquitto_path)
 
 
 class MosquittoSub(BackgroundProcess):
 
-    def __init__(self, ctxt: SessionContext, sock_path: Path, topic: str = '#') -> None:
+    def __init__(self, ctxt: SessionContext, topic: str = 'ucl/#'):
         mosquitto_sub_path = shutil.which('mosquitto_sub', path=os.environ['PATH']+':/usr/sbin')
         if mosquitto_sub_path is None:
             raise Exception('mosquitto_sub not found on system')
 
-        cmd_line = f"{mosquitto_sub_path} --unix {sock_path} -F '@Y-@m-@d @H:@M:@S %t %p' -t '{topic}'"
+        cmd_line = f"{mosquitto_sub_path} -F '@Y-@m-@d @H:@M:@S %t %p' -t '{topic}'"
         # naming the process 'mqtt' so that the log file bears the name mqtt.log
         super().__init__(ctxt, 'mqtt', cmd_line)
 
@@ -342,12 +334,11 @@ class UicImageProvider(BackgroundProcess):
 
 class Zpc(BackgroundProcess):
 
-    def __init__(self, ctxt: SessionContext, region: str, tty_path: str, mqtt_sock_path: Path, update_file: str | None = None):
+    def __init__(self, ctxt: SessionContext, region: str, tty_path: str, update_file: str | None = None):
 
         self.mqtt_main_process: Mosquitto | None = None
         self.mqtt_logs_process: MosquittoSub | None = None
         self.tty_path: str = tty_path
-        self.mqtt_host: Path = mqtt_sock_path
 
         uic_config_file_path = f"{ctxt.current_test_logdir}/uic.cfg"
         with open(uic_config_file_path, "w") as uic_cfg:
@@ -382,7 +373,7 @@ class Zpc(BackgroundProcess):
         else:
             # it's useless to start mosquitto if we're doing an update of the ncp
             # that's why we only start it here
-            self._start_mqtt_processes(ctxt, self.mqtt_host)
+            self._start_mqtt_processes(ctxt)
 
             zpc_info_regex = r"ZPC HomeID (?P<homeid>([A-F]|[0-9]){8}) - NodeID (?P<nodeid>(\d{1,3}))"
             self.patterns = {
@@ -403,9 +394,6 @@ class Zpc(BackgroundProcess):
             f"log:\n"
             f"  level: '{log_level}'\n"
             f"mapdir: '{ctxt.uic}/build/applications/zpc/components/dotdot_mapper/rules'\n"
-            f"mqtt:\n"
-            f"  host: {self.mqtt_host}\n"
-            f"  port: 0\n"
             f"zpc:\n"
             f"  inclusion_protocol_preference: '{protocol_pref}'\n"
             f"  normal_tx_power_dbm: {tx_power}\n"
@@ -427,11 +415,11 @@ class Zpc(BackgroundProcess):
         return uic_configuration
 
 
-    def _start_mqtt_processes(self, ctxt: SessionContext, sock_path: Path) -> None:
-        self.mqtt_main_process = Mosquitto(ctxt, sock_path)
+    def _start_mqtt_processes(self, ctxt: SessionContext) -> None:
+        self.mqtt_main_process = Mosquitto(ctxt)
         if not self.mqtt_main_process.is_alive:
             raise Exception("mosquitto process did not start or died unexpectedly")
-        self.mqtt_logs_process = MosquittoSub(ctxt, sock_path)
+        self.mqtt_logs_process = MosquittoSub(ctxt)
         if not self.mqtt_logs_process.is_alive:
             raise Exception("mosquitto_sub process did not start or died unexpectedly")
 

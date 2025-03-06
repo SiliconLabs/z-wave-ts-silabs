@@ -34,7 +34,6 @@ class ZwaveGwZpc(object):
         self.ctxt = ctxt
         self.ncp_pty = ncp_pty
 
-        self.mqtt_host = Path(self.ctxt.current_test_logdir / f"mqtt_sock_zpc") # TODO: take the device number as well
 
         if start_at_init:
             self.start()
@@ -45,7 +44,7 @@ class ZwaveGwZpc(object):
             return
 
         self.logger.debug('zpc process starting')
-        self.zpc_process = Zpc(self.ctxt, self.region, self.ncp_pty, self.mqtt_host)
+        self.zpc_process = Zpc(self.ctxt, self.region, self.ncp_pty)
         if not self.zpc_process.is_alive:
             raise Exception("zpc process did not start or died unexpectedly")
         self.logger.debug('zpc process started')
@@ -74,7 +73,7 @@ class ZwaveGwZpc(object):
             raise Exception("ZPC process is already running, cannot proceed with OTW update of NCP firmware")
 
         self.logger.debug('zpc_ncp_update process starting')
-        self.zpc_process = Zpc(self.ctxt, self.region, self.ncp_pty, self.mqtt_host, gbl_file)
+        self.zpc_process = Zpc(self.ctxt, self.region, self.ncp_pty, gbl_file)
         self.logger.debug('zpc_ncp_update process finished')
         self.zpc_process.stop()
         if self.zpc_process.is_alive:
@@ -253,13 +252,13 @@ class MqttClientZpc(object):
     def __init__(self, zpc: ZwaveGwZpc, timeout: float = 30):
         self.zpc = zpc
         self.logger = self.zpc.logger.getChild(f'{self.__class__.__name__}')
-
-        self.mqttc = mqtt.Client(mqtt.CallbackAPIVersion.VERSION2, transport='unix')
+        
+        self.mqttc = mqtt.Client(mqtt.CallbackAPIVersion.VERSION2)
         self.mqttc.on_connect = self._on_connect
         self.mqttc.on_message = self._on_message
 
         # We could make this configurable but for now we run on the host mqtt broker
-        self.mqttc.connect(zpc.mqtt_host.as_posix()) # keepalive is 60 by default, we only use a broker that's running on localhost
+        self.mqttc.connect('127.0.0.1') # port is 1883 and keepalive is 60 by default
         self.mqttc.loop_start()
 
         self.logger.debug('connected to broker')
