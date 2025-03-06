@@ -123,16 +123,9 @@ class BackgroundProcess(object):
 
 class CommanderCli(object):
 
-    def __init__(self, ctxt: SessionContext, hostname: str) -> None:
+    def __init__(self, ctxt: SessionContext, ip: str) -> None:
         self._ctxt = ctxt
-        self.hostname: str = hostname
-        self.ip_or_sn: str | None = None
-
-        if re.match(r'^[0-9]{9}$', self.hostname):
-            self.ip_or_sn = '--serialno'
-        else:
-            self.ip_or_sn = '--ip'
-            self.hostname = socket.gethostbyname(self.hostname)
+        self.ip: str = ip
 
         if not os.path.exists(ctxt.commander_cli):
             raise Exception('commander-cli not found on system')
@@ -141,7 +134,7 @@ class CommanderCli(object):
 
     def _run_commander_cli(self, cmd) -> str:
         cmd_output = ''
-        cmd_line = f"{self._commander_cli_path} {cmd} {self.ip_or_sn} {self.hostname}"
+        cmd_line = f"{self._commander_cli_path} {cmd} --ip {self.ip}"  # TODO: the --device should be provided to CommanderCli when instantiated to provide help on some intermittent issues
         p = Popen(
             shlex.split(cmd_line),
             stdin=DEVNULL,
@@ -181,7 +174,7 @@ class CommanderCli(object):
         return self._run_commander_cli(cmd_line)
 
     def spawn_rtt_logger_background_process(self, process_name: str):
-        cmd_line = f"{self._commander_cli_path} rtt connect --noreset {self.ip_or_sn} {self.hostname}"
+        cmd_line = f"{self._commander_cli_path} rtt connect --noreset --ip {self.ip}"
         self._rtt_logger_background_process = BackgroundProcess(ctxt=self._ctxt, name=process_name, cmd_line=cmd_line)
 
     def kill_rtt_logger_background_process(self):
@@ -224,7 +217,7 @@ class Socat(BackgroundProcess):
             pty_path_regex: None
         }
         cmd_line = f"{socat_path} -x -v -dd TCP:{hostname}:{port},nodelay PTY,rawer,sane"
-        super().__init__(ctxt, 'socat', cmd_line, self.patterns)
+        super().__init__(ctxt, f'socat-{hostname}', cmd_line, self.patterns)
         if self.patterns[pty_path_regex] is not None:
             self.pty_path = self.patterns[pty_path_regex].groupdict()['pty']
         else:

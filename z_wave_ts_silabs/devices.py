@@ -59,22 +59,22 @@ class DevWpk(object):
     ADMIN_PORT_OFFSET = 2
     DCH_PORT_OFFSET = 5
 
-    def __init__(self, ctxt: SessionContext, serial_no: str, hostname: str, time_server: DevTimeServer, vuart_port: int = 4900):
+    def __init__(self, ctxt: SessionContext, serial_no: str, ip: str, time_server: DevTimeServer, vuart_port: int = 4900):
         """Initializes the WPK board.
         :param serial_no: J-Link serial number
-        :param hostname: Device's IP address or hostname
+        :param ip: Device's IP address
         :param vuart_port: VUART port number (VCOM, admin and DCH port numbers are offsets)
         """
         self._ctxt = ctxt
         self.serial_no = int(serial_no)
-        self.hostname = hostname
+        self.ip = ip
         self.time_server = time_server
         self.vuart_port = vuart_port
-        self.commander_cli = CommanderCli(self._ctxt, self.hostname)
+        self.commander_cli = CommanderCli(self._ctxt, self.ip)
         try:
-            self.telnet_client = telnetlib.Telnet(host=self.hostname, port=self.admin_port)
+            self.telnet_client = telnetlib.Telnet(host=self.ip, port=self.admin_port)
         except:
-            raise Exception(f"Error trying to connect to {hostname}")
+            raise Exception(f"Error trying to connect to {self.ip}")
         self.telnet_prompt = self.telnet_client.read_some().decode('ascii')
         self.logger = logging.getLogger(f"{self.__class__.__name__}-{self.serial_no}")
         self._pti_thread: threading.Thread | None = None
@@ -88,7 +88,7 @@ class DevWpk(object):
         # no WPK is serving as time server yet.
         if time_server.server_address is None:
             self.setup_as_time_server() # will use self.time_server
-            self.time_server.server_address = socket.gethostbyname(self.hostname)
+            self.time_server.server_address = self.ip
         # a WPK is already acting as a time server.
         else:
             self.setup_as_time_client(time_server.server_address)
@@ -133,7 +133,7 @@ class DevWpk(object):
             self.telnet_client.write(bytes(f'{command}\r\n' ,encoding='ascii'))
         except BrokenPipeError as e: # single retry of the command
             self.telnet_client.close()
-            self.telnet_client = telnetlib.Telnet(self.hostname, port=self.admin_port)
+            self.telnet_client = telnetlib.Telnet(self.ip, port=self.admin_port)
             self.telnet_client.write(bytes(f'{command}\r\n' ,encoding='ascii'))
         return self.telnet_client.read_until(bytes(f'\r\n{self.telnet_prompt}', encoding='ascii'), timeout=1).decode('ascii')
 
@@ -142,7 +142,7 @@ class DevWpk(object):
         sys_reset_sys_output = self._run_admin("sys reset sys")
         if sys_reset_sys_output != b'':
             self.logger.debug(f"sys_reset_sys_output: {sys_reset_sys_output}")
-        self.telnet_client = telnetlib.Telnet(host=self.hostname, port=self.admin_port)
+        self.telnet_client = telnetlib.Telnet(host=self.ip, port=self.admin_port)
         self.telnet_prompt = self.telnet_client.read_some().decode('ascii')
 
     @staticmethod
@@ -301,7 +301,7 @@ class DevWpk(object):
         zlf_file = ZlfFileWriter(self._ctxt.current_test_logdir / f"{logger_name}.zlf")
         pcap_file = PcapFileWriter(self._ctxt.current_test_logdir / f"{logger_name}.pcap")
         dch_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        dch_socket.connect((self.hostname, self.dch_port))
+        dch_socket.connect((self.ip, self.dch_port))
 
         self.logger.debug("_pti_logger_thread started")
 

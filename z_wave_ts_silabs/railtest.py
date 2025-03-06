@@ -31,7 +31,7 @@ class DevRailtest(Device):
             self.telnet_client.write(bytes(f'{command}\r\n' ,encoding='ascii'))
         except BrokenPipeError as e: # single retry of the command
             self.telnet_client.close()
-            self.telnet_client = telnetlib.Telnet(self.wpk.hostname, '4901', 1)
+            self.telnet_client = telnetlib.Telnet(self.wpk.ip, '4901', 1)
             self.telnet_client.write(bytes(f'{command}\r\n' ,encoding='ascii'))
         return self.telnet_client.read_until(b'\r\n> ', timeout=1).decode('ascii')
 
@@ -40,7 +40,7 @@ class DevRailtest(Device):
             self.logger.debug(f"start() was called on a running instance of {self.__class__.__name__}")
             return
 
-        self.telnet_client = telnetlib.Telnet(self.wpk.hostname, '4901', 1)
+        self.telnet_client = telnetlib.Telnet(self.wpk.ip, '4901', 1)
         # send empty command to check if everything is working correctly
         if '>' not in self._run_cmd(''):
             raise Exception("This application does not have a CLI")

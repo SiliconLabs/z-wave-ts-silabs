@@ -1,6 +1,7 @@
 import os
 import json
 import pytest
+import socket
 import logging
 from pathlib import Path
 
@@ -67,8 +68,11 @@ def hw_cluster(session_ctxt: SessionContext, hw_clusters: Clusters, hw_cluster_n
 
     if hw_clusters.get(hw_cluster_name) is not None:
         for wpk in hw_clusters[hw_cluster_name]:
+            wpk_hostname = f"jlink{wpk.serial}.{session_ctxt.domain_name}"
+            wpk_ip = socket.gethostbyname(wpk_hostname)
+            _logger.info(f"wpk hostname: {wpk_hostname}, ip: {wpk_ip}")
             dev_wpks.append(
-                DevWpk(session_ctxt, wpk.serial, f"jlink{wpk.serial}.{session_ctxt.domain_name}", time_server=time_server)
+                DevWpk(session_ctxt, wpk.serial, wpk_ip, time_server=time_server)
             )
     yield DevCluster(hw_cluster_name, dev_wpks)
 

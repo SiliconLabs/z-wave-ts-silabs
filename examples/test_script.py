@@ -7,7 +7,7 @@ from z_wave_ts_silabs import SessionContext, DeviceFactory, ZwaveRegion, DevZwav
 def test_ncp_serial_api_controller_standalone(device_factory: DeviceFactory, region: ZwaveRegion):
     ncp_sapi_controller = device_factory.serial_api_controller(region)
 
-    ncp_sapi_controller.logger.info(f"NCP SAPI Controller hostname: {ncp_sapi_controller.wpk.hostname}")
+    ncp_sapi_controller.logger.info(f"NCP SAPI Controller ip: {ncp_sapi_controller.wpk.ip}")
     ncp_sapi_controller.logger.info(f"NCP SAPI Controller pty: {ncp_sapi_controller.pty}")
 
 

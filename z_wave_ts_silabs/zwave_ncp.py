@@ -17,7 +17,7 @@ class DevZwaveNcp(DevZwave):
             self.logger.debug(f"start() was called on a running instance of {self.__class__.__name__}")
             return
 
-        self.socat_process = Socat(self._ctxt, self.wpk.hostname, 4901)
+        self.socat_process = Socat(self._ctxt, self.wpk.ip, 4901)
         if not self.socat_process.is_alive:
             raise Exception("socat process did not start or died unexpectedly")
         self.pty = self.socat_process.pty_path
