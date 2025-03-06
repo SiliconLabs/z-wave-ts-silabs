@@ -404,7 +404,7 @@ class Device(metaclass=ABCMeta):
         self._ctxt: SessionContext = ctxt
         self._device_number: int = device_number
         self.wpk: DevWpk = wpk
-        self.region: str = region
+        self.region: ZwaveRegion = region
 
         # the path to the firmware of the device
         self._firmware_file: str | None = None
