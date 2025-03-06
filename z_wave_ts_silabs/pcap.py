@@ -51,7 +51,7 @@ class PcapFileWriter(object):
     def write_packet(self, dch_packet: DchPacket, reference_time: int):
         """Dumps frame to pcap file.
         :param dch_packet: parsed DCH packet from WSTK/WPK/TB containing Z-Wave frames
-        :param reference_time: reference time
+        :param reference_time: reference time in microseconds since epoch
         """
         if dch_packet is None:
             return
@@ -73,17 +73,18 @@ class PcapFileWriter(object):
                 pcap_rss = float(rail_rssi)
 
                 # https://ietf-opsawg-wg.github.io/draft-ietf-opsawg-pcap/draft-ietf-opsawg-pcap.html#name-packet-record
-                cur_time = (reference_time + frame.timestamp)
-                cur_time_second = cur_time // (10 ** 6)
-                cur_time_microsecond = cur_time % (10 ** 6)
+                # since reference time is given as microseconds we need to add both the reference time and the timestamp from the frame in microseconds
+                cur_time = reference_time + frame.get_timestamp_us()
+                cur_time_seconds = cur_time // (10 ** 6)
+                cur_time_microseconds = frame.timestamp % (10 ** 6)
                 packet_length = _PCAP_ZWAVE_TAP_HEADER_AND_TLVS_SIZE + len(frame.payload.ota_packet_data)
 
                 # PCAP Packet Record
                 file.write(
                     struct.pack(
                         "<IIII",
-                        cur_time_second,    # Timestamp (seconds)
-                        cur_time_microsecond,   # Timestamp (microseconds)
+                        cur_time_seconds,   # Timestamp (seconds)
+                        cur_time_microseconds,  # Timestamp (microseconds)
                         packet_length,          # Captured packet length
                         packet_length           # Original packet length
                     )

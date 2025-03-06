@@ -51,7 +51,7 @@ if __name__ == '__main__':
             dch_packet = DchPacket.from_bytes(dch_packet)
             if dch_packet is not None:
                 if reference_time == 0 and len(dch_packet.frames) > 0:
-                    reference_time = time.time_ns() // (10 ** 3) - dch_packet.frames[0].timestamp # update the reference time using the first reported timestamp
+                    reference_time = time.time_ns() // (10 ** 3) - dch_packet.frames[0].get_timestamp_us() # update the reference time using the first reported timestamp
 
                 print(f"dch packet nb: {len(dch_packet.frames)}")
                 for dch_frame in dch_packet.frames:

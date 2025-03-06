@@ -32,9 +32,9 @@ class DevTimeServer(object):
 
     def __init__(self):
         self._server_address: str | None = None
-        self._reference_time_host: int | None = None
-        self._reference_time_target: int | None = None
-        self._reference_time: int | None = None
+        self._reference_time_host: int | None = None    # in microseconds
+        self._reference_time_target: int | None = None  # in microseconds
+        self._reference_time: int | None = None         # in microseconds
 
     @property
     def server_address(self):
