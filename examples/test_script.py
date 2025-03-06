@@ -1,6 +1,6 @@
 import pytest
 import logging
-from z_wave_ts_silabs import SessionContext, DeviceFactory, ZwaveRegion, DevZwaveSwitchOnOff, ZwaveGwZpc
+from z_wave_ts_silabs import SessionContext, DeviceFactory, ZwaveRegion, DevZwaveSwitchOnOff, ZwaveGwZpc, ZpcTestSystemInterface
 
 
 @pytest.mark.parametrize('region', ['REGION_EU'])
@@ -335,3 +335,49 @@ def test_cluster_stdv2_1_railtest(device_factory: DeviceFactory, region: ZwaveRe
     for i in range(10):
         _logger.info(f"spawning railtest {i} ...")
         device_factory.railtest(region)
+
+
+@pytest.mark.parametrize('region', ['REGION_EU'])
+def test_zpc_test_system(device_factory: DeviceFactory, region: ZwaveRegion, session_ctxt: SessionContext):
+    _logger = logging.getLogger(__name__)
+
+    controller = device_factory.serial_api_controller(region)
+    zpc_ts = ZpcTestSystemInterface(
+        controller_name=controller.name,
+        region=region,
+        ctxt=session_ctxt,
+        ncp_pty=controller.pty
+    )
+
+    controller2 = device_factory.serial_api_controller(region)
+    zpc_ts2 = ZpcTestSystemInterface(
+        controller_name=controller2.name,
+        region=region,
+        ctxt=session_ctxt,
+        ncp_pty=controller2.pty,
+    )
+
+    end_device_1 = device_factory.switch_on_off(region)
+
+    zpc_ts.get_keys()
+    zpc_ts.get_node_id()
+    zpc_ts.get_home_id()
+    zpc_ts2.get_node_id()
+    zpc_ts2.get_home_id()
+    zpc_ts.get_dsk()
+    zpc_ts.get_suc_node_id()
+    zpc_ts.is_sis()
+    zpc_ts.network_update()
+
+    with zpc_ts.start_learn_mode(1):
+        pass
+
+    zpc_ts.stop_learn_mode()
+    zpc_ts.add_node()
+    end_device_1.set_learn_mode()
+    zpc_ts.get_node_list()
+    zpc_ts.send(2, bytes([0x00, 0x01, 0x02]))
+    zpc_ts.send_nop(2)
+    zpc_ts.send_test_frame(2, 0)
+    zpc_ts.send_nif(2)
+    zpc_ts.request_nif(2)

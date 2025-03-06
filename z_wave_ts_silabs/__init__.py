@@ -10,3 +10,4 @@ from .zlf import *
 from .zwave_cli import *
 from .zwave_gw import *
 from .zwave_ncp import *
+from .zwave_zpc_test_system import *

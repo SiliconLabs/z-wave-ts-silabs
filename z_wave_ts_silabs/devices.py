@@ -413,8 +413,8 @@ class Device(metaclass=ABCMeta):
         self._firmware_file: str | None = None
 
         # the name that will be used by the logger for this device
-        self._name =f'{self.__class__.__name__}-{self._device_number}'
-        self.logger = logging.getLogger(self._name)
+        self.name = f'{self.__class__.__name__}-{self._device_number}'
+        self.logger = logging.getLogger(self.name)
 
         self._radio_board = self.wpk.radio_board.lower()
         self.logger.debug(self._radio_board)
@@ -430,7 +430,7 @@ class Device(metaclass=ABCMeta):
                 break
 
         if self._firmware_file is None:
-            raise Exception(f'No suitable firmware was found for {self._name}')
+            raise Exception(f'No suitable firmware was found for {self.name}')
 
         # Make sure the radio board (target) connected to the WPK is powered on before leaving Device.__init__()
         if not self.wpk.is_target_status_ok():
@@ -497,13 +497,13 @@ class DevZwave(Device, metaclass=ABCMeta):
         return f"zw-{self.home_id}-{self.node_id:04}"
 
     def start_zlf_capture(self) -> None:
-        self.wpk.start_pti_logger(self._name)
+        self.wpk.start_pti_logger(self.name)
 
     def stop_zlf_capture(self) -> None:
         self.wpk.stop_pti_logger()
 
     def start_log_capture(self) -> None:
-        self.wpk.start_rtt_logger(f"{self._name}_rtt")
+        self.wpk.start_rtt_logger(f"{self.name}_rtt")
 
     def stop_log_capture(self) -> None:
         self.wpk.stop_rtt_logger()
