@@ -2,25 +2,21 @@ import os
 import re
 import json
 import time
+import logging
+from pathlib import Path
 import paho.mqtt.client as mqtt
 
-from .definitions import AppName, ZwaveRegion
-from .devices import DevZwave, DevWpk
+from .definitions import ZwaveRegion
+from .devices import DevZwave
 from .processes import Zpc, UicUpvl, UicImageProvider
 from .session_context import SessionContext
 
 
-class DevZwaveGwZpc(DevZwave):
+class ZwaveGwZpc(object):
     """ZPC Z-Wave Gateway (based on UnifySDK)."""
 
-    @classmethod
-    def app_name(cls) -> AppName:
-        return 'zwave_ncp_serial_api_controller'
-
-    def __init__(self, ctxt: SessionContext, device_number: int, wpk: DevWpk, region: ZwaveRegion) -> None:
+    def __init__(self, region: ZwaveRegion, ctxt: SessionContext, ncp_pty: str, logger: logging.Logger, start_at_init: bool = True) -> None:
         """Initializes the device.
-        :param device_number: The device name
-        :param wpk: The wpk with the radio board acting as NCP
         :param region: The Z-Wave region of the device
         """
         self.zpc_process: Zpc | None = None
@@ -33,16 +29,22 @@ class DevZwaveGwZpc(DevZwave):
         self.command_status: dict | None = None
         self.dsk_list: dict | None = None
 
-        super().__init__(ctxt, device_number, wpk, region)
+        self.region = region
+        self.logger = logger.getChild(self.__class__.__name__)
+        self.ctxt = ctxt
+        self.ncp_pty = ncp_pty
 
-    # should be called by the device factory
+
+        if start_at_init:
+            self.start()
+
     def start(self):
         if self.zpc_process is not None and self.zpc_process.is_alive:
             self.logger.debug(f"start() was called on a running instance of {self.__class__.__name__}")
             return
 
         self.logger.debug('zpc process starting')
-        self.zpc_process = Zpc(self._ctxt, self.region, self.wpk.hostname)
+        self.zpc_process = Zpc(self.ctxt, self.region, self.ncp_pty)
         if not self.zpc_process.is_alive:
             raise Exception("zpc process did not start or died unexpectedly")
         self.logger.debug('zpc process started')
@@ -62,16 +64,16 @@ class DevZwaveGwZpc(DevZwave):
         # list of provisioned DSKs for S2 secured inclusion (not SmartStart ! see uic_upvl for that)
         self.dsk_list = []
 
-        # We pass a reference of this DevZwaveGwZpc object (self) to the MqttClientZpc to avoid duplicating attributes
+        # We pass a reference of this ZwaveGwZpc object (self) to the MqttClientZpc to avoid duplicating attributes
         self.mqtt_client = MqttClientZpc(self)
 
     # start the ZPC process in ncp_update mode, the stop() method should be called before calling this else it will fail
-    def ncp_update(self):
+    def ncp_update(self, gbl_file: str):
         if self.zpc_process is not None and self.zpc_process.is_alive:
             raise Exception("ZPC process is already running, cannot proceed with OTW update of NCP firmware")
 
         self.logger.debug('zpc_ncp_update process starting')
-        self.zpc_process = Zpc(self._ctxt, self.region, self.wpk.hostname, self.gbl_v255_file)
+        self.zpc_process = Zpc(self.ctxt, self.region, self.ncp_pty, gbl_file)
         self.logger.debug('zpc_ncp_update process finished')
         self.zpc_process.stop()
         if self.zpc_process.is_alive:
@@ -86,7 +88,7 @@ class DevZwaveGwZpc(DevZwave):
         if self.uic_upvl_process is not None:
             return
 
-        self.uic_upvl_process = UicUpvl(self._ctxt)
+        self.uic_upvl_process = UicUpvl(self.ctxt)
         if not self.uic_upvl_process.is_alive:
             raise Exception("uic_upvl process did not start or died unexpectedly")
 
@@ -107,7 +109,7 @@ class DevZwaveGwZpc(DevZwave):
             devices.append(entry)
 
         self.logger.info(devices)
-        self.uic_image_provider_process = UicImageProvider(self._ctxt, devices)
+        self.uic_image_provider_process = UicImageProvider(self.ctxt, devices)
         if not self.uic_image_provider_process.is_alive:
             raise Exception("uic_image_provider process did not start or died unexpectedly")
         # the UicImageProvider class only looks for v255 gbl files
@@ -247,7 +249,7 @@ class DevZwaveGwZpc(DevZwave):
 
 class MqttClientZpc(object):
 
-    def __init__(self, zpc: DevZwaveGwZpc , timeout: float = 30):
+    def __init__(self, zpc: ZwaveGwZpc, timeout: float = 30):
         self.zpc = zpc
         self.logger = self.zpc.logger.getChild(f'{self.__class__.__name__}')
         

@@ -12,6 +12,7 @@ import hashlib
 import logging
 import threading
 from typing import TextIO
+from pathlib import Path
 from datetime import datetime
 from subprocess import Popen, PIPE, STDOUT, DEVNULL
 
@@ -340,12 +341,11 @@ class UicImageProvider(BackgroundProcess):
 
 class Zpc(BackgroundProcess):
 
-    def __init__(self, ctxt: SessionContext, region: str, hostname: str, update_file: str | None = None):
+    def __init__(self, ctxt: SessionContext, region: str, tty_path: str, update_file: str | None = None):
 
         self.mqtt_main_process: Mosquitto | None = None
         self.mqtt_logs_process: MosquittoSub | None = None
-        self.socat_process: Socat | None = None
-        self.tty_path: str = self._start_socat_process(ctxt, hostname)
+        self.tty_path: str = tty_path
 
         uic_config_file_path = f"{ctxt.current_test_logdir}/uic.cfg"
         with open(uic_config_file_path, "w") as uic_cfg:
@@ -421,11 +421,6 @@ class Zpc(BackgroundProcess):
 
         return uic_configuration
 
-    def _start_socat_process(self, ctxt: SessionContext, hostname: str, port: int = 4901) -> str:
-        self.socat_process = Socat(ctxt, hostname, port)
-        if not self.socat_process.is_alive:
-            raise Exception("socat process did not start or died unexpectedly")
-        return self.socat_process.pty_path
 
     def _start_mqtt_processes(self, ctxt: SessionContext) -> None:
         self.mqtt_main_process = Mosquitto(ctxt)
@@ -437,8 +432,6 @@ class Zpc(BackgroundProcess):
 
     def stop(self):
         super().stop()
-        if self.socat_process is not None:
-            self.socat_process.stop()
         if self.mqtt_logs_process is not None:
             self.mqtt_logs_process.stop()
         if self.mqtt_main_process is not None:

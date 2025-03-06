@@ -1,6 +1,6 @@
 import pytest
 import logging
-from z_wave_ts_silabs import DeviceFactory, ZwaveRegion, DevZwaveSwitchOnOff
+from z_wave_ts_silabs import SessionContext, DeviceFactory, ZwaveRegion, DevZwaveSwitchOnOff, ZwaveGwZpc
 
 
 @pytest.mark.parametrize('region', ['REGION_EU'])
@@ -12,8 +12,10 @@ def test_ncp_serial_api_controller_standalone(device_factory: DeviceFactory, reg
 
 
 @pytest.mark.parametrize('region', ['REGION_EU'])
-def test_door_lock_keypad_basic_set(device_factory: DeviceFactory, region: ZwaveRegion):
-    zpc = device_factory.zpc(region)
+def test_door_lock_keypad_basic_set(session_ctxt: SessionContext, device_factory: DeviceFactory, region: ZwaveRegion):
+    controller = device_factory.serial_api_controller(region)
+    zpc = ZwaveGwZpc(controller.region, session_ctxt, controller.pty, controller.logger)
+
     end_device_1 = device_factory.door_lock_keypad(region)
 
     # secure inclusion
@@ -25,8 +27,10 @@ def test_door_lock_keypad_basic_set(device_factory: DeviceFactory, region: Zwave
 
 
 @pytest.mark.parametrize('region', ['REGION_EU'])
-def test_led_bulb_inclusion(device_factory: DeviceFactory, region: ZwaveRegion):
-    zpc = device_factory.zpc(region)
+def test_led_bulb_inclusion(session_ctxt: SessionContext, device_factory: DeviceFactory, region: ZwaveRegion):
+    controller = device_factory.serial_api_controller(region)
+    zpc = ZwaveGwZpc(controller.region, session_ctxt, controller.pty, controller.logger)
+
     end_device_1 = device_factory.led_bulb(region)
 
     # secure inclusion
@@ -36,8 +40,10 @@ def test_led_bulb_inclusion(device_factory: DeviceFactory, region: ZwaveRegion):
 
 
 @pytest.mark.parametrize('region', ['REGION_EU'])
-def test_multilevel_sensor_inclusion(device_factory: DeviceFactory, region: ZwaveRegion):
-    zpc = device_factory.zpc(region)
+def test_multilevel_sensor_inclusion(session_ctxt: SessionContext, device_factory: DeviceFactory, region: ZwaveRegion):
+    controller = device_factory.serial_api_controller(region)
+    zpc = ZwaveGwZpc(controller.region, session_ctxt, controller.pty, controller.logger)
+
     end_device_1 = device_factory.multilevel_sensor(region)
 
     # secure inclusion
@@ -47,8 +53,10 @@ def test_multilevel_sensor_inclusion(device_factory: DeviceFactory, region: Zwav
 
 
 @pytest.mark.parametrize('region', ['REGION_EU'])
-def test_power_strip_inclusion_and_control(device_factory: DeviceFactory, region: ZwaveRegion):
-    zpc = device_factory.zpc(region)
+def test_power_strip_inclusion_and_control(session_ctxt: SessionContext, device_factory: DeviceFactory, region: ZwaveRegion):
+    controller = device_factory.serial_api_controller(region)
+    zpc = ZwaveGwZpc(controller.region, session_ctxt, controller.pty, controller.logger)
+
     end_device_1 = device_factory.power_strip(region)
 
     # secure inclusion
@@ -60,8 +68,10 @@ def test_power_strip_inclusion_and_control(device_factory: DeviceFactory, region
 
 
 @pytest.mark.parametrize('region', ['REGION_EU'])
-def test_sensor_pir_battery_report(device_factory: DeviceFactory, region: ZwaveRegion):
-    zpc = device_factory.zpc(region)
+def test_sensor_pir_battery_report(session_ctxt: SessionContext, device_factory: DeviceFactory, region: ZwaveRegion):
+    controller = device_factory.serial_api_controller(region)
+    zpc = ZwaveGwZpc(controller.region, session_ctxt, controller.pty, controller.logger)
+
     end_device_1 = device_factory.sensor_pir(region)
 
     # secure inclusion
@@ -77,11 +87,11 @@ def test_sensor_pir_battery_report(device_factory: DeviceFactory, region: ZwaveR
 
 
 @pytest.mark.parametrize('region', ['REGION_EU'])
-def test_serial_api_controller_otw_update(device_factory: DeviceFactory, region: ZwaveRegion):
-    zpc = device_factory.zpc(region)
+def test_serial_api_controller_otw_update(session_ctxt: SessionContext, device_factory: DeviceFactory, region: ZwaveRegion):
+    controller = device_factory.serial_api_controller(region)
     # ZPC has to be stopped in order to start the OTW NCP update process, then it can be started again
-    zpc.stop()
-    zpc.ncp_update()
+    zpc = ZwaveGwZpc(controller.region, session_ctxt, controller.pty, controller.logger, start_at_init=False)
+    zpc.ncp_update(controller.gbl_v255_file)
     zpc.start()
     end_device_1 = device_factory.switch_on_off(region)
 
@@ -94,8 +104,10 @@ def test_serial_api_controller_otw_update(device_factory: DeviceFactory, region:
 
 
 @pytest.mark.parametrize('region', ['REGION_EU'])
-def test_switch_on_off_secure_inclusion_exclusion(device_factory: DeviceFactory, region: ZwaveRegion):
-    zpc = device_factory.zpc(region)
+def test_switch_on_off_secure_inclusion_exclusion(session_ctxt: SessionContext, device_factory: DeviceFactory, region: ZwaveRegion):
+    controller = device_factory.serial_api_controller(region)
+    zpc = ZwaveGwZpc(controller.region, session_ctxt, controller.pty, controller.logger)
+
     end_device_1 = device_factory.switch_on_off(region)
 
     # secure inclusion
@@ -112,8 +124,10 @@ def test_switch_on_off_secure_inclusion_exclusion(device_factory: DeviceFactory,
 
 
 @pytest.mark.parametrize('region', ['REGION_EU'])
-def test_switch_on_off_secure_ota(device_factory: DeviceFactory, region: ZwaveRegion):
-    zpc = device_factory.zpc(region)
+def test_switch_on_off_secure_ota(session_ctxt: SessionContext, device_factory: DeviceFactory, region: ZwaveRegion):
+    controller = device_factory.serial_api_controller(region)
+    zpc = ZwaveGwZpc(controller.region, session_ctxt, controller.pty, controller.logger)
+
     end_device_1 = device_factory.switch_on_off(region)
 
     # secure inclusion
@@ -128,8 +142,10 @@ def test_switch_on_off_secure_ota(device_factory: DeviceFactory, region: ZwaveRe
 
 
 @pytest.mark.parametrize('region', ['REGION_US', 'REGION_JP', 'REGION_EU_LR'])
-def test_switch_on_off_unsecure_inclusion_exclusion(device_factory: DeviceFactory, region: ZwaveRegion):
-    zpc = device_factory.zpc(region)
+def test_switch_on_off_unsecure_inclusion_exclusion(session_ctxt: SessionContext, device_factory: DeviceFactory, region: ZwaveRegion):
+    controller = device_factory.serial_api_controller(region)
+    zpc = ZwaveGwZpc(controller.region, session_ctxt, controller.pty, controller.logger)
+
     end_device_1 = device_factory.switch_on_off(region)
 
     end_device_1.logger.info(f"nodeID before inclusion: {end_device_1.get_node_id()}")
@@ -152,8 +168,10 @@ def test_switch_on_off_unsecure_inclusion_exclusion(device_factory: DeviceFactor
 
 
 @pytest.mark.parametrize('region', ['REGION_EU'])
-def test_switch_on_off_unsecure_ota(device_factory: DeviceFactory, region: ZwaveRegion):
-    zpc = device_factory.zpc(region)
+def test_switch_on_off_unsecure_ota(session_ctxt: SessionContext, device_factory: DeviceFactory, region: ZwaveRegion):
+    controller = device_factory.serial_api_controller(region)
+    zpc = ZwaveGwZpc(controller.region, session_ctxt, controller.pty, controller.logger)
+
     end_device_1 = device_factory.switch_on_off(region)
 
     # unsecure inclusion
@@ -167,8 +185,10 @@ def test_switch_on_off_unsecure_ota(device_factory: DeviceFactory, region: Zwave
 
 
 @pytest.mark.parametrize('region', ['REGION_US', 'REGION_JP', 'REGION_EU_LR'])
-def test_switch_on_off_smartstart_inclusion(device_factory: DeviceFactory, region: ZwaveRegion):
-    zpc = device_factory.zpc(region)
+def test_switch_on_off_smartstart_inclusion(session_ctxt: SessionContext, device_factory: DeviceFactory, region: ZwaveRegion):
+    controller = device_factory.serial_api_controller(region)
+    zpc = ZwaveGwZpc(controller.region, session_ctxt, controller.pty, controller.logger)
+
     # TODO: uic_upvl should be implicitly started when updating the SmartStart List.
     zpc.start_uic_upvl()
 
@@ -201,8 +221,10 @@ def test_switch_on_off_smartstart_inclusion(device_factory: DeviceFactory, regio
 
 
 @pytest.mark.parametrize('region', ['REGION_EU'])
-def test_wall_controller_basic_set(device_factory: DeviceFactory, region: ZwaveRegion):
-    zpc = device_factory.zpc(region)
+def test_wall_controller_basic_set(session_ctxt: SessionContext, device_factory: DeviceFactory, region: ZwaveRegion):
+    controller = device_factory.serial_api_controller(region)
+    zpc = ZwaveGwZpc(controller.region, session_ctxt, controller.pty, controller.logger)
+
     end_device_1 = device_factory.wall_controller(region)
 
     # secure inclusion
@@ -214,8 +236,10 @@ def test_wall_controller_basic_set(device_factory: DeviceFactory, region: ZwaveR
 
 
 @pytest.mark.parametrize('region', ['REGION_EU'])
-def test_railtest_after_inclusion(device_factory: DeviceFactory, region: ZwaveRegion):
-    zpc = device_factory.zpc(region)
+def test_railtest_after_inclusion(session_ctxt: SessionContext, device_factory: DeviceFactory, region: ZwaveRegion):
+    controller = device_factory.serial_api_controller(region)
+    zpc = ZwaveGwZpc(controller.region, session_ctxt, controller.pty, controller.logger)
+
     end_device_1 = device_factory.switch_on_off(region)
     railtest = device_factory.railtest(region)
 
@@ -225,9 +249,9 @@ def test_railtest_after_inclusion(device_factory: DeviceFactory, region: ZwaveRe
     zpc.wait_for_node_connection(end_device_1)
 
     # manually building a Z-Wave packet for REGION_EU on data_rate: 100K
-    packet = bytes.fromhex(zpc.get_home_id()) # home ID
+    packet = bytes.fromhex(controller.get_home_id()) # home ID
     length = 4 + 1 + 2 + 1 + 1 + 1 + 2 # Home ID + Src Node ID + Frame Control + Length + Dst Node ID + Data Payload (NOP) + FCS
-    packet += bytes([zpc.get_node_id(), 65, 0, length, end_device_1.get_node_id(), 0]) # 65 is ack required + singlecast / Railtest will add the CRC
+    packet += bytes([controller.get_node_id(), 65, 0, length, end_device_1.get_node_id(), 0]) # 65 is ack required + singlecast / Railtest will add the CRC
 
     railtest.tx(packet, region, 0) # RAIL channel 0 is 100K in EU
     railtest.tx(packet, region, 0, break_crc=True) # Send the same frame with a wrong CRC, it should not be acked
@@ -235,8 +259,10 @@ def test_railtest_after_inclusion(device_factory: DeviceFactory, region: ZwaveRe
 
 
 @pytest.mark.parametrize('region', ['REGION_EU'])
-def test_device_power_on_and_off(device_factory: DeviceFactory, region: ZwaveRegion):
-    zpc = device_factory.zpc(region)
+def test_device_power_on_and_off(session_ctxt: SessionContext, device_factory: DeviceFactory, region: ZwaveRegion):
+    controller = device_factory.serial_api_controller(region)
+    zpc = ZwaveGwZpc(controller.region, session_ctxt, controller.pty, controller.logger)
+
     end_device_1 = device_factory.switch_on_off(region)
     railtest = device_factory.railtest(region)
 
@@ -252,9 +278,9 @@ def test_device_power_on_and_off(device_factory: DeviceFactory, region: ZwaveReg
     end_device_1.wpk.target_power_off()
 
     # manually building a Z-Wave packet for REGION_EU on data_rate: 100K
-    packet = bytes.fromhex(zpc.get_home_id()) # home ID
+    packet = bytes.fromhex(controller.get_home_id()) # home ID
     length = 4 + 1 + 2 + 1 + 1 + 1 + 2 # Home ID + Src Node ID + Frame Control + Length + Dst Node ID + Data Payload (NOP) + FCS
-    packet += bytes([zpc.get_node_id(), 65, 0, length, end_device_1_node_id, 0]) # 65 is ack required + singlecast / Railtest will add the CRC
+    packet += bytes([controller.get_node_id(), 65, 0, length, end_device_1_node_id, 0]) # 65 is ack required + singlecast / Railtest will add the CRC
 
     railtest.tx(packet, region, 0) # send it first, it should not be acked because the device is halted
 
@@ -264,8 +290,10 @@ def test_device_power_on_and_off(device_factory: DeviceFactory, region: ZwaveReg
     railtest.tx(packet, region, 0) # send it again, it should be acked
 
 @pytest.mark.parametrize('region', ['REGION_EU'])
-def test_with_zniffer_pti(device_factory: DeviceFactory, region: ZwaveRegion):
-    zpc = device_factory.zpc(region)
+def test_with_zniffer_pti(session_ctxt: SessionContext, device_factory: DeviceFactory, region: ZwaveRegion):
+    controller = device_factory.serial_api_controller(region)
+    zpc = ZwaveGwZpc(controller.region, session_ctxt, controller.pty, controller.logger)
+
     end_device_1 = device_factory.switch_on_off(region)
     zniffer_pti = device_factory.zniffer_pti(region)
 
@@ -278,11 +306,12 @@ def test_with_zniffer_pti(device_factory: DeviceFactory, region: ZwaveRegion):
 
 
 @pytest.mark.parametrize('region', ['REGION_EU'])
-def test_cluster_stdv2_1(device_factory: DeviceFactory, region: ZwaveRegion):
+def test_cluster_stdv2_1(session_ctxt: SessionContext, device_factory: DeviceFactory, region: ZwaveRegion):
     _logger = logging.getLogger(__name__)
     _logger.info("spawning zpc ...")
 
-    zpc = device_factory.zpc(region)
+    controller = device_factory.serial_api_controller(region)
+    zpc = ZwaveGwZpc(controller.region, session_ctxt, controller.pty, controller.logger)
 
     end_device_list = []
     for i in range(1, 10):

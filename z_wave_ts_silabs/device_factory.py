@@ -5,7 +5,6 @@ from .railtest import DevRailtest
 from .session_context import SessionContext
 from .zwave_cli import DevZwaveDoorLockKeypad, DevZwaveLedBulb, DevZwaveMultilevelSensor, DevZwavePowerStrip, DevZwaveSensorPIR, DevZwaveSwitchOnOff, DevZwaveWallController
 from .zwave_ncp import DevZwaveNcpSerialApiController, DevZwaveNcpSerialApiEndDevice, DevZwaveNcpZniffer, DevZwaveNcpZnifferPti
-from .zwave_gw import DevZwaveGwZpc
 
 
 # This class is responsible for spawning the different types of devices. (Nodes in z-wave-test-system).
@@ -56,17 +55,6 @@ class DeviceFactory(object):
 
     def finalize(self):
         self._finalize()
-
-    def zpc(self, region: ZwaveRegion = 'REGION_EU') -> DevZwaveGwZpc:
-        """Create a new DevZwaveGwZpc device. (actually it's ZPC + a NCP Serial API Controller)
-
-        Args:
-            region (Region): Z-Wave region
-
-        Returns:
-            New instance of DevZwaveGwZpc.
-        """
-        return self._spawn(DevZwaveGwZpc, region)
 
     def serial_api_controller(self, region: ZwaveRegion = 'REGION_EU') -> DevZwaveNcpSerialApiController:
         """Create a new SerialAPIController device.
