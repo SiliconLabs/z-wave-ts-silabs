@@ -36,3 +36,13 @@ Release v0.3
 - Supports all Z-Wave regions
 - Supports all NCP applications, their serial interfaces are exposed through socat
 - Supports railtest application for frame injection among other use case
+
+Release v0.4
+------------
+
+- Removed Zpc from the device_factory, it has to be instantiated manually in the test
+- Removed DevZwaveNcpZnifferPti to match with the future removal of this app from the SiliconLabs Z-Wave SDK
+- WPK IPs are now resolved once at the start of the test session
+- Mosquitto MQTT broker and Zpc now use Unix Domain Sockets to communicate
+- Helper scripts were added to the examples (DCH traffic dumping, zlf to pcap conversion, dump pcap content to csv)
+- The fixture responsible for returning the log directory for the current session now returns a relative path
