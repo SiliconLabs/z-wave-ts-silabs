@@ -7,7 +7,7 @@ from z_wave_ts_silabs import PcapFileReader, PcapZwavePacket
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Print the content of Z-Wave pcap file.')
-    parser.add_argument("--source", required=True, type=str, help="Source PCAP file path")
+    parser.add_argument("source", type=str, help="Source PCAP file path")
     args = parser.parse_args()
 
     src_pcap = Path(args.source)

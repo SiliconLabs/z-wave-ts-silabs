@@ -14,7 +14,7 @@ def handler(signum, frame):
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Dump DCH traffic from a WPK into zlf and pcap files')
-    parser.add_argument("--ip", required=True, type=str, help="IP adddress of the WPK")
+    parser.add_argument("ip", type=str, help="IP adddress of the WPK")
     # filename is optional, this script will create the zlf and pcap files in the directory from which the script is started
     parser.add_argument("--filename", type=str, default="trace", help=" zlf and pcap file path")
     args = parser.parse_args()

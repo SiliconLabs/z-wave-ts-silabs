@@ -8,7 +8,7 @@ from z_wave_ts_silabs import DchPacket, ZlfFileReader, PcapFileWriter
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Convert a ZLF file into a pcap file.')
-    parser.add_argument("--source", required=True, type=str, help="Source ZLF file path")
+    parser.add_argument("source", type=str, help="Source ZLF file path")
     # dest is optional, this script will create the pcap file next to the original zlf file by default
     parser.add_argument("--dest", type=str, help="Destination pcap file path")
     args = parser.parse_args()
