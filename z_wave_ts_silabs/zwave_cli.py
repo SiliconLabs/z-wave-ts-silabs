@@ -36,13 +36,49 @@ class DevZwaveCli(DevZwave):
           self.telnet_client = None
 
      def _run_cmd(self, command: str) -> str:
+          """Execute a command and return the response.
+
+          1. Clears any pending data in the buffer.
+          2. Sends the command to the device.
+          3. Reads the response in 2 phases:
+               - First, wait for the command echo.
+               - Then, wait for the next prompt (">").
+          :param command: The command to execute
+          :return: The response from the command
+          """
+          # clear any pending data
+          self.telnet_client.read_very_eager().decode('ascii', errors='ignore')
+          # Send the command
           try:
-               self.telnet_client.write(bytes(f'{command}\n' ,encoding='ascii'))
-          except BrokenPipeError as e: # single retry of the command
+               self.telnet_client.write(bytes(f'{command}\n', encoding='ascii'))
+          except BrokenPipeError:
+               # Reconnect and retry on pipe error
                self.telnet_client.close()
                self.telnet_client = telnetlib.Telnet(self.wpk.hostname, '4901', 1)
-               self.telnet_client.write(bytes(f'{command}\n' ,encoding='ascii'))
-          return self.telnet_client.read_until(b'\n> ', timeout=1).decode('ascii')
+               self.telnet_client.write(bytes(f'{command}\n', encoding='ascii'))
+          
+          # Wait for initial response - command echo
+          response = ""
+          try:
+               # First read until we see our command echoed back
+               response += self.telnet_client.read_until(bytes(f'{command}\n', 'ascii'), timeout=1).decode('ascii')
+               
+               # Then read until the next prompt (">")
+               response += self.telnet_client.read_until(b'> ', timeout=1).decode('ascii')
+               
+               if command not in response or '> ' not in response:
+                    self.logger.debug(f'Command response not properly synchronized: {response}')
+                    # Might be reading problem, try to recover by reading all data (very_eager)
+                    extra = self.telnet_client.read_very_eager().decode('ascii', errors='ignore')
+                    if extra:
+                         response += extra
+                         self.logger.debug(f'Additional data: {extra}')
+                         
+          except Exception as e:
+               self.logger.debug(f'Exception in _run_cmd: {str(e)}')
+               response = ""
+          
+          return response
 
      def set_learn_mode(self) -> None:
           output = self._run_cmd(f'set_learn_mode')
