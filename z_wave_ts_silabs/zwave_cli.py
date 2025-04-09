@@ -174,12 +174,19 @@ class DevZwaveLedBulb(DevZwaveCli):
 
 class DevZwaveMultilevelSensor(DevZwaveCli):
 
+     def start(self):
+          super().start()
+          self.disable_sleeping()
+     
      @classmethod
      def app_name(cls) -> AppName:
           return 'zwave_soc_multilevel_sensor'
 
      def enable_sleeping(self):
-          self._run_cmd('enable_sleeping')
+          self._run_cmd('sleeping enable')
+
+     def disable_sleeping(self):
+          self._run_cmd('sleeping disable')
      
      def send_battery_and_sensor_report(self):
           self._run_cmd('send_battery_and_sensor_report')
@@ -203,12 +210,19 @@ class DevZwavePowerStrip(DevZwaveCli):
 
 class DevZwaveSensorPIR(DevZwaveCli):
 
+     def start(self):
+          super().start()
+          self.disable_sleeping()
+     
      @classmethod
      def app_name(cls) -> AppName:
           return 'zwave_soc_sensor_pir'
 
      def enable_sleeping(self):
-          self._run_cmd('enable_sleeping')
+          self._run_cmd('sleeping enable')
+
+     def disable_sleeping(self):
+          self._run_cmd('sleeping disable')
      
      def battery_report(self):
           self._run_cmd('battery_report')
