@@ -47,7 +47,7 @@ class DevZwaveCli(DevZwave):
           :return: The response from the command
           """
           # clear any pending data
-          self.telnet_client.read_very_eager().decode('ascii', errors='ignore')
+          self.telnet_client.read_very_eager()
           # Send the command
           try:
                self.telnet_client.write(bytes(f'{command}\n', encoding='ascii'))
