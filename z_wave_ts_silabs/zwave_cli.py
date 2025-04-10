@@ -73,9 +73,16 @@ class DevZwaveCli(DevZwave):
                          response += extra
                          self.logger.debug(f'Additional data: {extra}')
                          
+          except BrokenPipeError as e:
+               # Connection closed, try to recover
+               self.stop()
+               self.start()
+
+          except UnicodeDecodeError as e:
+               raise Exception(f"UnicodeDecodeError: {e}") from e
+          
           except Exception as e:
-               self.logger.debug(f'Exception in _run_cmd: {str(e)}')
-               response = ""
+               raise Exception(f"Unexpected error: {e}") from e
           
           return response
 
