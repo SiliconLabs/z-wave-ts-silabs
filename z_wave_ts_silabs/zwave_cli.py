@@ -53,9 +53,8 @@ class DevZwaveCli(DevZwave):
                self.telnet_client.write(bytes(f'{command}\n', encoding='ascii'))
           except BrokenPipeError:
                # Reconnect and retry on pipe error
-               self.telnet_client.close()
-               self.telnet_client = telnetlib.Telnet(self.wpk.hostname, '4901', 1)
-               self.telnet_client.write(bytes(f'{command}\n', encoding='ascii'))
+               self.stop()
+               self.start()
           
           # Wait for initial response - command echo
           response = ""
