@@ -66,12 +66,12 @@ class DevZwaveCli(DevZwave):
                response += self.telnet_client.read_until(b'> ', timeout=1).decode('ascii')
                
                if command not in response or '> ' not in response:
-                    self.logger.debug(f'Command response not properly synchronized: {response}')
+                    self.logger.warning(f'Command response not properly synchronized: {response}')
                     # Might be reading problem, try to recover by reading all data (very_eager)
                     extra = self.telnet_client.read_very_eager().decode('ascii', errors='ignore')
                     if extra:
                          response += extra
-                         self.logger.debug(f'Additional data: {extra}')
+                         self.logger.warning(f'Additional data: {extra}')
                          
           except BrokenPipeError as e:
                # Connection closed, try to recover
