@@ -10,6 +10,24 @@ def test_ncp_serial_api_controller_standalone(device_factory: DeviceFactory, reg
     ncp_sapi_controller.logger.info(f"NCP SAPI Controller ip: {ncp_sapi_controller.wpk.ip}")
     ncp_sapi_controller.logger.info(f"NCP SAPI Controller pty: {ncp_sapi_controller.pty}")
 
+@pytest.mark.parametrize('region', ['REGION_EU'])
+def test_door_lock_secure_inclusion_exclusion(session_ctxt: SessionContext, device_factory: DeviceFactory, region: ZwaveRegion):
+    controller = device_factory.serial_api_controller(region)
+    zpc = ZwaveGwZpc(controller.region, session_ctxt, controller.pty, controller.logger)
+
+    end_device_1 = device_factory.door_lock_keypad(region)
+
+    # secure inclusion
+    zpc.add_node(end_device_1.get_dsk())
+    end_device_1.set_learn_mode()
+    zpc.wait_for_node_connection(end_device_1)
+
+    # TODO: basic set just to be sure
+
+    # exclusion
+    zpc.remove_node()
+    end_device_1.set_learn_mode()
+    zpc.wait_for_node_disconnection(end_device_1)
 
 @pytest.mark.parametrize('region', ['REGION_EU'])
 def test_door_lock_keypad_basic_set(session_ctxt: SessionContext, device_factory: DeviceFactory, region: ZwaveRegion):
