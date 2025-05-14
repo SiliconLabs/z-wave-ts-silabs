@@ -496,14 +496,16 @@ class DevZwave(Device, metaclass=ABCMeta):
             return None
         return f"zw-{self.home_id}-{self.node_id:04}"
 
-    def start_zlf_capture(self) -> None:
-        self.wpk.start_pti_logger(self._name)
+    def start_zlf_capture(self, optional_capture_name: str | None = None) -> None:
+        capture_name = self._name if optional_capture_name is None else optional_capture_name
+        self.wpk.start_pti_logger(capture_name)
 
     def stop_zlf_capture(self) -> None:
         self.wpk.stop_pti_logger()
 
-    def start_log_capture(self) -> None:
-        self.wpk.start_rtt_logger(f"{self._name}_rtt")
+    def start_log_capture(self, optional_capture_name: str | None = None) -> None:
+        capture_name = self._name if optional_capture_name is None else optional_capture_name
+        self.wpk.start_rtt_logger(f"{capture_name}_rtt")
 
     def stop_log_capture(self) -> None:
         self.wpk.stop_rtt_logger()
