@@ -6,7 +6,7 @@ import os
 from setuptools import setup, find_packages
 
 NAME = "z_wave_ts_silabs"
-VERSION = "0.4.0"
+VERSION = "0.4.1"
 
 # To install the library, run the following
 #
