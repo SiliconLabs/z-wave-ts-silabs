@@ -52,7 +52,7 @@ class DevTimeServer(object):
 
 
 class DevWpk(object):
-    """Represents a WPK board. 
+    """Represents a WPK board.
     """
 
     VCOM_PORT_OFFSET = 1
@@ -372,6 +372,22 @@ class DevWpk(object):
             return True
         return False
 
+    def target_retrieve_average_current(self) -> float:
+        """Returns the average current consumption as reported reported by the WSTK.
+        :return: Current in mA
+        """
+        # send to wpk cli cmd and retreive current from response
+        try:
+            answer = self._run_admin("aem avg")
+        except Exception as e:
+            self.logger.error(f"Could not measure current consumption of target device: {e}")
+            raise
+        match = re.search(r'(?P<current>\d+\.\d+) mA', answer)
+        if match:
+            return float(match.groupdict()['current'])
+        else:
+            self.logger.error("Invalid current measurement")
+            raise Exception("Could not parse current consumption from WPK response")
 
 class DevCluster(object):
 
@@ -447,12 +463,12 @@ class Device(metaclass=ABCMeta):
 
 class DevZwave(Device, metaclass=ABCMeta):
     """Base class for Z-Wave devices."""
-    
+
     def __init__(self, ctxt: SessionContext, device_number: int, wpk: DevWpk, region: ZwaveRegion):
         """Initializes the device.
         :param device_number: Device number (helps with logger)
         :param wpk: WPK hosting the radio board
-        :param region: Z-Wave region 
+        :param region: Z-Wave region
         """
         super().__init__(ctxt, device_number, wpk, region)
 
@@ -519,3 +535,20 @@ class DevZwave(Device, metaclass=ABCMeta):
         if self.home_id:
             return self.home_id
         return ''
+
+    def get_average_current(self, unit: str = "mA") -> str:
+        """
+        Returns the average current consumption of the target device.
+        :param unit: Unit of the current, can be 'A', 'mA' or 'uA'
+        :return: Current in the specified unit as a formatted string
+        :raises ValueError: If the unit is not one of 'A', 'mA' or 'uA'
+        """
+        current_mA = self.wpk.target_retrieve_average_current()
+        if unit == "A":
+            return f"{current_mA / 1000.0:.3f} A"
+        elif unit == "mA":
+            return f"{current_mA:.3f} mA"
+        elif unit == "uA":
+            return f"{current_mA * 1000.0:.3f} uA"
+        else:
+            raise ValueError(f"Invalid unit: {unit}. Valid units are 'A', 'mA' or 'uA'.")
