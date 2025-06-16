@@ -294,6 +294,7 @@ class UicImageProvider(BackgroundProcess):
                 file = dev['file']
                 uuid = dev['uiid']
                 unid = dev['unid']
+                version = dev['version']
 
                 src_path = f'{ctxt.zwave_binaries}/{file}'
                 dst_path = f'{self.updates_dir_path}/{file}'
@@ -301,7 +302,7 @@ class UicImageProvider(BackgroundProcess):
                     "FileName": f"updates/{file}",
                     "Uiid": uuid,
                     "Unid": [unid],
-                    "Version": "255.0.0",
+                    "Version": version,
                     "ApplyAfter": "2000-01-01T10:00:00+02:00",
                     # date is set way back so that the update starts right away
                     "Md5": UicImageProvider.md5_base64(f'{ctxt.zwave_binaries}/{file}')

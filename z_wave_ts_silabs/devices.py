@@ -473,6 +473,7 @@ class DevZwave(Device, metaclass=ABCMeta):
         super().__init__(ctxt, device_number, wpk, region)
 
         # file used for OTA/OTW updates
+        self.gbl_v254_file: str | None = None
         self.gbl_v255_file: str | None = None
         self.home_id: str | None = None
         self.node_id: int | None = None
@@ -496,6 +497,8 @@ class DevZwave(Device, metaclass=ABCMeta):
             encrypt_key_path=btl_encrypt_key
         )
 
+        v254_path = f'{ctxt.zwave_binaries}/{Path(self._firmware_file).stem}_v254.gbl'
+        self.gbl_v254_file = os.path.basename(v254_path) if os.path.exists(v254_path) else None
         self.gbl_v255_file = f'{Path(self._firmware_file).stem}_v255.gbl'
         if not os.path.exists(f'{ctxt.zwave_binaries}/{self.gbl_v255_file}'):
             raise Exception(f'could not find matching v255.gbl file in {ctxt.zwave_binaries}/ for {self._firmware_file}')
