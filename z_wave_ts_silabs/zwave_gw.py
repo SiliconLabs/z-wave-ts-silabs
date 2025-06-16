@@ -26,6 +26,7 @@ class ZwaveGwZpc(object):
         # TODO: maybe create a class with the fields below (Some of these states need to be shared with the MQTT client):
         self.network_dict: dict | None = None
         self.ota_status: dict | None = None
+        self.ota_target_version: str | None = None
         self.command_status: dict | None = None
         self.dsk_list: dict | None = None
 
@@ -93,18 +94,26 @@ class ZwaveGwZpc(object):
             raise Exception("uic_upvl process did not start or died unexpectedly")
 
 
-    def start_uic_image_provider(self, devices_to_update: list[DevZwave]):
+    def start_uic_image_provider(self, devices_to_update: list[DevZwave], version: int = 255):
         if self.uic_image_provider_process is not None:
             return
+        if version not in [254, 255]:
+            raise ValueError("version must be either 254 or 255")
 
         devices = [ ]
-        
+
+        self.ota_target_version = f"{version}.0.0"
+
         for dev in devices_to_update:
+            if getattr(dev, f'gbl_v{version}_file', None) is None:
+                raise ValueError(f"Device {devices_to_update} does not have a v{version} gbl file set")
             entry = {
-                'file': dev.gbl_v255_file,
+                'file': getattr(dev, f'gbl_v{version}_file', None),
                 'uiid': dev.uiid(),
-                'unid': dev.unid()
+                'unid': dev.unid(),
+                'version': self.ota_target_version,
             }
+            
             self.ota_status[dev.node_id] = None
             devices.append(entry)
 
@@ -349,7 +358,7 @@ class MqttClientZpc(object):
                 node_id = int(match.groupdict()['nodeid'], base=16)
                 if (msg.payload is not None) and (msg.payload != b''):
                     msg_payload = json.loads(msg.payload)
-                    if msg_payload['value'] == "255.0.0":
+                    if msg_payload['value'] == self.zpc.ota_target_version:
                         self.zpc.ota_status[node_id] = True
                 else:
                     # there's nothing to do if the payload is empty
