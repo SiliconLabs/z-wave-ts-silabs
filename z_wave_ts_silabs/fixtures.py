@@ -8,6 +8,7 @@ from pathlib import Path
 from z_wave_ts_silabs import DevWpk, DevCluster, BackgroundProcess, DevTimeServer
 from z_wave_ts_silabs.device_factory import DeviceFactory
 from z_wave_ts_silabs.session_context import SessionContext, Clusters, Wpk
+from z_wave_ts_silabs.definitions import ZwaveRegion
 
 
 _logger = logging.getLogger(__name__)
@@ -87,6 +88,7 @@ def updated_session_ctxt(session_ctxt: SessionContext, log_dir: Path) -> Session
 
 @pytest.fixture(scope='function')
 def device_factory(updated_session_ctxt: SessionContext, hw_cluster: DevCluster) -> DeviceFactory:
+    hw_cluster.neutralize_all_wpk(REGION_IN)
     factory = DeviceFactory(updated_session_ctxt, hw_cluster)
     yield factory
     factory.finalize()

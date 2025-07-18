@@ -410,6 +410,10 @@ class DevCluster(object):
         for wpk in self.wpk_list:
             wpk.is_free = True
 
+    # configure all boards to a "parking" region to ensure that unused boards do not disturb the test (with unsolicited frames)
+    def neutralize_all_wpk(self, region) -> None:
+        for wpk in self.wpk_list:
+            wpk.flash_zwave_region_token(region)
 
 class Device(metaclass=ABCMeta):
     """Base class for any device"""
