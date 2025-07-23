@@ -88,10 +88,17 @@ def updated_session_ctxt(session_ctxt: SessionContext, log_dir: Path) -> Session
 
 @pytest.fixture(scope='function')
 def device_factory(updated_session_ctxt: SessionContext, hw_cluster: DevCluster) -> DeviceFactory:
-    hw_cluster.neutralize_all_wpk(REGION_IN)
     factory = DeviceFactory(updated_session_ctxt, hw_cluster)
     yield factory
     factory.finalize()
+
+
+@pytest.fixture(scope="function", autouse=True)
+def hw_cluster_neutralize_all_wpk(hw_cluster: DevCluster):
+    parking_region = os.getenv['ZWAVE_PARKING_REGION']
+    if parking_region is not None:
+        hw_cluster.neutralize_all_wpk(parking_region)
+    yield
 
 
 @pytest.fixture(scope="function", autouse=True)
