@@ -455,6 +455,7 @@ class Device(metaclass=ABCMeta):
         # Make sure the radio board (target) connected to the WPK is powered on before leaving Device.__init__()
         if not self.wpk.is_target_status_ok():
             self.wpk.target_power_on()
+        self.wpk.flash_zwave_region_token("REGION_IN")
 
     @abstractmethod
     def start(self):
