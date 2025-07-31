@@ -410,6 +410,10 @@ class DevCluster(object):
         for wpk in self.wpk_list:
             wpk.is_free = True
 
+    # turn off all boards to ensure that unused boards do not disturb the test (with unsolicited frames)
+    def neutralize_all_wpk(self) -> None:
+        for wpk in self.wpk_list:
+            wpk.target_power_off()
 
 class Device(metaclass=ABCMeta):
     """Base class for any device"""
