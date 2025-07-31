@@ -148,7 +148,7 @@ class CommanderCli(object):
         if p.returncode != 0:
             _logger.error(f'+ {cmd_line}')
             _logger.error(cmd_output)
-            raise Exception(f'commander-cli FAILED with exit code {p.returncode}')
+            raise Exception(f'commander-cli FAILED with exit code {p.returncode}\n{cmd_line}\n{cmd_output}')
         _logger.debug(f'commander-cli: {cmd_line}')
         return cmd_output
 
