@@ -8,6 +8,7 @@ from pathlib import Path
 from z_wave_ts_silabs import DevWpk, DevCluster, BackgroundProcess, DevTimeServer
 from z_wave_ts_silabs.device_factory import DeviceFactory
 from z_wave_ts_silabs.session_context import SessionContext, Clusters, Wpk
+from z_wave_ts_silabs.definitions import ZwaveRegion
 
 
 _logger = logging.getLogger(__name__)
@@ -90,6 +91,14 @@ def device_factory(updated_session_ctxt: SessionContext, hw_cluster: DevCluster)
     factory = DeviceFactory(updated_session_ctxt, hw_cluster)
     yield factory
     factory.finalize()
+
+
+@pytest.fixture(scope="function", autouse=True)
+def hw_cluster_neutralize_all_wpk(hw_cluster: DevCluster):
+    # parking_region = os.getenv['ZWAVE_PARKING_REGION']
+    # if parking_region is not None:
+    hw_cluster.neutralize_all_wpk('REGION_IN')
+    yield
 
 
 @pytest.fixture(scope="function", autouse=True)

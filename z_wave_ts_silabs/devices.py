@@ -9,6 +9,7 @@ import threading
 from abc import ABCMeta, abstractmethod
 from pathlib import Path
 from dataclasses import dataclass
+from time import sleep
 
 from . import telnetlib
 from .session_context import SessionContext
@@ -410,6 +411,13 @@ class DevCluster(object):
         for wpk in self.wpk_list:
             wpk.is_free = True
 
+    # configure all boards to a "parking" region to ensure that unused boards do not disturb the test (with unsolicited frames)
+    def neutralize_all_wpk(self, region) -> None:
+        for wpk in self.wpk_list:
+            if not wpk.is_target_status_ok():
+                wpk.target_power_on()
+                sleep(1)
+            wpk.flash_zwave_region_token(region)
 
 class Device(metaclass=ABCMeta):
     """Base class for any device"""
