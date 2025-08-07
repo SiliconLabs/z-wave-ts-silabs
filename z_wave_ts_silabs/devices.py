@@ -455,6 +455,7 @@ class Device(metaclass=ABCMeta):
         # Make sure the radio board (target) connected to the WPK is powered on before leaving Device.__init__()
         if not self.wpk.is_target_status_ok():
             self.wpk.target_power_on()
+            time.sleep(0.01) # wait 10ms to be sure that the board has boot up
 
     @abstractmethod
     def start(self):
