@@ -2,6 +2,7 @@ from __future__ import annotations
 import os
 import re
 import time
+import json
 import select
 import socket
 import logging
@@ -9,6 +10,8 @@ import threading
 from abc import ABCMeta, abstractmethod
 from pathlib import Path
 from dataclasses import dataclass
+from datetime import datetime
+from enum import Enum
 
 from . import telnetlib
 from .session_context import SessionContext
@@ -17,7 +20,6 @@ from .processes import CommanderCli
 from .definitions import AppName, ZwaveAppProductType, ZwaveRegion, ZpalRadioRegion
 from .pcap import PcapFileWriter
 from .zlf import ZlfFileWriter
-
 
 @dataclass
 class TargetDevInfo:
@@ -52,7 +54,7 @@ class DevTimeServer(object):
 
 
 class DevWpk(object):
-    """Represents a WPK board. 
+    """Represents a WPK board.
     """
 
     VCOM_PORT_OFFSET = 1
@@ -79,6 +81,7 @@ class DevWpk(object):
         self.logger = logging.getLogger(f"{self.__class__.__name__}-{self.serial_no}")
         self._pti_thread: threading.Thread | None = None
         self._pti_thread_stop_event: threading.Event = threading.Event()
+        self._admin_lock = threading.Lock()  # Protect telnet admin commands from concurrent access
         self.target_devinfo: TargetDevInfo = self._get_target_devinfo()
 
         # set dch version to 3
@@ -125,17 +128,19 @@ class DevWpk(object):
 
     def _run_admin(self, command: str) -> str:
         """Runs a command on admin interface.
+        Thread-safe: Uses a lock to prevent concurrent access to telnet client.
 
         :param command: String command
         :return: string result
         """
-        try:
-            self.telnet_client.write(bytes(f'{command}\r\n' ,encoding='ascii'))
-        except BrokenPipeError as e: # single retry of the command
-            self.telnet_client.close()
-            self.telnet_client = telnetlib.Telnet(self.ip, port=self.admin_port)
-            self.telnet_client.write(bytes(f'{command}\r\n' ,encoding='ascii'))
-        return self.telnet_client.read_until(bytes(f'\r\n{self.telnet_prompt}', encoding='ascii'), timeout=1).decode('ascii')
+        with self._admin_lock:
+            try:
+                self.telnet_client.write(bytes(f'{command}\r\n' ,encoding='ascii'))
+            except BrokenPipeError as e: # single retry of the command
+                self.telnet_client.close()
+                self.telnet_client = telnetlib.Telnet(self.ip, port=self.admin_port)
+                self.telnet_client.write(bytes(f'{command}\r\n' ,encoding='ascii'))
+            return self.telnet_client.read_until(bytes(f'\r\n{self.telnet_prompt}', encoding='ascii'), timeout=1).decode('ascii')
 
     def reset(self):
         """Resets the WPK board itself."""
@@ -372,7 +377,22 @@ class DevWpk(object):
             return True
         return False
 
-
+    def target_get_power(self) -> float:
+        """Returns the current consumption as reported by the WSTK.
+        :return: Current in mA
+        """
+        # send to wpk cli cmd and retreive current from response
+        try:
+            answer = self._run_admin("aem avg") # avg is not 'average' per say, rather a single measurement at the moment of the call
+        except Exception as e:
+            self.logger.error(f"Could not measure current consumption of target device: {e}")
+            raise
+        match = re.search(r'(?P<current>\d+\.\d+) mA', answer)
+        if match:
+            return float(match.groupdict()['current'])
+        else:
+            self.logger.error("Invalid current measurement")
+            raise Exception("Could not parse current consumption from WPK response")
 class DevCluster(object):
 
     def __init__(self, name: str | None, wpk_list: list[DevWpk]):
@@ -444,15 +464,260 @@ class Device(metaclass=ABCMeta):
     def stop(self):
         raise NotImplementedError
 
+class PowerDataScope(Enum):
+    """Enumeration for power data collection scopes"""
+    PRE_INCLUSION = 0
+    INCLUSION = 1
+    POST_INCLUSION_AWAKE = 2
+    POST_INCLUSION_SLEEP = 3
+    EXCLUSION = 4
+class PowerDataCollector:
+    """Helper class to collect power consumption data in a separate thread"""
+
+    def __init__(self, device, test_name: str, interval: float = 1.0, unit: str = "mA"):
+        self.device = device
+        self.test_name = test_name
+        self.interval = interval
+        self.unit = unit
+        self.thread_running = False  # Thread lifecycle control
+        self.collecting = False      # Data collection control
+        self.thread = None
+        self.data = []
+        self.start_time = None
+        self.scope = PowerDataScope.PRE_INCLUSION
+
+    def _collect_data(self):
+        """Internal method to collect power data periodically"""
+        self.start_time = time.time()
+        while self.thread_running:
+            try:
+                # Only collect data when collecting flag is True
+                if self.collecting:
+                    timestamp = time.time()
+                    relative_time = timestamp - self.start_time
+                    power_reading = self.device.get_single_datapoint_power(self.unit)
+
+                    data_point = {
+                        "power": power_reading,
+                        "time": round(relative_time, 3),
+                        "unit": self.unit,
+                        "scope": self.scope.value if self.scope else None
+                    }
+
+                    self.data.append(data_point)
+                    self.device.logger.debug(f"Power data collected: {power_reading} at {relative_time:.3f}s")
+
+            except Exception as e:
+                self.device.logger.warning(f"Failed to collect power data: {e}")
+
+            # Always sleep to maintain timing, regardless of collecting state
+            time.sleep(self.interval)
+
+    def reset_power_scope(self):
+        """reset the scope to PRE_INCLUSION"""
+        self.scope = PowerDataScope.PRE_INCLUSION
+
+    def _calculate_power_statistics(self, sorted_values: list[float], unit: str, data_points: int = None) -> dict:
+        """Calculate comprehensive power statistics from sorted values"""
+        if not sorted_values:
+            return {}
+
+        n = len(sorted_values)
+        if data_points is None:
+            data_points = n
+
+        def percentile(values, p):
+            """Calculate percentile value"""
+            index = (len(values) - 1) * p / 100
+            if index.is_integer():
+                return values[int(index)]
+            else:
+                lower = values[int(index)]
+                upper = values[int(index) + 1]
+                return lower + (upper - lower) * (index - int(index))
+
+        def trimmed_mean(values, trim_percent=10):
+            """Calculate trimmed mean (removes top and bottom trim_percent/2)"""
+            if len(values) <= 2:
+                return sum(values) / len(values)
+            trim_count = max(1, int(len(values) * trim_percent / 200))  # Divide by 200 for each side
+            trimmed = values[trim_count:-trim_count]
+            return sum(trimmed) / len(trimmed) if trimmed else sum(values) / len(values)
+
+        # Basic statistics
+        stats = {
+            "min_power": min(sorted_values),
+            "max_power": max(sorted_values),
+            "median_power": percentile(sorted_values, 50),  # More robust than average
+            "trimmed_mean_power": trimmed_mean(sorted_values),  # Average without extremes
+            "data_points": data_points,
+            "unit": unit
+        }
+
+        # Add percentiles for distribution analysis
+        if n >= 4:
+            stats["percentiles"] = {
+                "p25": percentile(sorted_values, 25),
+                "p75": percentile(sorted_values, 75),
+                "p90": percentile(sorted_values, 90),
+                "p95": percentile(sorted_values, 95)
+            }
+
+        # Add mode if there are repeated values
+        from collections import Counter
+        counts = Counter(sorted_values)
+        most_common = counts.most_common(1)[0]
+        if most_common[1] > 1:  # Only if value appears more than once
+            stats["mode_power"] = most_common[0]
+            stats["mode_frequency"] = most_common[1]
+
+        return stats
+
+    def enter_power_scope(self, new_scope: PowerDataScope):
+        """Move to the specified scope in the enumeration"""
+        if not isinstance(new_scope, PowerDataScope):
+            raise ValueError(f"Invalid scope: {new_scope}. Must be a PowerDataScope enum value.")
+        self.scope = new_scope
+        self.device.logger.info(f"Power data collection scope changed to: {new_scope.name}")
+
+    def start(self):
+        """Start collecting power data in a separate thread"""
+        # Start the thread if it's not running
+        if not self.thread_running:
+            self.thread_running = True
+            self.thread = threading.Thread(target=self._collect_data, daemon=True)
+            self.thread.start()
+            self.device.logger.info(f"Started power data collection thread for {self.test_name} (interval: {self.interval}s, unit: {self.unit})")
+
+        # Enable data collection
+        if not self.collecting:
+            self.collecting = True
+            self.device.logger.info(f"Resumed power data collection for {self.test_name}")
+        else:
+            self.device.logger.warning(f"Power data collection already active for {self.test_name}")
+
+    def stop(self):
+        """Stop collecting power data and save to file"""
+        # Stop data collection
+        self.collecting = False
+
+        # Stop and wait for thread to finish
+        if self.thread_running:
+            self.thread_running = False
+            if self.thread:
+                self.thread.join(timeout=2.0)
+                self.thread = None
+
+        # Save data to file
+        self._save_data()
+        self.device.logger.info(f"Stopped power data collection for {self.test_name}. Collected {len(self.data)} data points.")
+
+    def pause(self):
+        """Pause data collection but keep thread alive and time continuing"""
+        if self.collecting:
+            self.collecting = False
+            self.device.logger.info(f"Paused power data collection for {self.test_name} (thread continues for timing)")
+        else:
+            self.device.logger.warning(f"Power data collection is not active for {self.test_name}")
+
+    def resume(self):
+        """Resume data collection (alias for start for clarity)"""
+        self.start()
+
+    def update_interval(self, new_interval: float):
+        """Update the data collection interval"""
+        if new_interval <= 0:
+            raise ValueError("Interval must be a positive number")
+        self.interval = new_interval
+        self.device.logger.info(f"Updated power data collection interval to {self.interval}s for {self.test_name}")
+
+    def _save_data(self):
+        """Save collected data to a JSON file"""
+        if not self.data:
+            return
+
+        output_dir = self.device._ctxt.current_test_logdir
+        os.makedirs(output_dir, exist_ok=True)
+
+        # Generate filename with timestamp
+        filename = f"{output_dir}/power_data.json"
+
+        # Prepare metadata
+        metadata = {
+            "test_name": self.test_name,
+            "collection_start": datetime.fromtimestamp(self.start_time).isoformat() if self.start_time else None,
+            "collection_end": datetime.now().isoformat(),
+            "total_duration_s": time.time() - self.start_time if self.start_time else 0,
+            "interval_s": self.interval,
+            "unit": self.unit,
+            "total_data_points": len(self.data)
+        }
+
+        # Calculate basic statistics
+        if self.data:
+            power_values = []
+            scope_data = {}  # Dictionary to store data points by scope
+
+            for point in self.data:
+                # Extract numeric value from power reading string
+                try:
+                    power_str = point["power"].split()[0]
+                    power_value = float(power_str)
+                    power_values.append(power_value)
+
+                    # Group data by scope
+                    scope = point.get("scope", "unknown")
+                    if scope not in scope_data:
+                        scope_data[scope] = []
+                    scope_data[scope].append(power_value)
+
+                except (ValueError, IndexError, KeyError):
+                    continue
+
+            # Overall statistics
+            if power_values:
+                sorted_values = sorted(power_values)
+                metadata["statistics"] = {
+                    "overall": self._calculate_power_statistics(sorted_values, self.unit)
+                }
+
+                # Per-scope statistics
+                metadata["statistics"]["by_scope"] = {}
+                for scope, values in scope_data.items():
+                    if values:
+                        # Convert scope value to scope name for readability
+                        scope_name = scope
+                        if isinstance(scope, int):
+                            try:
+                                scope_name = PowerDataScope(scope).name
+                            except ValueError:
+                                scope_name = f"scope_{scope}"
+
+                        sorted_scope_values = sorted(values)
+                        metadata["statistics"]["by_scope"][scope_name] = self._calculate_power_statistics(
+                            sorted_scope_values, self.unit, len(values)
+                        )
+
+        output_data = {
+            "metadata": metadata,
+            "data": self.data
+        }
+
+        try:
+            with open(filename, 'w') as f:
+                json.dump(output_data, f, indent=2)
+            self.device.logger.info(f"Power data saved to: {filename}")
+        except Exception as e:
+            self.device.logger.error(f"Failed to save power data to {filename}: {e}")
 
 class DevZwave(Device, metaclass=ABCMeta):
     """Base class for Z-Wave devices."""
-    
+
     def __init__(self, ctxt: SessionContext, device_number: int, wpk: DevWpk, region: ZwaveRegion):
         """Initializes the device.
         :param device_number: Device number (helps with logger)
         :param wpk: WPK hosting the radio board
-        :param region: Z-Wave region 
+        :param region: Z-Wave region
         """
         super().__init__(ctxt, device_number, wpk, region)
 
@@ -519,3 +784,20 @@ class DevZwave(Device, metaclass=ABCMeta):
         if self.home_id:
             return self.home_id
         return ''
+
+    def get_single_datapoint_power(self, unit: str = "mA") -> str:
+        """
+        Returns the current consumption of the target device at the moment of the call.
+        :param unit: Unit of the current, can be 'A', 'mA' or 'uA'
+        :return: Current in the specified unit as a formatted string
+        :raises ValueError: If the unit is not one of 'A', 'mA' or 'uA'
+        """
+        current_mA = self.wpk.target_get_power()
+        if unit == "A":
+            return f"{current_mA / 1000.0:.3f} A"
+        elif unit == "mA":
+            return f"{current_mA:.3f} mA"
+        elif unit == "uA":
+            return f"{current_mA * 1000.0:.3f} uA"
+        else:
+            raise ValueError(f"Invalid unit: {unit}. Valid units are 'A', 'mA' or 'uA'.")
