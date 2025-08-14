@@ -102,8 +102,6 @@ class ZwaveGwZpc(object):
 
         devices = [ ]
 
-        self.ota_target_version = f"{version}.0.0"
-
         for dev in devices_to_update:
             if getattr(dev, f'gbl_v{version}_file', None) is None:
                 raise ValueError(f"Device {devices_to_update} does not have a v{version} gbl file set")
@@ -113,7 +111,7 @@ class ZwaveGwZpc(object):
                 'unid': dev.unid(),
                 'version': self.ota_target_version,
             }
-            
+
             self.ota_status[dev.node_id] = None
             devices.append(entry)
 
@@ -162,7 +160,7 @@ class ZwaveGwZpc(object):
 
     def add_node(self, dsk: str = None):
         self.mqtt_client.add_node(dsk)
-    
+
     def remove_node(self):
         self.mqtt_client.remove_node()
 
@@ -185,7 +183,7 @@ class ZwaveGwZpc(object):
         while time.time() < end_time:
             if device.get_node_id() != 0 and self._is_node_connected(device.node_id):
                 break
-            time.sleep(0.5) # 500ms delay because Z-Wave inclusions can be very long.
+            time.sleep(0.1) # 100ms delay because Z-Wave inclusions can be very long.
             os.sched_yield() # let the MQTT client thread run
 
         if not self._is_node_connected(device.node_id):
@@ -216,7 +214,7 @@ class ZwaveGwZpc(object):
                 break
 
             os.sched_yield() # let the MQTT client thread run
-        
+
         if not all(is_device_connected.values()):
             raise Exception(f"timeout waiting for connection of node(s): { [ k for k,v in is_device_connected.items() if not v ] }")
 
@@ -229,7 +227,7 @@ class ZwaveGwZpc(object):
     def wait_for_node_disconnection(self, device: DevZwave, timeout: float = 40):
         end_time = time.time() + timeout
         self.logger.info(f'waiting for disconnection of node: {device}')
-        
+
         while time.time() < end_time:
             if self._is_node_disconnected(device.node_id):
                 break
@@ -237,20 +235,20 @@ class ZwaveGwZpc(object):
 
         if not self._is_node_disconnected(device.node_id):
             raise Exception(f"timeout waiting for disconnection of node: {device}")
-        
+
         self.logger.info(f'node: {device} disconnected')
 
     # secured OTA should not take more than 10 minutes
     def wait_for_ota_update_to_finish(self, device: DevZwave, timeout: float = 600):
         end_time = time.time() + timeout
-        
+
         while time.time() < end_time:
             if self.ota_status[device.node_id] is True:
                 break
             elif self.ota_status[device.node_id] is False:
                 raise Exception("OTA was aborted")
             os.sched_yield() # let the MQTT client thread run
-        
+
         if not self.ota_status[device.node_id]:
             raise Exception(f"timeout waiting for OTA update of node: {device}")
         self.logger.info(f'node: {device} OTA update successful')
@@ -261,7 +259,7 @@ class MqttClientZpc(object):
     def __init__(self, zpc: ZwaveGwZpc, timeout: float = 30):
         self.zpc = zpc
         self.logger = self.zpc.logger.getChild(f'{self.__class__.__name__}')
-        
+
         self.mqttc = mqtt.Client(mqtt.CallbackAPIVersion.VERSION2)
         self.mqttc.on_connect = self._on_connect
         self.mqttc.on_message = self._on_message
@@ -287,7 +285,7 @@ class MqttClientZpc(object):
 
     # The callback for when the client receives a CONNACK response from the server.
     def _on_connect(self, client, userdata, flags, reason_code, properties):
-        # TODO: check reason_code 
+        # TODO: check reason_code
         self.logger.debug(f'connected with result code {reason_code}')
         # Subscribing in on_connect() means that if we lose the connection and
         # reconnect then subscriptions will be renewed.
@@ -298,7 +296,7 @@ class MqttClientZpc(object):
     def _on_message(self, client, userdata, msg):
         # msg.topic     type: str
         # msg.payload   type: bytes (should be JSON, ascii encoded ?)
-        
+
         # this condition updates the state of nodes in the network
         # NetworkStatus/Reported payload should always be: {"value":"State"}
         # we update the network dictionnary of ZPC with the state of the node.
@@ -319,13 +317,13 @@ class MqttClientZpc(object):
                     if self.zpc.network_dict.get(node_id):
                         self.zpc.network_dict.pop(node_id)
 
-        
+
         # this condition handles secured and unsecured inclusion through learn mode
         if (
             ('ProtocolController/NetworkManagement' in msg.topic) and
             (b'"RequestedStateParameters":["SecurityCode","UserAccept","AllowMultipleInclusions"]' in msg.payload)
         ):
-            # Example payload: 
+            # Example payload:
             # {
             #     "RequestedStateParameters":["SecurityCode","UserAccept","AllowMultipleInclusions"],
             #     "State":"add node",
@@ -344,12 +342,12 @@ class MqttClientZpc(object):
             payload = {"State":"add node","StateParameters":{"UserAccept":True,"SecurityCode":security_code,"AllowMultipleInclusions":False}}
             payload = bytes(json.dumps(payload), encoding='ascii')
             self.mqttc.publish(topic, payload, qos=1)
-        
+
         # this condition handles the OTA update status (TODO: it needs a bit of refactor)
         # I need to think about a programming model for registering callbacks based on topics elsewhere.
         # this will be necessary if we want to interact with the ZPC class. Otherwise we'll be copying attributes around.
         if (
-            'OTA' in msg.topic and 
+            'OTA' in msg.topic and
             'CurrentVersion/Reported' in msg.topic
         ):
             # f"ucl/by-unid/{self.node_id_to_unid(node_id)}/ep0/OTA/Attributes/UIID/ZWave-0000-0002-0004-00-01/CurrentVersion/Reported"
@@ -363,7 +361,7 @@ class MqttClientZpc(object):
                 else:
                     # there's nothing to do if the payload is empty
                     pass
-        
+
         if (
             'OTA' in msg.topic and
             'LastError/Reported' in msg.topic
@@ -406,7 +404,7 @@ class MqttClientZpc(object):
         payload = bytes(json.dumps(payload), encoding='ascii')
         self.mqttc.publish(topic, payload, qos=1)
 
-    # function to send a basic set for example 
+    # function to send a basic set for example
     def send_command(self, node_id: int, command: str, timeout: float):
         # first append a value to a list and or dict that we will create and update its state depending on the state.
         # this is begining to feel like their attribute mapper, and of course it does
