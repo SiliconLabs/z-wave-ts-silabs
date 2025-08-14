@@ -5,7 +5,7 @@ import socket
 import logging
 from pathlib import Path
 
-from z_wave_ts_silabs import DevWpk, DevCluster, BackgroundProcess, DevTimeServer
+from z_wave_ts_silabs import DevWpk, DevCluster, BackgroundProcess, DevTimeServer, PowerDataCollector
 from z_wave_ts_silabs.device_factory import DeviceFactory
 from z_wave_ts_silabs.session_context import SessionContext, Clusters, Wpk
 
@@ -91,7 +91,6 @@ def device_factory(updated_session_ctxt: SessionContext, hw_cluster: DevCluster)
     yield factory
     factory.finalize()
 
-
 @pytest.fixture(scope="function", autouse=True)
 def hw_cluster_neutralize_all_wpk(hw_cluster: DevCluster):
     hw_cluster.neutralize_all_wpk()
@@ -104,9 +103,35 @@ def hw_cluster_free_all_wpk(hw_cluster: DevCluster):
     yield
     hw_cluster.free_all_wpk()
 
-
 @pytest.fixture(scope="function", autouse=True)
 def cleanup_background_processes():
     BackgroundProcess.stop_all()
     yield
     BackgroundProcess.stop_all()
+
+
+@pytest.fixture(scope="function")
+def power_data_collector():
+    """
+    Usage:
+        power_data_thread = power_data_collector(device, test_name, interval, unit)
+        power_data_thread.start()
+        # ... test logic ...
+        power_data_thread.pause()
+        # ... test logic ...
+        power_data_thread.resume()
+        # ... test logic ...
+        power_data_thread.stop()
+    """
+    active_collectors = []
+
+    def _create_power_data_collector(device, test_name: str, interval: float = 1.0, unit: str = "mA"):
+        collector = PowerDataCollector(device, test_name, interval, unit)
+        active_collectors.append(collector)
+        return collector
+
+    yield _create_power_data_collector
+
+    for collector in active_collectors:
+        if collector.thread_running:
+            collector.stop()
