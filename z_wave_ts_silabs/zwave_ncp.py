@@ -6,13 +6,14 @@ from .session_context import SessionContext
 
 class DevZwaveNcp(DevZwave):
 
-    def __init__(self, ctxt: SessionContext, device_number: int, wpk: DevWpk, region: ZwaveRegion) -> None:
+    def __init__(self, ctxt: SessionContext, device_number: int, wpk: DevWpk, region: ZwaveRegion, wpk_serial_speed=115200) -> None:
         super().__init__(ctxt, device_number, wpk, region)
-
+        self.wpk_serial_speed = wpk_serial_speed
         self.socat_process: Socat | None = None
         self.pty: str | None = None
 
     def start(self):
+        self.wpk._run_admin(f"serial vcom config speed {self.wpk_serial_speed}");
         if self.socat_process is not None:
             self.logger.debug(f"start() was called on a running instance of {self.__class__.__name__}")
             return

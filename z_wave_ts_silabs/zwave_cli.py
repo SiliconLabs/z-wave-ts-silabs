@@ -18,12 +18,16 @@ class DevZWaveCliError(Exception):
 
 
 class DevZwaveCli(DevZwave):
-    
-     def __init__(self, ctxt: SessionContext, device_number: int, wpk: DevWpk, region: ZwaveRegion):
+
+     def __init__(self, ctxt: SessionContext, device_number: int, wpk: DevWpk,
+                  region: ZwaveRegion, wpk_serial_speed=9600):
           """Instantiates a Z-Wave CLI device.
           :param device_number: Device number
           :param wpk: The wpk with the radio board acting as an End Device
+          :vcom_speed: Baud rate of the WPK serial communication
           """
+
+          self.wpk_serial_speed = wpk_serial_speed
           super().__init__(ctxt, device_number, wpk, region)
           self.telnet_client: telnetlib.Telnet | None = None
 
@@ -39,6 +43,8 @@ class DevZwaveCli(DevZwave):
           :returns: True if the CLI connection is established, False if already running.
           :raises DevZWaveCliError: If unable to establish CLI connection after all attempts.
           """
+          self.wpk._run_admin(f"serial vcom config speed {self.wpk_serial_speed}");
+
           if self.telnet_client is not None:
                self.logger.error(f"start() was called on a running instance of {self.__class__.__name__}")
                return False
@@ -117,7 +123,7 @@ class DevZwaveCli(DevZwave):
                     if extra:
                          response += extra
                          self.logger.warning(f'Additional data: {extra}')
-                         
+
           except BrokenPipeError as e:
                # Connection closed, try to recover
                self.stop()
@@ -140,7 +146,7 @@ class DevZwaveCli(DevZwave):
 
      def get_dsk(self) -> str | None:
           match = re.search(
-               r'\[I\] (?P<dsk>(\d{5}-){7}\d{5})', 
+               r'\[I\] (?P<dsk>(\d{5}-){7}\d{5})',
                self._run_cmd('get_dsk')
           )
           if match is not None:
@@ -151,7 +157,7 @@ class DevZwaveCli(DevZwave):
 
      def get_region(self) -> str | None:
           match = re.search(
-               r'\[I\] (?P<region>\w+)', 
+               r'\[I\] (?P<region>\w+)',
                self._run_cmd('get_region')
           )
           if match is not None:
@@ -202,33 +208,31 @@ class DevZwaveDoorLockKeypad(DevZwaveCli):
 
      def enable_sleeping(self):
           self._run_cmd('enable_sleeping')
-     
+
      def battery_report(self):
           self._run_cmd('battery_report')
 
      def enter_user_code(self, four_digit_user_code: str):
           self._run_cmd(f'enter_user_code {four_digit_user_code}')
-     
+
      def set_new_user_code(self, four_digit_user_code: str):
           self._run_cmd(f'set_new_user_code {four_digit_user_code}')
 
      def set_door_handle_state(self, state: Literal['activate', 'deactivate']):
           self._run_cmd(f'set_door_handle_state {state}')
-     
+
 
 class DevZwaveLedBulb(DevZwaveCli):
-
      @classmethod
      def app_name(cls) -> AppName:
           return 'zwave_soc_led_bulb'
 
 
 class DevZwaveMultilevelSensor(DevZwaveCli):
-
      def start(self):
           super().start()
           self.disable_sleeping()
-     
+
      @classmethod
      def app_name(cls) -> AppName:
           return 'zwave_soc_multilevel_sensor'
@@ -238,13 +242,12 @@ class DevZwaveMultilevelSensor(DevZwaveCli):
 
      def disable_sleeping(self):
           self._run_cmd('sleeping disable')
-     
+
      def send_battery_and_sensor_report(self):
           self._run_cmd('send_battery_and_sensor_report')
 
 
 class DevZwavePowerStrip(DevZwaveCli):
-
      @classmethod
      def app_name(cls) -> AppName:
           return 'zwave_soc_power_strip'
@@ -264,7 +267,7 @@ class DevZwaveSensorPIR(DevZwaveCli):
      def start(self):
           super().start()
           self.disable_sleeping()
-     
+
      @classmethod
      def app_name(cls) -> AppName:
           return 'zwave_soc_sensor_pir'
@@ -274,7 +277,7 @@ class DevZwaveSensorPIR(DevZwaveCli):
 
      def disable_sleeping(self):
           self._run_cmd('sleeping disable')
-     
+
      def battery_report(self):
           self._run_cmd('battery_report')
 
@@ -290,7 +293,7 @@ class DevZwaveSwitchOnOff(DevZwaveCli):
 
      def toggle_led(self):
           self._run_cmd('toggle_led')
-     
+
      def send_nif(self):
           self._run_cmd('send_nif')
 
