@@ -19,9 +19,9 @@ class DeviceFactory(object):
         self._cluster: DevCluster = cluster
         self._devices: list[Device] = []
 
-    def _spawn[T: Device](self, device_cls: type[T], region: ZwaveRegion) -> T:
+    def _spawn[T: Device](self, device_cls: type[T], region: ZwaveRegion, wpk_serial_speed) -> T:
         assert issubclass(device_cls, Device)
-        device = device_cls(self._ctxt, self._counter, self._cluster.get_free_wpk(), region)
+        device = device_cls(self._ctxt, self._counter, self._cluster.get_free_wpk(), region, wpk_serial_speed)
 
         self._counter += 1
         self._devices.append(device)
@@ -56,29 +56,31 @@ class DeviceFactory(object):
     def finalize(self):
         self._finalize()
 
-    def serial_api_controller(self, region: ZwaveRegion = 'REGION_EU') -> DevZwaveNcpSerialApiController:
+    def serial_api_controller(self, region: ZwaveRegion = 'REGION_EU', wpk_serial_speed=115200) -> DevZwaveNcpSerialApiController:
         """Create a new SerialAPIController device.
 
         Args:
             region (Region): Z-Wave region
+            wpk_serial_speed (int): WPK serial speed
 
         Returns:
             New instance of DevZwaveNcpSerialApiController.
         """
-        return self._spawn(DevZwaveNcpSerialApiController, region)
+        return self._spawn(DevZwaveNcpSerialApiController, region, wpk_serial_speed)
 
-    def serial_api_end_device(self, region: ZwaveRegion = 'REGION_EU') -> DevZwaveNcpSerialApiEndDevice:
+    def serial_api_end_device(self, region: ZwaveRegion = 'REGION_EU', wpk_serial_speed=115200) -> DevZwaveNcpSerialApiEndDevice:
         """Create a new SerialAPIEndDevice device.
 
         Args:
             region (Region): Z-Wave region
+            wpk_serial_speed (int): WPK serial speed
 
         Returns:
             New instance of DevZwaveNcpSerialApiEndDevice.
         """
-        return self._spawn(DevZwaveNcpSerialApiEndDevice, region)
+        return self._spawn(DevZwaveNcpSerialApiEndDevice, region, wpk_serial_speed)
 
-    def door_lock_keypad(self, region: ZwaveRegion = 'REGION_EU') -> DevZwaveDoorLockKeypad:
+    def door_lock_keypad(self, region: ZwaveRegion = 'REGION_EU', wpk_serial_speed=9600) -> DevZwaveDoorLockKeypad:
         """Create a new DoorLockKeyPad device.
 
         Args:
@@ -87,9 +89,9 @@ class DeviceFactory(object):
         Returns:
             New instance of DevZwaveDoorLockKeypad.
         """
-        return self._spawn(DevZwaveDoorLockKeypad, region)
+        return self._spawn(DevZwaveDoorLockKeypad, region, wpk_serial_speed)
 
-    def led_bulb(self, region: ZwaveRegion = 'REGION_EU') -> DevZwaveLedBulb:
+    def led_bulb(self, region: ZwaveRegion = 'REGION_EU', wpk_serial_speed=9600) -> DevZwaveLedBulb:
         """Create a new LEDBulb device.
 
         Args:
@@ -98,9 +100,9 @@ class DeviceFactory(object):
         Returns:
             New instance of DevZwaveLedBulb.
         """
-        return self._spawn(DevZwaveLedBulb, region)
+        return self._spawn(DevZwaveLedBulb, region, wpk_serial_speed)
 
-    def power_strip(self, region: ZwaveRegion = 'REGION_EU') -> DevZwavePowerStrip:
+    def power_strip(self, region: ZwaveRegion = 'REGION_EU', wpk_serial_speed=9600) -> DevZwavePowerStrip:
         """Create a new PowerStrip device.
 
         Args:
@@ -109,9 +111,9 @@ class DeviceFactory(object):
         Returns:
             New instance of DevZwavePowerStrip.
         """
-        return self._spawn(DevZwavePowerStrip, region)
+        return self._spawn(DevZwavePowerStrip, region, wpk_serial_speed)
 
-    def sensor_pir(self, region: ZwaveRegion = 'REGION_EU') -> DevZwaveSensorPIR:
+    def sensor_pir(self, region: ZwaveRegion = 'REGION_EU', wpk_serial_speed=9600) -> DevZwaveSensorPIR:
         """Create a new SensorPIR device.
 
         Args:
@@ -120,9 +122,9 @@ class DeviceFactory(object):
         Returns:
             New instance of DevZwaveSensorPIR.
         """
-        return self._spawn(DevZwaveSensorPIR, region)
+        return self._spawn(DevZwaveSensorPIR, region, wpk_serial_speed)
 
-    def switch_on_off(self, region: ZwaveRegion = 'REGION_EU') -> DevZwaveSwitchOnOff:
+    def switch_on_off(self, region: ZwaveRegion = 'REGION_EU', wpk_serial_speed=9600) -> DevZwaveSwitchOnOff:
         """Create a new SwitchOnOff device.
 
         Args:
@@ -131,9 +133,9 @@ class DeviceFactory(object):
         Returns:
             New instance of DevZwaveSwitchOnOff.
         """
-        return self._spawn(DevZwaveSwitchOnOff, region)
+        return self._spawn(DevZwaveSwitchOnOff, region, wpk_serial_speed)
 
-    def wall_controller(self, region: ZwaveRegion = 'REGION_EU') -> DevZwaveWallController:
+    def wall_controller(self, region: ZwaveRegion = 'REGION_EU', wpk_serial_speed=9600) -> DevZwaveWallController:
         """Create a new WallController device.
 
         Args:
@@ -142,9 +144,9 @@ class DeviceFactory(object):
         Returns:
             New instance of DevZwaveWallController.
         """
-        return self._spawn(DevZwaveWallController, region)
+        return self._spawn(DevZwaveWallController, region, wpk_serial_speed)
 
-    def multilevel_sensor(self, region: ZwaveRegion = 'REGION_EU') -> DevZwaveMultilevelSensor:
+    def multilevel_sensor(self, region: ZwaveRegion = 'REGION_EU', wpk_serial_speed=9600) -> DevZwaveMultilevelSensor:
         """Create a new MultilevelSensor device.
 
         Args:
@@ -153,10 +155,10 @@ class DeviceFactory(object):
         Returns:
             New instance of DevZwaveMultilevelSensor.
         """
-        return self._spawn(DevZwaveMultilevelSensor, region)
+        return self._spawn(DevZwaveMultilevelSensor, region, wpk_serial_speed)
 
     def railtest(self, region: ZwaveRegion = 'REGION_EU') -> DevRailtest:
         return self._spawn(DevRailtest, region)
 
-    def zniffer(self, region: ZwaveRegion = 'REGION_EU') -> DevZwaveNcpZniffer:
-        return self._spawn(DevZwaveNcpZniffer, region)
+    def zniffer(self, region: ZwaveRegion = 'REGION_EU', wpk_serial_speed=115200) -> DevZwaveNcpZniffer:
+        return self._spawn(DevZwaveNcpZniffer, region, wpk_serial_speed)
