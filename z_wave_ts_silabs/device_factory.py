@@ -157,8 +157,8 @@ class DeviceFactory(object):
         """
         return self._spawn(DevZwaveMultilevelSensor, region, wpk_serial_speed)
 
-    def railtest(self, region: ZwaveRegion = 'REGION_EU') -> DevRailtest:
-        return self._spawn(DevRailtest, region)
+    def railtest(self, region: ZwaveRegion = 'REGION_EU', wpk_serial_speed=115200) -> DevRailtest:
+        return self._spawn(DevRailtest, region, wpk_serial_speed)
 
     def zniffer(self, region: ZwaveRegion = 'REGION_EU', wpk_serial_speed=115200) -> DevZwaveNcpZniffer:
         return self._spawn(DevZwaveNcpZniffer, region, wpk_serial_speed)

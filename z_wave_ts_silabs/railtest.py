@@ -10,9 +10,10 @@ class DevRailtest(Device):
     def app_name(cls) -> AppName:
         return 'railtest'
 
-    def __init__(self, ctxt: SessionContext, device_number: int, wpk: DevWpk, region: ZwaveRegion):
+    def __init__(self, ctxt: SessionContext, device_number: int, wpk: DevWpk, region: ZwaveRegion, wpk_serial_speed=115200):
         super().__init__(ctxt, device_number, wpk, region)
         self.telnet_client: telnetlib.Telnet | None = None
+        self.wpk_serial_speed = wpk_serial_speed
 
         self.region_id = self.rail_region_id(region)
 
@@ -36,6 +37,7 @@ class DevRailtest(Device):
         return self.telnet_client.read_until(b'\r\n> ', timeout=1).decode('ascii')
 
     def start(self):
+        self.wpk._run_admin(f"serial vcom config speed {self.wpk_serial_speed}");
         if self.telnet_client is not None:
             self.logger.debug(f"start() was called on a running instance of {self.__class__.__name__}")
             return
@@ -50,7 +52,7 @@ class DevRailtest(Device):
         self._run_cmd('reset')
         self._run_cmd('rx 0') # disable Rx
         self._run_cmd('enableRxChannelHopping 0') # disable channel hopping
-        self._run_cmd('setZwaveMode 1 3') # enable Z-Wave, 
+        self._run_cmd('setZwaveMode 1 3') # enable Z-Wave,
         self._run_cmd(f'setZwaveRegion {region}') # set the Z-Wave region
         self._run_cmd(f'setPower 1 raw') # sets the output power to its lowest value
 
