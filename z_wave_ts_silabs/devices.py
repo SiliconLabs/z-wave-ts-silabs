@@ -260,6 +260,7 @@ class DevWpk(object):
             raise Exception("Could not set up time client")
 
     def clear_flash(self):
+        self.reset()
         try:
             self.commander_cli.device_recover()
         except:
