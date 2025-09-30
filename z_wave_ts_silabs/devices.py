@@ -415,6 +415,33 @@ class DevCluster(object):
         for wpk in self.wpk_list:
             wpk.target_power_off()
 
+    def parallel_command(self, command_method: str, *args, **kwargs) -> None:
+        """Execute a command method in parallel on all WPKs in this cluster.
+
+        :param command_method: Name of the method to call on each DevWpk
+        :type command_method: str
+        :param args: Positional arguments to pass to the command method
+        :param kwargs: Keyword arguments to pass to the command method
+
+        .. code-block:: python
+
+            cluster.parallel_command('reset')
+            cluster.parallel_command('target_power_off')
+            cluster.parallel_command('flash_zwave_region_token', 'EU')
+        """
+        command_threads: list[threading.Thread] = []
+        for wpk in self.wpk_list:
+            if hasattr(wpk, command_method):
+                method = getattr(wpk, command_method)
+                command_threads.append(threading.Thread(target=method, args=args, kwargs=kwargs))
+                command_threads[-1].start()
+            else:
+                raise AttributeError(f"DevWpk object has no method '{command_method}'")
+
+        for thread in command_threads:
+            thread.join()
+
+
 class Device(metaclass=ABCMeta):
     """Base class for any device"""
 
