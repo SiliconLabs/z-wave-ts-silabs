@@ -260,10 +260,17 @@ class DevWpk(object):
             raise Exception("Could not set up time client")
 
     def clear_flash(self):
+        if not self.is_target_status_ok():
+            self.logger.warning(
+                "target is not OK. Will reset before attempt to clear the flash"
+            )
+            self.reset()
+
+        self.logger.debug("clearing flash")
         try:
             self.commander_cli.device_recover()
-        except:
-            self.logger.debug(f"commander device recover can fail in some cases")
+        except Exception:
+            self.logger.warning("commander device recover failed")
         self.commander_cli.device_pageerase('@userdata')
 
     def flash_target(self, firmware_path: str):
@@ -271,9 +278,6 @@ class DevWpk(object):
 
     # does more than flashing
     def flash_zwave_target(self, region: str, firmware_path: str, signing_key_path: str = None, encrypt_key_path: str = None):
-        # clear the main flash of the device and the MFG tokens
-        self.clear_flash()
-
         # flash the region token
         self.flash_zwave_region_token(region)
 
@@ -409,11 +413,6 @@ class DevCluster(object):
     def free_all_wpk(self) -> None:
         for wpk in self.wpk_list:
             wpk.is_free = True
-
-    # turn off all boards to ensure that unused boards do not disturb the test (with unsolicited frames)
-    def neutralize_all_wpk(self) -> None:
-        for wpk in self.wpk_list:
-            wpk.target_power_off()
 
     def parallel_command(self, command_method: str, *args, **kwargs) -> None:
         """Execute a command method in parallel on all WPKs in this cluster.
