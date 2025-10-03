@@ -1,10 +1,20 @@
 import re
+import time
 from typing import Literal
 
 from . import telnetlib
 from .definitions import AppName, ZwaveRegion
 from .devices import DevZwave, DevWpk
 from .session_context import SessionContext
+
+
+class DevZWaveCliError(Exception):
+    """Exception raised when Z-Wave CLI connection fails after all retry attempts.
+
+    This allows clients to specifically handle CLI connection failures
+    separately from other types of exceptions.
+    """
+    pass
 
 
 class DevZwaveCli(DevZwave):
@@ -17,17 +27,50 @@ class DevZwaveCli(DevZwave):
           super().__init__(ctxt, device_number, wpk, region)
           self.telnet_client: telnetlib.Telnet | None = None
 
-     def start(self):
-          if self.telnet_client is not None:
-               self.logger.debug(f"start() was called on a running instance of {self.__class__.__name__}")
-               return
+     def start(self) -> bool:
+          """
+          Attempt to establish a Telnet CLI connection to the Z-Wave device.
 
-          self.telnet_client = telnetlib.Telnet(self.wpk.ip, '4901', 1)
-          # send empty command to check if everything is working correctly
-          self.telnet_client.write(bytes(f'\n', encoding='ascii'))
-          response = self.telnet_client.read_until(b'> ', timeout=1).decode('ascii', errors='ignore')
-          if '>' not in response:
-               raise Exception("This application does not have a CLI")
+          Tries up to three times to connect to the device's CLI using Telnet.
+          If the connection is already open, logs an error and returns False.
+          On each attempt, sends a CRLF and checks for the CLI prompt.
+          If successful, returns True. If all attempts fail, raises DevZWaveCliError.
+
+          :returns: True if the CLI connection is established, False if already running.
+          :raises DevZWaveCliError: If unable to establish CLI connection after all attempts.
+          """
+          if self.telnet_client is not None:
+               self.logger.error(f"start() was called on a running instance of {self.__class__.__name__}")
+               return False
+
+          max_attempts = 3
+          for attempt in range(max_attempts):
+               time.sleep(0.5 * attempt)
+               try:
+                    self.telnet_client = telnetlib.Telnet(self.wpk.ip, '4901', 1)
+               except Exception as e:
+                    self.logger.debug(f"CLI connection attempt {attempt + 1} failed: {e}")
+                    continue
+
+               response = ""
+               try:
+                    self.telnet_client.read_very_eager()
+                    self.telnet_client.write(b'\r\n')
+                    response = self.telnet_client.read_until(b'> ', timeout=3.0)
+               except Exception as e:
+                    self.logger.debug(f"CLI test failed on attempt {attempt + 1}: {e}")
+
+               if response and b'>' in response:
+                    return True
+               else:
+                    self.logger.debug(f"Instead of CLI the prompt got: {response} ")
+
+               if self.telnet_client:
+                    self.telnet_client.close()
+                    self.telnet_client = None
+
+          raise DevZWaveCliError(
+            f"Failed to establish CLI connection after {max_attempts} attempts")
 
      def stop(self):
           if self.telnet_client is None:
@@ -52,21 +95,21 @@ class DevZwaveCli(DevZwave):
           self.telnet_client.read_very_eager()
           # Send the command
           try:
-               self.telnet_client.write(bytes(f'{command}\n', encoding='ascii'))
+               self.telnet_client.write(f'{command}\r\n'.encode('ascii'))
           except BrokenPipeError:
                # Reconnect and retry on pipe error
                self.stop()
                self.start()
-          
+
           # Wait for initial response - command echo
           response = ""
           try:
                # First read until we see our command echoed back
                response += self.telnet_client.read_until(bytes(f'{command}\n', 'ascii'), timeout=1).decode('ascii')
-               
+
                # Then read until the next prompt (">")
                response += self.telnet_client.read_until(b'> ', timeout=1).decode('ascii')
-               
+
                if command not in response or '> ' not in response:
                     self.logger.warning(f'Command response not properly synchronized: {response}')
                     # Might be reading problem, try to recover by reading all data (very_eager)
@@ -82,10 +125,10 @@ class DevZwaveCli(DevZwave):
 
           except UnicodeDecodeError as e:
                raise Exception(f"UnicodeDecodeError: {e}") from e
-          
+
           except Exception as e:
                raise Exception(f"Unexpected error: {e}") from e
-          
+
           return response
 
      def set_learn_mode(self) -> None:
