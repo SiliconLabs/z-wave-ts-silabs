@@ -93,14 +93,9 @@ def device_factory(updated_session_ctxt: SessionContext, hw_cluster: DevCluster)
 
 
 @pytest.fixture(scope="function", autouse=True)
-def hw_cluster_neutralize_all_wpk(hw_cluster: DevCluster):
-    hw_cluster.neutralize_all_wpk()
-    yield
-
-
-@pytest.fixture(scope="function", autouse=True)
 def hw_cluster_free_all_wpk(hw_cluster: DevCluster):
     hw_cluster.free_all_wpk()
+    hw_cluster.parallel_command('clear_flash')
     yield
     hw_cluster.free_all_wpk()
 
