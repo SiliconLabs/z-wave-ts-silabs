@@ -27,10 +27,16 @@ ZwaveRegion = Literal[
     'REGION_IL',
     'REGION_RU',
     'REGION_CN',
-    'REGION_US_LR`',
+    'REGION_US_LR',
     'REGION_EU_LR',
     'REGION_JP',
     'REGION_KR'
+]
+
+# extract from ZwaveRegion with only LR region. Used to check if a ZwaveRegion is LR
+ZwaveRegionLr = Literal[
+    'REGION_US_LR',
+    'REGION_EU_LR'
 ]
 
 
