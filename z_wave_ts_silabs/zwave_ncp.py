@@ -93,13 +93,11 @@ class DevZwaveNcpZniffer(DevZwave):
             self.logger.debug("TCP socket is already open")
             return
 
-        try:
-            self.tcp_socket = self.tcp_socket = socket.create_connection((self.wpk.ip, self.tcp_port), timeout=socket._GLOBAL_DEFAULT_TIMEOUT)
-            self.logger.info(f"TCP socket opened to {self.wpk.ip}:{self.tcp_port}")
-        except Exception as e:
-            self.logger.error(f"Failed to open TCP socket: {e}")
-            self.tcp_socket = None
-            raise
+        self.tcp_socket = self.tcp_socket = socket.create_connection((self.wpk.ip, self.tcp_port), timeout=socket._GLOBAL_DEFAULT_TIMEOUT)
+        self.logger.info(f"TCP socket opened to {self.wpk.ip}:{self.tcp_port}")
+        self.logger.info(f"Try to send some data to the socket")
+        self.tcp_socket.sendall(bytes([0x23, 0x06, 0x01, 0x03, 0x0a]))
+        self.logger.info(f"Data sent")
 
     def close_tcp_socket(self):
         """Close the TCP socket connection."""
