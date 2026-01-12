@@ -1,6 +1,6 @@
 import socket
 from .processes import Socat
-from .definitions import AppName, ZwaveRegion
+from .definitions import AppName, ZwaveRegion, ZwaveRegionLr
 from .devices import DevZwave, DevWpk
 from .session_context import SessionContext
 from typing import get_args
@@ -71,6 +71,20 @@ class DevZwaveNcpZniffer(DevZwave):
 
         self.wpk.flash_zwave_region_token(region)
 
+        if region in get_args(ZwaveRegionLr):
+            print(f"Set channel configuration 3 for region {region}")
+            self.select_channel_configuration(3)
+        return True
+
+    def select_channel_configuration(self, channel: int):
+        if channel not in [1, 2, 3]:
+            raise ValueError(f"Invalid channel: {channel}. Channel must be 1, 2, or 3.")
+
+        try:
+            self.send_cmd(bytes([0x23, 0x06, 0x01, channel]))
+        except Exception as e:
+            self.logger.error(f"Error selecting channel configuration of Zniffer: {e}")
+            raise
         return True
 
     def open_tcp_socket(self):
