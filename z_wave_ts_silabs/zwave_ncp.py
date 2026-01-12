@@ -3,6 +3,7 @@ from .processes import Socat
 from .definitions import AppName, ZwaveRegion
 from .devices import DevZwave, DevWpk
 from .session_context import SessionContext
+from typing import get_args
 
 
 class DevZwaveNcp(DevZwave):
@@ -60,6 +61,17 @@ class DevZwaveNcpZniffer(DevZwave):
 
     def stop(self):
         self.close_tcp_socket()
+
+    def set_region(self, region: ZwaveRegion):
+        if 'REGION_' not in region:
+            region = '_'.join(['REGION', region])
+
+        if region not in get_args(ZwaveRegion):
+            raise ValueError(f"Invalid region: {region}. Region must be in {ZwaveRegion}")
+
+        self.wpk.flash_zwave_region_token(region)
+
+        return True
 
     def open_tcp_socket(self):
         """Open a TCP socket connection to the device on port 4901."""
