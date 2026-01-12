@@ -1,5 +1,6 @@
 import socket
 import time
+import threading
 from typing import Optional
 
 from .processes import Socat
@@ -53,149 +54,132 @@ class DevZwaveNcpSerialApiEndDevice(DevZwaveNcp):
 
 
 class DevZwaveNcpZniffer(DevZwave):
-
     def __init__(self, ctxt: SessionContext, device_number: int, wpk: DevWpk, region: ZwaveRegion, wpk_serial_speed=115200) -> None:
         super().__init__(ctxt, device_number, wpk, region)
         self.tcp_socket: socket.socket | None = None
         self.tcp_port = 4901
-        # Fail fast on broken/hung Zniffer service
-        self.cmd_timeout_s: float = float(getattr(ctxt, "zniffer_cmd_timeout_s", 3.0)) if ctxt else 3.0
-        self.connect_timeout_s: float = float(getattr(ctxt, "zniffer_connect_timeout_s", 3.0)) if ctxt else 3.0
-        self.reconnect_attempts: int = int(getattr(ctxt, "zniffer_reconnect_attempts", 12)) if ctxt else 12
-        self.reconnect_sleep_s: float = float(getattr(ctxt, "zniffer_reconnect_sleep_s", 0.5)) if ctxt else 0.5
+
+        # CI-safe defaults
+        self.connect_timeout_s = 3.0
+        self.cmd_timeout_s = 3.0
+        self.reconnect_attempts = 30
+        self.reconnect_sleep_s = 0.5
+
+        # IMPORTANT: protect against concurrent calls from different threads/tests
+        self._io_lock = threading.Lock()
 
     def start(self):
-        self.open_tcp_socket()
+        self._reconnect_tcp_with_retry("start")
 
     def stop(self):
         self.close_tcp_socket()
 
     def set_region(self, region: ZwaveRegion):
-        if 'REGION_' not in region:
-            region = '_'.join(['REGION', region])
+        if "REGION_" not in region:
+            region = f"REGION_{region}"
 
         if region not in get_args(ZwaveRegion):
             raise ValueError(f"Invalid region: {region}. Region must be in {ZwaveRegion}")
 
-        # Flashing may reset/reboot the device and kill/restart the TCP service.
-        # Always drop the TCP session before flashing, then reconnect with retries.
+        # flashing likely resets the TCP service => always reconnect and re-probe
         self.close_tcp_socket()
         self.wpk.flash_zwave_region_token(region)
-        self._reconnect_tcp_with_retry(context=f"after flash region={region}")
+
+        # give device a moment to reboot (cheap + removes flakiness)
+        time.sleep(1.0)
+
+        self._reconnect_tcp_with_retry(f"after flash {region}")
 
         if region in get_args(ZwaveRegionLr):
-            self.logger.info(f"Set channel configuration 3 for region {region}")
+            self.logger.info(f"LR region {region}: selecting channel configuration 3")
             self.select_channel_configuration(3)
-        return True
 
-    def select_channel_configuration(self, channel: int):
-        if channel not in [1, 2, 3]:
-            raise ValueError(f"Invalid channel: {channel}. Channel must be 1, 2, or 3.")
-
-        try:
-            self.send_cmd(bytes([0x23, 0x06, 0x01, channel]))
-        except Exception as e:
-            self.logger.error(f"Error selecting channel configuration of Zniffer: {e}")
-            raise
         return True
 
     def open_tcp_socket(self):
-        """Open a TCP socket connection to the device on port 4901."""
         if self.tcp_socket is not None:
-            self.logger.debug("TCP socket is already open")
             return
 
         s = socket.create_connection((self.wpk.ip, self.tcp_port), timeout=self.connect_timeout_s)
-        # IMPORTANT: ensure recv() cannot block forever
         s.settimeout(self.cmd_timeout_s)
+        s.setsockopt(socket.IPPROTO_TCP, socket.TCP_NODELAY, 1)
         self.tcp_socket = s
         self.logger.info(f"TCP socket opened to {self.wpk.ip}:{self.tcp_port}")
 
-    def _reconnect_tcp_with_retry(self, context: str = ""):
-        last_err: Optional[Exception] = None
-        for i in range(1, self.reconnect_attempts + 1):
-            try:
-                self.open_tcp_socket()
-                # Optional tiny sanity check: make sure we can read/write without hanging
-                self.flush_tcp_buffer()
-                self.logger.info(f"TCP ready {context} (attempt {i}/{self.reconnect_attempts})")
-                return
-            except Exception as e:
-                last_err = e
-                self.close_tcp_socket()
-                self.logger.warning(f"TCP not ready {context} (attempt {i}/{self.reconnect_attempts}): {e}")
-                time.sleep(self.reconnect_sleep_s)
-        raise TimeoutError(f"Zniffer TCP never became ready {context}: {last_err}")
-
     def close_tcp_socket(self):
-        """Close the TCP socket connection."""
         if self.tcp_socket is None:
-            self.logger.debug("TCP socket is already closed")
             return
-
         try:
             self.tcp_socket.close()
-            self.logger.info("TCP socket closed")
-        except Exception as e:
-            self.logger.error(f"Error closing TCP socket: {e}")
         finally:
             self.tcp_socket = None
 
-    def write_tcp(self, data: bytes) -> int:
-        """
-        Write raw data to the TCP socket.
+    def _reconnect_tcp_with_retry(self, context: str):
+        last_err = None
+        for i in range(1, self.reconnect_attempts + 1):
+            try:
+                self.open_tcp_socket()
+                # readiness probe: send ch=3 cmd and require ACK
+                self._probe_ready()
+                self.logger.info(f"Zniffer TCP ready ({context}) attempt {i}/{self.reconnect_attempts}")
+                return
+            except Exception as e:
+                last_err = e
+                self.logger.warning(f"Zniffer TCP not ready ({context}) attempt {i}/{self.reconnect_attempts}: {e}")
+                self.close_tcp_socket()
+                time.sleep(self.reconnect_sleep_s)
+        raise TimeoutError(f"Zniffer TCP never became ready ({context}) {self.wpk.ip}:{self.tcp_port}: {last_err}")
 
-        Args:
-            data: Raw bytes to send
+    def _probe_ready(self):
+        # Use the same cmd that CI fails on; if this works, device is ready.
+        self._send_cmd_locked(bytes([0x23, 0x06, 0x01, 0x03]))
 
-        Returns:
-            Number of bytes sent
+    def select_channel_configuration(self, channel: int):
+        if channel not in (1, 2, 3):
+            raise ValueError(f"Invalid channel: {channel}. Channel must be 1, 2, or 3.")
+        self.send_cmd(bytes([0x23, 0x06, 0x01, channel]))
+        return True
 
-        Raises:
-            Exception if socket is not open
-        """
+    def send_cmd(self, command: bytes) -> bool:
         if self.tcp_socket is None:
             raise Exception("TCP socket is not open. Call open_tcp_socket() first.")
+        if len(command) < 3:
+            raise ValueError(f"Command must be at least 3 bytes, trying to send {command.hex()}")
 
-        try:
-            sent = self.tcp_socket.sendall(data)
-            return len(data) if sent is None else sent
-        except Exception as e:
-            self.logger.error(f"Error writing to TCP socket: {e}")
-            raise
+        # Serialize send/recv and keep socket state consistent
+        return self._send_cmd_locked(command)
 
-    def read_tcp(self, buffer_size: int = 4096) -> bytes:
-        """
-        Read raw data from the TCP socket.
+    def _send_cmd_locked(self, command: bytes) -> bool:
+        with self._io_lock:
+            s = self.tcp_socket
+            if s is None:
+                raise Exception("TCP socket is not open. Call open_tcp_socket() first.")
 
-        Args:
-            buffer_size: Maximum number of bytes to read (default: 4096)
+            # bounded wait always
+            s.settimeout(self.cmd_timeout_s)
 
-        Returns:
-            Raw bytes received
+            # don't "flush forever"; just drain whatever is already queued quickly
+            self._drain_rx_nonblocking()
 
-        Raises:
-            Exception if socket is not open
-        """
-        if self.tcp_socket is None:
-            raise Exception("TCP socket is not open. Call open_tcp_socket() first.")
+            s.sendall(command)
+            self.logger.debug(f"Sent command: {command.hex()}")
 
-        try:
-            data = self.tcp_socket.recv(buffer_size, )
-            return data
-        except Exception as e:
-            self.logger.error(f"Error reading from TCP socket: {e}")
-            raise
+            response = self._recv_exact(3)
 
-    def flush_tcp_buffer(self):
-        """Flush the TCP receive buffer by reading all pending data."""
-        if self.tcp_socket is None:
-            raise Exception("TCP socket is not open. Call open_tcp_socket() first.")
+            if response[0:2] != command[0:2]:
+                raise Exception(f"Response mismatch: cmd={command[0:2].hex()} resp={response[0:2].hex()}")
+            if response[2] != 0:
+                raise Exception(f"Response status error: expected 0 got {response[2]} resp={response.hex()}")
 
+            self.logger.debug(f"Command successful, response: {response.hex()}")
+            return True
+
+    def _drain_rx_nonblocking(self):
         s = self.tcp_socket
+        if s is None:
+            return
         old_timeout = s.gettimeout()
         try:
-            # Non-blocking read without permanently changing timeouts/blocking behavior
             s.settimeout(0.0)
             while True:
                 data = s.recv(4096)
@@ -205,7 +189,6 @@ class DevZwaveNcpZniffer(DevZwave):
             pass
         finally:
             s.settimeout(old_timeout)
-        self.logger.debug("TCP receive buffer flushed")
 
     def _recv_exact(self, n: int) -> bytes:
         s = self.tcp_socket
@@ -218,63 +201,6 @@ class DevZwaveNcpZniffer(DevZwave):
                 raise ConnectionError(f"Socket closed while waiting for {n} bytes (got {len(buf)})")
             buf += chunk
         return bytes(buf)
-
-    def send_cmd(self, command: bytes) -> bool:
-        """
-        Send a command over TCP and verify the response.
-
-        Args:
-            command: Command bytes to send (should be at least 3 bytes)
-
-        Returns:
-            True if command succeeded (valid response received)
-
-        Raises:
-            Exception if socket is not open, command is invalid, or response is incorrect
-        """
-        if self.tcp_socket is None:
-            raise Exception("TCP socket is not open. Call open_tcp_socket() first.")
-
-        if len(command) < 3:
-            raise ValueError(f"Command must be at least 3 bytes, trying to send {command.hex()}")
-
-        # Step 1: Flush the TCP receive buffer
-        self.flush_tcp_buffer()
-
-        # Step 2: Send the command over TCP
-        self.write_tcp(command)
-        self.logger.debug(f"Sent command: {command.hex()}")
-
-        # Step 3: Check the answer (should be 3 bytes)
-        try:
-            # Force a bounded wait for the ACK
-            self.tcp_socket.settimeout(self.cmd_timeout_s)
-            response = self._recv_exact(3)
-        except socket.timeout as e:
-            raise TimeoutError(
-                f"Timeout waiting for 3B response to {command.hex()} from {self.wpk.ip}:{self.tcp_port} "
-                f"(timeout={self.cmd_timeout_s}s)"
-            ) from e
-
-        if len(response) != 3:
-            error_msg = f"Invalid response length: expected 3 bytes, got {len(response)} bytes. Bytes received: {response.hex()}"
-            self.logger.error(error_msg)
-            raise Exception(error_msg)
-
-        # First 2 bytes should match the first 2 bytes of the command
-        if response[0] != command[0] or response[1] != command[1]:
-            error_msg = f"Response mismatch: command={command[0:2].hex()}, response={response[0:2].hex()}"
-            self.logger.error(error_msg)
-            raise Exception(error_msg)
-
-        # Last byte should be 0
-        if response[2] != 0:
-            error_msg = f"Response status error: expected 0, got {response[2]}"
-            self.logger.error(error_msg)
-            raise Exception(error_msg)
-
-        self.logger.debug(f"Command successful, response: {response.hex()}")
-        return True
 
     @classmethod
     def app_name(cls) -> AppName:
