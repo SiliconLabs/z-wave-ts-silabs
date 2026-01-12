@@ -1,4 +1,7 @@
 import socket
+import time
+from typing import Optional
+
 from .processes import Socat
 from .definitions import AppName, ZwaveRegion, ZwaveRegionLr
 from .devices import DevZwave, DevWpk
@@ -55,6 +58,11 @@ class DevZwaveNcpZniffer(DevZwave):
         super().__init__(ctxt, device_number, wpk, region)
         self.tcp_socket: socket.socket | None = None
         self.tcp_port = 4901
+        # Fail fast on broken/hung Zniffer service
+        self.cmd_timeout_s: float = float(getattr(ctxt, "zniffer_cmd_timeout_s", 3.0)) if ctxt else 3.0
+        self.connect_timeout_s: float = float(getattr(ctxt, "zniffer_connect_timeout_s", 3.0)) if ctxt else 3.0
+        self.reconnect_attempts: int = int(getattr(ctxt, "zniffer_reconnect_attempts", 12)) if ctxt else 12
+        self.reconnect_sleep_s: float = float(getattr(ctxt, "zniffer_reconnect_sleep_s", 0.5)) if ctxt else 0.5
 
     def start(self):
         self.open_tcp_socket()
@@ -69,10 +77,14 @@ class DevZwaveNcpZniffer(DevZwave):
         if region not in get_args(ZwaveRegion):
             raise ValueError(f"Invalid region: {region}. Region must be in {ZwaveRegion}")
 
+        # Flashing may reset/reboot the device and kill/restart the TCP service.
+        # Always drop the TCP session before flashing, then reconnect with retries.
+        self.close_tcp_socket()
         self.wpk.flash_zwave_region_token(region)
+        self._reconnect_tcp_with_retry(context=f"after flash region={region}")
 
         if region in get_args(ZwaveRegionLr):
-            print(f"Set channel configuration 3 for region {region}")
+            self.logger.info(f"Set channel configuration 3 for region {region}")
             self.select_channel_configuration(3)
         return True
 
@@ -93,11 +105,27 @@ class DevZwaveNcpZniffer(DevZwave):
             self.logger.debug("TCP socket is already open")
             return
 
-        self.tcp_socket = self.tcp_socket = socket.create_connection((self.wpk.ip, self.tcp_port), timeout=socket._GLOBAL_DEFAULT_TIMEOUT)
+        s = socket.create_connection((self.wpk.ip, self.tcp_port), timeout=self.connect_timeout_s)
+        # IMPORTANT: ensure recv() cannot block forever
+        s.settimeout(self.cmd_timeout_s)
+        self.tcp_socket = s
         self.logger.info(f"TCP socket opened to {self.wpk.ip}:{self.tcp_port}")
-        self.logger.info(f"Try to send some data to the socket")
-        self.tcp_socket.sendall(bytes([0x23, 0x06, 0x01, 0x03, 0x0a]))
-        self.logger.info(f"Data sent")
+
+    def _reconnect_tcp_with_retry(self, context: str = ""):
+        last_err: Optional[Exception] = None
+        for i in range(1, self.reconnect_attempts + 1):
+            try:
+                self.open_tcp_socket()
+                # Optional tiny sanity check: make sure we can read/write without hanging
+                self.flush_tcp_buffer()
+                self.logger.info(f"TCP ready {context} (attempt {i}/{self.reconnect_attempts})")
+                return
+            except Exception as e:
+                last_err = e
+                self.close_tcp_socket()
+                self.logger.warning(f"TCP not ready {context} (attempt {i}/{self.reconnect_attempts}): {e}")
+                time.sleep(self.reconnect_sleep_s)
+        raise TimeoutError(f"Zniffer TCP never became ready {context}: {last_err}")
 
     def close_tcp_socket(self):
         """Close the TCP socket connection."""
@@ -164,29 +192,32 @@ class DevZwaveNcpZniffer(DevZwave):
         if self.tcp_socket is None:
             raise Exception("TCP socket is not open. Call open_tcp_socket() first.")
 
+        s = self.tcp_socket
+        old_timeout = s.gettimeout()
         try:
-            # Set socket to non-blocking mode
-            self.tcp_socket.setblocking(False)
-            try:
-                while True:
-                    data = self.tcp_socket.recv(4096)
-                    if not data:
-                        break
-            except BlockingIOError:
-                # No more data to read
-                pass
-            finally:
-                # Restore blocking mode
-                self.tcp_socket.setblocking(True)
-            self.logger.debug("TCP receive buffer flushed")
-        except Exception as e:
-            self.logger.error(f"Error flushing TCP buffer: {e}")
-            # Ensure socket is back in blocking mode
-            try:
-                self.tcp_socket.setblocking(True)
-            except:
-                pass
-            raise
+            # Non-blocking read without permanently changing timeouts/blocking behavior
+            s.settimeout(0.0)
+            while True:
+                data = s.recv(4096)
+                if not data:
+                    break
+        except (BlockingIOError, socket.timeout):
+            pass
+        finally:
+            s.settimeout(old_timeout)
+        self.logger.debug("TCP receive buffer flushed")
+
+    def _recv_exact(self, n: int) -> bytes:
+        s = self.tcp_socket
+        if s is None:
+            raise Exception("TCP socket is not open. Call open_tcp_socket() first.")
+        buf = bytearray()
+        while len(buf) < n:
+            chunk = s.recv(n - len(buf))
+            if not chunk:
+                raise ConnectionError(f"Socket closed while waiting for {n} bytes (got {len(buf)})")
+            buf += chunk
+        return bytes(buf)
 
     def send_cmd(self, command: bytes) -> bool:
         """
@@ -215,7 +246,15 @@ class DevZwaveNcpZniffer(DevZwave):
         self.logger.debug(f"Sent command: {command.hex()}")
 
         # Step 3: Check the answer (should be 3 bytes)
-        response = self.tcp_socket.recv(3)
+        try:
+            # Force a bounded wait for the ACK
+            self.tcp_socket.settimeout(self.cmd_timeout_s)
+            response = self._recv_exact(3)
+        except socket.timeout as e:
+            raise TimeoutError(
+                f"Timeout waiting for 3B response to {command.hex()} from {self.wpk.ip}:{self.tcp_port} "
+                f"(timeout={self.cmd_timeout_s}s)"
+            ) from e
 
         if len(response) != 3:
             error_msg = f"Invalid response length: expected 3 bytes, got {len(response)} bytes. Bytes received: {response.hex()}"
