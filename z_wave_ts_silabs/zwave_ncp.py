@@ -151,7 +151,13 @@ class DevZwaveNcpZniffer(DevZwave):
             raise ValueError(f"Command must be at least 3 bytes, trying to send {command.hex()}")
 
         # Serialize send/recv and keep socket state consistent
-        return self._send_cmd_locked(command, response_length)
+        attempts = 0
+        while attempts < 3:
+            if self._send_cmd_locked(command, response_length):
+                return True
+            attempts += 1
+            time.sleep(0.1)
+        return False
 
     def _send_cmd_locked(self, command: bytes, response_length: int = 3) -> bool:
         with self._io_lock:
@@ -171,9 +177,11 @@ class DevZwaveNcpZniffer(DevZwave):
             response = self._recv_exact(response_length)
 
             if response[0:2] != command[0:2]:
-                raise Exception(f"Response mismatch: cmd={command[0:2].hex()} resp={response[0:2].hex()}")
+                self.logger.warning(f"Response mismatch: cmd={command[0:2].hex()} resp={response[0:2].hex()}")
+                return False
             if response[2] != (response_length - 3):
-                raise Exception(f"Response length error: expected {(response_length - 3)} got {response[2]} (resp={response.hex()})")
+                self.logger.warning(f"Response length error: expected {(response_length - 3)} got {response[2]} (resp={response.hex()})")
+                return False
 
             self.logger.debug(f"Command successful, response: {response.hex()}")
             return True
