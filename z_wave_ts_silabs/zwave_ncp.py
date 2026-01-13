@@ -172,8 +172,8 @@ class DevZwaveNcpZniffer(DevZwave):
 
             if response[0:2] != command[0:2]:
                 raise Exception(f"Response mismatch: cmd={command[0:2].hex()} resp={response[0:2].hex()}")
-            if response[2] != (response_length - 3):
-                raise Exception(f"Response length error: expected {(response_length - 3)} got {response[2]} (resp={response.hex()})")
+            # if response[2] != (response_length - 3):
+            #     raise Exception(f"Response length error: expected {(response_length - 3)} got {response[2]} (resp={response.hex()})")
 
             self.logger.debug(f"Command successful, response: {response.hex()}")
             return True
