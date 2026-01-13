@@ -97,6 +97,15 @@ class DevZwaveNcpZniffer(DevZwave):
 
         return True
 
+    def select_channel_configuration(self, channel: int):
+        if channel not in (1, 2, 3):
+            raise ValueError(f"Invalid channel configuration: {channel}. Channel configuraiton must be 1, 2, or 3.")
+        self.send_cmd(bytes([0x23, 0x05, 0x00])) # Stop the zniffer
+        self.send_cmd(bytes([0x23, 0x06, 0x01, channel])) # Set the channel
+        self.send_cmd(bytes([0x23, 0x04, 0x00])) # Start the zniffer
+        self.send_cmd(bytes([0x23, 0x07, 0x00]), 4) # Get the channel
+        return True
+
     def open_tcp_socket(self):
         if self.tcp_socket is not None:
             return
@@ -132,27 +141,19 @@ class DevZwaveNcpZniffer(DevZwave):
         raise TimeoutError(f"Zniffer TCP never became ready ({context}) {self.wpk.ip}:{self.tcp_port}: {last_err}")
 
     def _probe_ready(self):
-        # Use the same cmd that CI fails on; if this works, device is ready.
-        self._send_cmd_locked(bytes([0x23, 0x06, 0x01, 0x03]))
+        # Send a command to check that the zniffer is running
+        self._send_cmd_locked(bytes([0x23, 0x04, 0x00]))
 
-    def select_channel_configuration(self, channel: int):
-        if channel not in (1, 2, 3):
-            raise ValueError(f"Invalid channel: {channel}. Channel must be 1, 2, or 3.")
-        self.send_cmd(bytes([0x23, 0x05, 0x00])) # Stop the zniffer
-        self.send_cmd(bytes([0x23, 0x06, 0x01, channel])) # Set the channel
-        self.send_cmd(bytes([0x23, 0x04, 0x00])) # Start the zniffer
-        return True
-
-    def send_cmd(self, command: bytes) -> bool:
+    def send_cmd(self, command: bytes, response_length: int = 3) -> bool:
         if self.tcp_socket is None:
             raise Exception("TCP socket is not open. Call open_tcp_socket() first.")
         if len(command) < 3:
             raise ValueError(f"Command must be at least 3 bytes, trying to send {command.hex()}")
 
         # Serialize send/recv and keep socket state consistent
-        return self._send_cmd_locked(command)
+        return self._send_cmd_locked(command, response_length)
 
-    def _send_cmd_locked(self, command: bytes) -> bool:
+    def _send_cmd_locked(self, command: bytes, response_length: int = 3) -> bool:
         with self._io_lock:
             s = self.tcp_socket
             if s is None:
@@ -167,12 +168,12 @@ class DevZwaveNcpZniffer(DevZwave):
             s.sendall(command)
             self.logger.debug(f"Sent command: {command.hex()}")
 
-            response = self._recv_exact(3)
+            response = self._recv_exact(response_length)
 
             if response[0:2] != command[0:2]:
                 raise Exception(f"Response mismatch: cmd={command[0:2].hex()} resp={response[0:2].hex()}")
-            if response[2] != 0:
-                raise Exception(f"Response status error: expected 0 got {response[2]} resp={response.hex()}")
+            if response[2] != (response_length - 3):
+                raise Exception(f"Response length error: expected {(response_length - 3)} got {response[2]} (resp={response.hex()})")
 
             self.logger.debug(f"Command successful, response: {response.hex()}")
             return True
