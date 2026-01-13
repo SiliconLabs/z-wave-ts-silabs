@@ -84,12 +84,12 @@ class DevZwaveNcpZniffer(DevZwave):
         # flashing likely resets the TCP service => always reconnect and re-probe
         self.close_tcp_socket()
         self.wpk.flash_zwave_region_token(region)
+        self.logger.info(f"Zniffer configure for region {region}")
 
         # give device a moment to reboot (cheap + removes flakiness)
-        time.sleep(1.0)
+        time.sleep(5.0)
 
         self._reconnect_tcp_with_retry(f"after flash {region}")
-        self.logger.info(f"Zniffer configure for region {region}")
 
         if region in get_args(ZwaveRegionLr):
             self.logger.info(f"LR region detected: {region} -> selecting channel configuration 3")
@@ -100,10 +100,10 @@ class DevZwaveNcpZniffer(DevZwave):
     def select_channel_configuration(self, channel: int):
         if channel not in (1, 2, 3):
             raise ValueError(f"Invalid channel configuration: {channel}. Channel configuraiton must be 1, 2, or 3.")
-        self.send_cmd(bytes([0x23, 0x05, 0x00])) # Stop the zniffer
+        # self.send_cmd(bytes([0x23, 0x05, 0x00])) # Stop the zniffer
         self.send_cmd(bytes([0x23, 0x06, 0x01, channel])) # Set the channel
-        self.send_cmd(bytes([0x23, 0x04, 0x00])) # Start the zniffer
-        self.send_cmd(bytes([0x23, 0x07, 0x00]), 4) # Get the channel
+        # self.send_cmd(bytes([0x23, 0x04, 0x00])) # Start the zniffer
+        self.send_cmd(bytes([0x23, 0x07, 0x00]), 7) # Get the channel
         return True
 
     def open_tcp_socket(self):
@@ -172,8 +172,8 @@ class DevZwaveNcpZniffer(DevZwave):
 
             if response[0:2] != command[0:2]:
                 raise Exception(f"Response mismatch: cmd={command[0:2].hex()} resp={response[0:2].hex()}")
-            # if response[2] != (response_length - 3):
-            #     raise Exception(f"Response length error: expected {(response_length - 3)} got {response[2]} (resp={response.hex()})")
+            if response[2] != (response_length - 3):
+                raise Exception(f"Response length error: expected {(response_length - 3)} got {response[2]} (resp={response.hex()})")
 
             self.logger.debug(f"Command successful, response: {response.hex()}")
             return True
