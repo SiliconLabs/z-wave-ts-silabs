@@ -89,9 +89,10 @@ class DevZwaveNcpZniffer(DevZwave):
         time.sleep(1.0)
 
         self._reconnect_tcp_with_retry(f"after flash {region}")
+        self.logger.info(f"Zniffer configure for region {region}")
 
         if region in get_args(ZwaveRegionLr):
-            self.logger.info(f"LR region {region}: selecting channel configuration 3")
+            self.logger.info(f"LR region detected: {region} -> selecting channel configuration 3")
             self.select_channel_configuration(3)
 
         return True
@@ -137,7 +138,9 @@ class DevZwaveNcpZniffer(DevZwave):
     def select_channel_configuration(self, channel: int):
         if channel not in (1, 2, 3):
             raise ValueError(f"Invalid channel: {channel}. Channel must be 1, 2, or 3.")
-        self.send_cmd(bytes([0x23, 0x06, 0x01, channel]))
+        self.send_cmd(bytes([0x23, 0x05, 0x00])) # Stop the zniffer
+        self.send_cmd(bytes([0x23, 0x06, 0x01, channel])) # Set the channel
+        self.send_cmd(bytes([0x23, 0x04, 0x00])) # Start the zniffer
         return True
 
     def send_cmd(self, command: bytes) -> bool:
