@@ -142,7 +142,7 @@ class DevZwaveNcpZniffer(DevZwave):
 
     def _probe_ready(self):
         # get version to check that the zniffer is running
-        self._send_cmd_locked(bytes([0x23, 0x01, 0x00]), 7)
+        self._send_cmd_locked(bytes([0x23, 0x01, 0x00]), 8)
 
     def send_cmd(self, command: bytes, response_length: int = 3) -> bool:
         if self.tcp_socket is None:
