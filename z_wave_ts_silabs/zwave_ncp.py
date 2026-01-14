@@ -74,35 +74,11 @@ class DevZwaveNcpZniffer(DevZwave):
     def stop(self):
         self.close_tcp_socket()
 
-    def set_region(self, region: ZwaveRegion):
-        if "REGION_" not in region:
-            region = f"REGION_{region}"
-
-        if region not in get_args(ZwaveRegion):
-            raise ValueError(f"Invalid region: {region}. Region must be in {ZwaveRegion}")
-
-        # flashing likely resets the TCP service => always reconnect and re-probe
-        self.close_tcp_socket()
-        self.wpk.flash_zwave_region_token(region)
-        self.logger.info(f"Zniffer configure for region {region}")
-
-        # give device a moment to reboot (cheap + removes flakiness)
-        time.sleep(5.0)
-
-        self._reconnect_tcp_with_retry(f"after flash {region}")
-
-        if region in get_args(ZwaveRegionLr):
-            self.logger.info(f"LR region detected: {region} -> selecting channel configuration 3")
-            self.select_channel_configuration(3)
-
-        return True
-
     def select_channel_configuration(self, channel: int):
         if channel not in (1, 2, 3):
             raise ValueError(f"Invalid channel configuration: {channel}. Channel configuraiton must be 1, 2, or 3.")
-        # self.send_cmd(bytes([0x23, 0x05, 0x00])) # Stop the zniffer
+        self.logger.info(f"Select zniffer channel configuration to {channel}")
         self.send_cmd(bytes([0x23, 0x06, 0x01, channel])) # Set the channel
-        # self.send_cmd(bytes([0x23, 0x04, 0x00])) # Start the zniffer
         self.send_cmd(bytes([0x23, 0x07, 0x00]), 7) # Get the channel
         return True
 
