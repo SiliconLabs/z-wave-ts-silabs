@@ -141,8 +141,8 @@ class DevZwaveNcpZniffer(DevZwave):
         raise TimeoutError(f"Zniffer TCP never became ready ({context}) {self.wpk.ip}:{self.tcp_port}: {last_err}")
 
     def _probe_ready(self):
-        # Send a command to check that the zniffer is running
-        self._send_cmd_locked(bytes([0x23, 0x04, 0x00]))
+        # get version to check that the zniffer is running
+        self._send_cmd_locked(bytes([0x23, 0x01, 0x00]), 7)
 
     def send_cmd(self, command: bytes, response_length: int = 3) -> bool:
         if self.tcp_socket is None:
