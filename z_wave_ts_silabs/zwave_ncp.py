@@ -72,6 +72,14 @@ class DevZwaveNcpZniffer(DevZwave):
     def stop(self):
         self.close_tcp_socket()
 
+    def select_channel_configuration(self, channel: int):
+        if channel not in (1, 2, 3):
+            raise ValueError(f"Invalid channel configuration: {channel}. Channel configuraiton must be 1, 2, or 3.")
+        self.logger.info(f"Select zniffer channel configuration to {channel}")
+        self.send_cmd(bytes([0x23, 0x06, 0x01, channel])) # Set the channel
+        self.send_cmd(bytes([0x23, 0x07, 0x00]), 7) # Get the channel
+        return True
+
     def open_tcp_socket(self):
         if self.tcp_socket is not None:
             return
