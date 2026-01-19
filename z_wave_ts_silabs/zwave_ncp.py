@@ -1,3 +1,7 @@
+import socket
+import time
+import threading
+
 from .processes import Socat
 from .definitions import AppName, ZwaveRegion
 from .devices import DevZwave, DevWpk
@@ -47,7 +51,134 @@ class DevZwaveNcpSerialApiEndDevice(DevZwaveNcp):
         return 'zwave_ncp_serial_api_end_device'
 
 
-class DevZwaveNcpZniffer(DevZwaveNcp):
+class DevZwaveNcpZniffer(DevZwave):
+    def __init__(self, ctxt: SessionContext, device_number: int, wpk: DevWpk, region: ZwaveRegion, wpk_serial_speed=115200) -> None:
+        super().__init__(ctxt, device_number, wpk, region)
+        self.tcp_socket: socket.socket | None = None
+        self.tcp_port = 4901
+
+        # CI-safe defaults
+        self.connect_timeout_s = 3.0
+        self.cmd_timeout_s = 3.0
+        self.reconnect_attempts = 30
+        self.reconnect_sleep_s = 0.5
+
+        # IMPORTANT: protect against concurrent calls from different threads/tests
+        self._io_lock = threading.Lock()
+
+    def start(self):
+        self._reconnect_tcp_with_retry("start")
+
+    def stop(self):
+        self.close_tcp_socket()
+
+    def open_tcp_socket(self):
+        if self.tcp_socket is not None:
+            return
+
+        s = socket.create_connection((self.wpk.ip, self.tcp_port), timeout=self.connect_timeout_s)
+        s.settimeout(self.cmd_timeout_s)
+        s.setsockopt(socket.IPPROTO_TCP, socket.TCP_NODELAY, 1)
+        self.tcp_socket = s
+        self.logger.info(f"TCP socket opened to {self.wpk.ip}:{self.tcp_port}")
+
+    def close_tcp_socket(self):
+        if self.tcp_socket is None:
+            return
+        try:
+            self.tcp_socket.close()
+        finally:
+            self.tcp_socket = None
+
+    def _reconnect_tcp_with_retry(self, context: str):
+        last_err = None
+        for i in range(1, self.reconnect_attempts + 1):
+            try:
+                self.open_tcp_socket()
+                # readiness probe: send ch=3 cmd and require ACK
+                self._probe_ready()
+                self.logger.info(f"Zniffer TCP ready ({context}) attempt {i}/{self.reconnect_attempts}")
+                return
+            except Exception as e:
+                last_err = e
+                self.logger.warning(f"Zniffer TCP not ready ({context}) attempt {i}/{self.reconnect_attempts}: {e}")
+                self.close_tcp_socket()
+                time.sleep(self.reconnect_sleep_s)
+        raise TimeoutError(f"Zniffer TCP never became ready ({context}) {self.wpk.ip}:{self.tcp_port}: {last_err}")
+
+    def _probe_ready(self):
+        # get version to check that the zniffer is running
+        self._send_cmd_locked(bytes([0x23, 0x01, 0x00]), 7)
+
+    def send_cmd(self, command: bytes, response_length: int = 3) -> bool:
+        if self.tcp_socket is None:
+            raise Exception("TCP socket is not open. Call open_tcp_socket() first.")
+        if len(command) < 3:
+            raise ValueError(f"Command must be at least 3 bytes, trying to send {command.hex()}")
+
+        # Serialize send/recv and keep socket state consistent
+        attempts = 0
+        while attempts < 3:
+            if self._send_cmd_locked(command, response_length):
+                return True
+            attempts += 1
+            time.sleep(0.1)
+        return False
+
+    def _send_cmd_locked(self, command: bytes, response_length: int = 3) -> bool:
+        with self._io_lock:
+            s = self.tcp_socket
+            if s is None:
+                raise Exception("TCP socket is not open. Call open_tcp_socket() first.")
+
+            # bounded wait always
+            s.settimeout(self.cmd_timeout_s)
+
+            # don't "flush forever"; just drain whatever is already queued quickly
+            self._drain_rx_nonblocking()
+
+            s.sendall(command)
+            self.logger.debug(f"Sent command: {command.hex()}")
+
+            response = self._recv_exact(response_length)
+
+            if response[0:2] != command[0:2]:
+                self.logger.warning(f"Response mismatch: cmd={command[0:2].hex()} resp={response[0:2].hex()}")
+                return False
+            if response[2] != (response_length - 3):
+                self.logger.warning(f"Response length error: expected {(response_length - 3)} got {response[2]} (resp={response.hex()})")
+                return False
+
+            self.logger.debug(f"Command successful, response: {response.hex()}")
+            return True
+
+    def _drain_rx_nonblocking(self):
+        s = self.tcp_socket
+        if s is None:
+            return
+        old_timeout = s.gettimeout()
+        try:
+            s.settimeout(0.0)
+            while True:
+                data = s.recv(4096)
+                if not data:
+                    break
+        except (BlockingIOError, socket.timeout):
+            pass
+        finally:
+            s.settimeout(old_timeout)
+
+    def _recv_exact(self, n: int) -> bytes:
+        s = self.tcp_socket
+        if s is None:
+            raise Exception("TCP socket is not open. Call open_tcp_socket() first.")
+        buf = bytearray()
+        while len(buf) < n:
+            chunk = s.recv(n - len(buf))
+            if not chunk:
+                raise ConnectionError(f"Socket closed while waiting for {n} bytes (got {len(buf)})")
+            buf += chunk
+        return bytes(buf)
 
     @classmethod
     def app_name(cls) -> AppName:
