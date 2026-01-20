@@ -58,10 +58,7 @@ class DevZwaveNcpZniffer(DevZwave):
         self.tcp_port = 4901
 
         # CI-safe defaults
-        self.connect_timeout_s = 3.0
         self.cmd_timeout_s = 3.0
-        self.reconnect_attempts = 30
-        self.reconnect_sleep_s = 0.5
 
         # IMPORTANT: protect against concurrent calls from different threads/tests
         self._io_lock = threading.Lock()
@@ -72,19 +69,21 @@ class DevZwaveNcpZniffer(DevZwave):
     def stop(self):
         self.close_tcp_socket()
 
-    def select_channel_configuration(self, channel: int):
+    def select_channel_configuration(self, channel: int) -> bool:
         if channel not in (1, 2, 3):
-            raise ValueError(f"Invalid channel configuration: {channel}. Channel configuraiton must be 1, 2, or 3.")
+            raise ValueError(f"Invalid channel configuration: {channel}. Channel configuration must be 1, 2, or 3.")
         self.logger.info(f"Select zniffer channel configuration to {channel}")
-        self.send_cmd(bytes([0x23, 0x06, 0x01, channel])) # Set the channel
-        self.send_cmd(bytes([0x23, 0x07, 0x00]), 7) # Get the channel
-        return True
+        if self.send_cmd(bytes([0x23, 0x06, 0x01, channel])): # Set the channel [SoF, Cmd, Data Len, Channel]
+            if self.send_cmd(bytes([0x23, 0x07, 0x00]), 7): # Get the channel [SoF, Cmd, Data Len]
+                return True
+        return False
 
     def open_tcp_socket(self):
+        connect_timeout_s = 3.0
         if self.tcp_socket is not None:
             return
 
-        s = socket.create_connection((self.wpk.ip, self.tcp_port), timeout=self.connect_timeout_s)
+        s = socket.create_connection((self.wpk.ip, self.tcp_port), timeout=connect_timeout_s)
         s.settimeout(self.cmd_timeout_s)
         s.setsockopt(socket.IPPROTO_TCP, socket.TCP_NODELAY, 1)
         self.tcp_socket = s
@@ -99,24 +98,28 @@ class DevZwaveNcpZniffer(DevZwave):
             self.tcp_socket = None
 
     def _reconnect_tcp_with_retry(self, context: str):
+        reconnect_attempts = 30
+        reconnect_sleep_s = 0.5
         last_err = None
-        for i in range(1, self.reconnect_attempts + 1):
+        for i in range(1, reconnect_attempts + 1):
             try:
                 self.open_tcp_socket()
-                # readiness probe: send ch=3 cmd and require ACK
-                self._probe_ready()
-                self.logger.info(f"Zniffer TCP ready ({context}) attempt {i}/{self.reconnect_attempts}")
-                return
+                # readiness probe: get version and require ACK
+                if self._probe_ready():
+                    self.logger.info(f"Zniffer TCP ready ({context}) attempt {i}/{reconnect_attempts}")
+                    return
+                else:
+                    raise ValueError(f"Communication error with Zniffer after socket open.")
             except Exception as e:
                 last_err = e
-                self.logger.warning(f"Zniffer TCP not ready ({context}) attempt {i}/{self.reconnect_attempts}: {e}")
+                self.logger.warning(f"Zniffer TCP not ready ({context}) attempt {i}/{reconnect_attempts}: {e}")
                 self.close_tcp_socket()
-                time.sleep(self.reconnect_sleep_s)
+                time.sleep(reconnect_sleep_s)
         raise TimeoutError(f"Zniffer TCP never became ready ({context}) {self.wpk.ip}:{self.tcp_port}: {last_err}")
 
-    def _probe_ready(self):
+    def _probe_ready(self) -> bool:
         # get version to check that the zniffer is running
-        self._send_cmd_locked(bytes([0x23, 0x01, 0x00]), 7)
+        return self.send_cmd(bytes([0x23, 0x01, 0x00]), 7)
 
     def send_cmd(self, command: bytes, response_length: int = 3) -> bool:
         if self.tcp_socket is None:
