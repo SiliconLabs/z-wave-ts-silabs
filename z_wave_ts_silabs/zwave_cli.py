@@ -1,11 +1,28 @@
 import re
 import time
-from typing import Literal
+from typing import Literal, TypedDict
 
 from . import telnetlib
 from .definitions import AppName, ZwaveRegion
 from .devices import DevZwave, DevWpk
 from .session_context import SessionContext
+
+
+class LbtThresholds(TypedDict):
+    """Structure pour stocker les seuils LBT de chaque canal."""
+    CH0: int
+    CH1: int
+    CH2: int
+    CH3: int
+
+
+class MonitorStatus(TypedDict):
+    """Structure pour stocker l'état de monitoring de l'end device."""
+    tx_queue_low_priority: tuple[int, int]  # (current, max)
+    tx_queue_high_priority: tuple[int, int]  # (current, max)
+    waiting_for_ack: bool
+    transmitting: bool
+    radio_state: str  # IDLE, RX, TX, ACTIVE
 
 
 class DevZWaveCliError(Exception):
@@ -198,6 +215,90 @@ class DevZwaveCli(DevZwave):
 
      def node_id_filtering_clear(self):
           self._run_cmd('node_id_filtering_clear')
+
+     def lbt_threshold_set(self, level: int) -> None:
+          """Définit le seuil LBT pour tous les canaux radio.
+          
+          :param level: Valeur du seuil LBT en dBm (int8_t, plage -128 à 127)
+          """
+          if not (-128 <= level <= 127):
+               raise ValueError(f"LBT threshold level must be between -128 and 127, got {level}")
+          self._run_cmd(f'lbt_threshold_set {level}')
+
+     def lbt_threshold_get(self) -> LbtThresholds:
+          """Récupère les valeurs actuelles du seuil LBT pour tous les canaux radio.
+          
+          :return: Dictionnaire contenant les seuils LBT pour CH0, CH1, CH2, CH3 en dBm
+          """
+          output = self._run_cmd('lbt_threshold_get')
+          
+          # Pattern pour extraire les valeurs: "[I] LBT threshold CH0: -80 dBm"
+          pattern = r'\[I\] LBT threshold CH(?P<channel>\d+): (?P<threshold>-?\d+) dBm'
+          matches = re.findall(pattern, output)
+          
+          thresholds: LbtThresholds = {'CH0': 0, 'CH1': 0, 'CH2': 0, 'CH3': 0}
+          
+          for channel_str, threshold_str in matches:
+               channel_num = int(channel_str)
+               if 0 <= channel_num <= 3:
+                    thresholds[f'CH{channel_num}'] = int(threshold_str)
+          
+          self.logger.debug(f"LBT thresholds: {thresholds}")
+          return thresholds
+
+     def get_status(self) -> MonitorStatus:
+          """Récupère l'état actuel de l'end device.
+          
+          :return: Dictionnaire contenant l'état de monitoring (TxQueue, ACK, transmission, radio)
+          """
+          output = self._run_cmd('monitor')
+          
+          # Pattern pour TxQueue Low Priority: "[I] TxQueue Low Priority: 2/3"
+          low_priority_match = re.search(
+               r'\[I\] TxQueue Low Priority: (?P<current>\d+)/(?P<max>\d+)',
+               output
+          )
+          
+          # Pattern pour TxQueue High Priority: "[I] TxQueue High Priority: 1/4"
+          high_priority_match = re.search(
+               r'\[I\] TxQueue High Priority: (?P<current>\d+)/(?P<max>\d+)',
+               output
+          )
+          
+          # Pattern pour Waiting for ACK: "[I] Waiting for ACK: Yes" ou "No"
+          ack_match = re.search(
+               r'\[I\] Waiting for ACK: (?P<waiting>Yes|No)',
+               output
+          )
+          
+          # Pattern pour Transmitting: "[I] Transmitting: Yes" ou "No"
+          transmitting_match = re.search(
+               r'\[I\] Transmitting: (?P<transmitting>Yes|No)',
+               output
+          )
+          
+          # Pattern pour Radio State: "[I] Radio State: RX"
+          radio_state_match = re.search(
+               r'\[I\] Radio State: (?P<state>\w+)',
+               output
+          )
+          
+          status: MonitorStatus = {
+               'tx_queue_low_priority': (
+                    int(low_priority_match.group('current')) if low_priority_match else 0,
+                    int(low_priority_match.group('max')) if low_priority_match else 3
+               ),
+               'tx_queue_high_priority': (
+                    int(high_priority_match.group('current')) if high_priority_match else 0,
+                    int(high_priority_match.group('max')) if high_priority_match else 4
+               ),
+               'waiting_for_ack': ack_match.group('waiting') == 'Yes' if ack_match else False,
+               'transmitting': transmitting_match.group('transmitting') == 'Yes' if transmitting_match else False,
+               'radio_state': radio_state_match.group('state') if radio_state_match else 'UNKNOWN'
+          }
+          
+          self.logger.debug(f"Monitor status: {status}")
+          return status
 
 
 class DevZwaveDoorLockKeypad(DevZwaveCli):
