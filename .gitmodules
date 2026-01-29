@@ -1,0 +1,3 @@
+[submodule "z-wave"]
+	path = z-wave
+	url = git@github.com:SiliconLabsInternal/z-wave.git
