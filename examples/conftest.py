@@ -1,6 +1,18 @@
 import pytest
+import sys
 from pathlib import Path
 from datetime import datetime
+
+# Add parent directory to path if z_wave_ts_silabs is not installed
+# This allows importing fixtures when running pytest from examples directory
+_parent_dir = Path(__file__).parent.parent
+if str(_parent_dir) not in sys.path:
+    sys.path.insert(0, str(_parent_dir))
+
+# Import all fixtures from z_wave_ts_silabs.fixtures
+# Pytest will automatically discover and register these fixtures
+# The fixtures module uses pytest hooks which are only registered once
+from z_wave_ts_silabs.fixtures import *
 
 
 @pytest.fixture(scope='session')
