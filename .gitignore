@@ -9,7 +9,6 @@ z_wave_ts_silabs.egg-info/
 
 # IDE 
 .idea/
-.vscode/
 
 # sample binaries
 build_archive/

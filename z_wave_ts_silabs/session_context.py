@@ -27,6 +27,7 @@ class SessionContext:
     zwave_btl_encrypt_key_end_device: Path = Path('platform/SiliconLabs/PAL/BootLoader/sample-keys/sample_encrypt.key') # bootloader encryption/decryption key on end devices (needed for OTA updates)
     zwave_btl_signing_key_end_device: Path = Path('platform/SiliconLabs/PAL/BootLoader/sample-keys/sample_sign.key-tokens.txt') # bootloader signing key on end devices (needed for OTA updates)
     domain_name: str = "silabs.com" # domain name used to resolve the IP addresses of WPKs (see: `hw_cluster` pytest fixture in fixtures.py)
+    default_cluster: str | None = None  # default cluster name when --hw-cluster is not passed (used by pytest and pick_hw_cluster)
 
     @staticmethod
     def from_json(config_file_path: Path) -> SessionContext:
@@ -44,6 +45,7 @@ class SessionContext:
             zwave_btl_encrypt_key_end_device = Path(json_config['zwave_btl_encrypt_key_end_device']),
             zwave_btl_signing_key_end_device = Path(json_config['zwave_btl_signing_key_end_device']),
             domain_name=json_config['domain_name'],
+            default_cluster=json_config.get('default_cluster'),
         )
 
     def __post_init__(self):
