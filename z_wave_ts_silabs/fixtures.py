@@ -26,13 +26,27 @@ def pytest_addoption(parser: pytest.Parser):
     except ValueError:
         # Option already registered, ignore
         pass
-    
+
     try:
         parser.addoption(
             '--hw-config', type=str, help='Path to configuration JSON file', default='config.json'
         )
     except ValueError:
         # Option already registered, ignore
+        pass
+
+    try:
+        parser.addoption(
+            '--rtt', action='store_true', default=False, help='Enable RTT log capture on DevZwave devices'
+        )
+    except ValueError:
+        pass
+
+    try:
+        parser.addoption(
+            '--pti', action='store_true', default=False, help='Enable PTI trace capture on DevZwave devices'
+        )
+    except ValueError:
         pass
 
 
@@ -114,10 +128,13 @@ def hw_cluster(session_ctxt: SessionContext, hw_clusters: Clusters, hw_cluster_n
 
 
 @pytest.fixture(scope="function", autouse=True)
-def updated_session_ctxt(session_ctxt: SessionContext, log_dir: Path) -> SessionContext:
+def updated_session_ctxt(session_ctxt: SessionContext, log_dir: Path, pytestconfig: pytest.Config) -> SessionContext:
     # the log_dir fixture MUST either be provided by another package or by a conftest.py file.
     session_ctxt.current_test_logdir = log_dir
+    session_ctxt.current_test_rtt_enabled = pytestconfig.getoption('rtt')
+    session_ctxt.current_test_pti_enabled = pytestconfig.getoption('pti')
     _logger.debug(f'current test log directory: {session_ctxt.current_test_logdir}')
+    _logger.debug(f'RTT enabled: {session_ctxt.current_test_rtt_enabled}, PTI enabled: {session_ctxt.current_test_pti_enabled}')
     yield session_ctxt
 
 
@@ -143,7 +160,7 @@ def hw_cluster_free_all_wpk(request: pytest.FixtureRequest):
         # No hardware cluster specified (no option and no default in config), skip
         yield
         return
-    
+
     # Try to get hw_cluster fixture - it may not be available for all tests
     hw_cluster = None
     try:
@@ -155,26 +172,26 @@ def hw_cluster_free_all_wpk(request: pytest.FixtureRequest):
         _logger.debug(f"hw_cluster fixture not available for this test: {e}")
         yield
         return
-    
+
     # Free all WPKs at the start of each test if cluster is available
     if hw_cluster and hw_cluster.wpk_list and len(hw_cluster.wpk_list) > 0:
         # Log the state before freeing
         reserved_count = sum(1 for wpk in hw_cluster.wpk_list if not wpk.is_free)
         _logger.info(f"[hw_cluster_free_all_wpk] BEFORE freeing: {reserved_count} reserved, {len(hw_cluster.wpk_list) - reserved_count} free out of {len(hw_cluster.wpk_list)} total")
-        
+
         # Free all WPKs
         hw_cluster.free_all_wpk()
-        
+
         # Verify all WPKs are now free
         free_count = sum(1 for wpk in hw_cluster.wpk_list if wpk.is_free)
         reserved_after = sum(1 for wpk in hw_cluster.wpk_list if not wpk.is_free)
         _logger.info(f"[hw_cluster_free_all_wpk] AFTER freeing: {free_count} free, {reserved_after} reserved out of {len(hw_cluster.wpk_list)} total")
-        
+
         if reserved_after > 0:
             _logger.error(f"[hw_cluster_free_all_wpk] ERROR: {reserved_after} WPKs are still reserved after free_all_wpk()!")
             for i, wpk in enumerate(hw_cluster.wpk_list):
                 _logger.error(f"  WPK[{i}]: serial={wpk.serial_no}, is_free={wpk.is_free}")
-        
+
         hw_cluster.parallel_command('clear_flash')
         yield
         # Free all WPKs at the end of each test
