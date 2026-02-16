@@ -137,6 +137,25 @@ class DevWpk(object):
             self.telnet_client.write(bytes(f'{command}\r\n' ,encoding='ascii'))
         return self.telnet_client.read_until(bytes(f'\r\n{self.telnet_prompt}', encoding='ascii'), timeout=1).decode('ascii')
 
+    def get_serial_vcom_speed(self) -> int:
+        """Query the WPK admin (TCP 4902) for 'serial vcom' and parse the port speed.
+
+        Only valid for SOC devices; NCP devices do not expose this the same way.
+        Prefers 'Active port speed', falls back to 'Stored port speed'.
+
+        :return: Baud rate (e.g. 115200)
+        :raises ValueError: If the response cannot be parsed.
+        """
+        output = self._run_admin("serial vcom")
+        # Prefer Active port speed (current), then Stored port speed
+        match = re.search(r"Active port speed\s*:\s*(\d+)", output)
+        if match:
+            return int(match.group(1))
+        match = re.search(r"Stored port speed\s*:\s*(\d+)", output)
+        if match:
+            return int(match.group(1))
+        raise ValueError(f"Could not parse serial vcom speed from admin output: {output!r}")
+
     def reset(self):
         """Resets the WPK board itself."""
         sys_reset_sys_output = self._run_admin("sys reset sys")
