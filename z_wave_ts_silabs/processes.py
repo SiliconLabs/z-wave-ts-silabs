@@ -58,12 +58,16 @@ class BackgroundProcess(object):
             BackgroundProcess._process_list.append(process)
 
     # patterns dict keys must be set to None
-    def __init__(self, ctxt: SessionContext, name: str, cmd_line: str, patterns: dict[str, re.Match | None] = None, timeout: float = 10):
+    def __init__(self, ctxt: SessionContext, name: str, cmd_line: str, patterns: dict[str, re.Match | None] = None, timeout: float = 10, log_subdir: str | None = None):
         self._name = name
         self._ctxt = ctxt
         self._process: Popen | None = None
         self._thread: threading.Thread | None = None
-        self.log_file_path = f"{self._ctxt.current_test_logdir}/{self._name}.log"
+        if log_subdir:
+            self.log_file_path = f"{self._ctxt.current_test_logdir}/{log_subdir}/{self._name}.log"
+        else:
+            self.log_file_path = f"{self._ctxt.current_test_logdir}/{self._name}.log"
+        Path(self.log_file_path).parent.mkdir(parents=True, exist_ok=True)
         self.wo_log_file = open(self.log_file_path, 'w')
         self.ro_log_file = open(self.log_file_path, 'r')
 
@@ -207,7 +211,7 @@ class MosquittoSub(BackgroundProcess):
 
 class Socat(BackgroundProcess):
 
-    def __init__(self, ctxt: SessionContext, hostname: str, port: int):
+    def __init__(self, ctxt: SessionContext, hostname: str, port: int, log_subdir: str | None = None):
         socat_path = shutil.which('socat', path=os.environ['PATH']+':/usr/sbin')
         if socat_path is None:
             raise Exception('socat not found on system')
@@ -217,7 +221,7 @@ class Socat(BackgroundProcess):
             pty_path_regex: None
         }
         cmd_line = f"{socat_path} -x -v -dd TCP:{hostname}:{port},nodelay PTY,rawer,sane"
-        super().__init__(ctxt, f'socat-{hostname}', cmd_line, self.patterns)
+        super().__init__(ctxt, f'socat-{hostname}', cmd_line, self.patterns, log_subdir=log_subdir)
         if self.patterns[pty_path_regex] is not None:
             self.pty_path = self.patterns[pty_path_regex].groupdict()['pty']
         else:

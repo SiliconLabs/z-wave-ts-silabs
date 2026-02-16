@@ -22,7 +22,8 @@ class DevZwaveNcp(DevZwave):
             self.logger.debug(f"start() was called on a running instance of {self.__class__.__name__}")
             return
 
-        self.socat_process = Socat(self._ctxt, self.wpk.ip, 4901)
+        # Log in main directory: correct device folder is not known at start() time (e.g. when created via node_factory with capture_name).
+        self.socat_process = Socat(self._ctxt, self.wpk.ip, 4901, log_subdir=None)
         if not self.socat_process.is_alive:
             raise Exception("socat process did not start or died unexpectedly")
         self.pty = self.socat_process.pty_path
