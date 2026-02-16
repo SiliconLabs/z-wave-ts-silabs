@@ -300,10 +300,11 @@ class DevWpk(object):
         self.commander_cli.flash_tokenfiles('znet', (signing_key_path, encrypt_key_path))
 
     def _pti_logger_thread(self, logger_name: str):
-        # get sub logger here from self, and re-direct output in file.
-        # redirect output from port 4905.
-        zlf_file = ZlfFileWriter(self._ctxt.current_test_logdir / f"{logger_name}.zlf")
-        pcap_file = PcapFileWriter(self._ctxt.current_test_logdir / f"{logger_name}.pcap")
+        # Redirect DCH output from port 4905; store zniffer (zlf) and pcap in device folder.
+        device_dir = self._ctxt.current_test_logdir / logger_name
+        device_dir.mkdir(parents=True, exist_ok=True)
+        zlf_file = ZlfFileWriter(device_dir / "trace.zlf")
+        pcap_file = PcapFileWriter(device_dir / "trace.pcap")
         dch_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         dch_socket.connect((self.ip, self.dch_port))
 
@@ -359,7 +360,9 @@ class DevWpk(object):
             self._pti_thread = None
 
     def start_rtt_logger(self, logger_name: str) -> None:
-        self.commander_cli.spawn_rtt_logger_background_process(logger_name)
+        device_dir = self._ctxt.current_test_logdir / logger_name
+        device_dir.mkdir(parents=True, exist_ok=True)
+        self.commander_cli.spawn_rtt_logger_background_process(f"{logger_name}/rtt")
 
     def stop_rtt_logger(self):
         self.commander_cli.kill_rtt_logger_background_process()
@@ -546,16 +549,29 @@ class DevZwave(Device, metaclass=ABCMeta):
             return None
         return f"zw-{self.home_id}-{self.node_id:04}"
 
+    def _log_dir_name(self) -> str:
+        """Return the directory name for device logs/traces in format N_NAME (e.g. 2_SwitchOnOff).
+        Uses device factory index (_device_number), not node_id, so folder names are stable across test runs."""
+        index = self._device_number
+        app = self.app_name()
+        if app.startswith('zwave_ncp_'):
+            app = app[len('zwave_ncp_'):]
+        elif app.startswith('zwave_soc_'):
+            app = app[len('zwave_soc_'):]
+        parts = app.split('_')
+        friendly_name = ''.join(p.capitalize() for p in parts)
+        return f"{index}_{friendly_name}"
+
     def start_zlf_capture(self, optional_capture_name: str | None = None) -> None:
-        capture_name = self._name if optional_capture_name is None else optional_capture_name
+        capture_name = self._log_dir_name() if optional_capture_name is None else optional_capture_name
         self.wpk.start_pti_logger(capture_name)
 
     def stop_zlf_capture(self) -> None:
         self.wpk.stop_pti_logger()
 
     def start_log_capture(self, optional_capture_name: str | None = None) -> None:
-        capture_name = self._name if optional_capture_name is None else optional_capture_name
-        self.wpk.start_rtt_logger(f"{capture_name}_rtt")
+        capture_name = self._log_dir_name() if optional_capture_name is None else optional_capture_name
+        self.wpk.start_rtt_logger(capture_name)
 
     def stop_log_capture(self) -> None:
         self.wpk.stop_rtt_logger()
