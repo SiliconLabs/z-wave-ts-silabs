@@ -1,12 +1,88 @@
 import re
+import socket
+import threading
 import time
 from typing import Literal
 
-from . import telnetlib
 from .definitions import AppName, ZwaveRegion
 from .devices import DevZwave, DevWpk
 from .session_context import SessionContext
 
+
+class _CliTcpSocket:
+    """Wrapper around a TCP socket for CLI communication (send command, read until prompt)."""
+
+    def __init__(self):
+        self._sock: socket.socket | None = None
+
+    def connect(self, host: str, port: int | str, timeout: float = 10.0) -> None:
+        port = int(port)
+        self._sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        self._sock.settimeout(timeout)
+        self._sock.connect((host, port))
+
+    def close(self) -> None:
+        if self._sock is not None:
+            try:
+                self._sock.close()
+            except OSError:
+                pass
+            self._sock = None
+
+    def write(self, data: bytes) -> None:
+        if self._sock is None:
+            raise BrokenPipeError("CLI socket is closed")
+        self._sock.sendall(data)
+
+    def drain_buffer(self) -> bytes:
+        """Drain the receive buffer: read all available data without blocking."""
+        if self._sock is None:
+            return b""
+        self._sock.settimeout(0)
+        chunks = []
+        try:
+            while True:
+                chunk = self._sock.recv(4096)
+                if not chunk:
+                    break
+                chunks.append(chunk)
+        except (BlockingIOError, socket.timeout):
+            pass
+        finally:
+            self._sock.settimeout(1.0)  # Always restore timeout for read_until
+        return b"".join(chunks)
+
+    def read_until(self, match: bytes, timeout: float = 1.0) -> bytes:
+        """Read until match is found in the stream or timeout."""
+        if self._sock is None:
+            raise BrokenPipeError("CLI socket is closed")
+        self._sock.settimeout(timeout)
+        buffer = b""
+        deadline = time.monotonic() + timeout
+        while time.monotonic() < deadline:
+            try:
+                chunk = self._sock.recv(4096)
+            except socket.timeout:
+                continue
+            if not chunk:
+                break
+            buffer += chunk
+            if match in buffer:
+                return buffer
+        return buffer
+
+
+def run_cmd(sock: _CliTcpSocket, command: str, read_timeout: float = 0.3) -> str:
+    """Execute a command on an open CLI socket and return the response.
+
+    Drains any pending data, sends the command, then reads until the prompt ("> ").
+    We do not wait for the command echo first: the device may echo with CRLF (command\\r\\n)
+    instead of LF (command\\n), which would make read_until(command\\n) timeout.
+    """
+    sock.drain_buffer()
+    sock.write(f"{command}\r\n".encode("ascii"))
+    raw = sock.read_until(b"> ", timeout=read_timeout)
+    return raw.decode("ascii", errors="replace")
 
 class DevZWaveCliError(Exception):
     """Exception raised when Z-Wave CLI connection fails after all retry attempts.
@@ -29,13 +105,14 @@ class DevZwaveCli(DevZwave):
 
           self.wpk_serial_speed = wpk_serial_speed
           super().__init__(ctxt, device_number, wpk, region)
-          self.telnet_client: telnetlib.Telnet | None = None
+          self._cli_socket: _CliTcpSocket | None = None
+          self._cli_lock = threading.Lock()
 
      def start(self) -> bool:
           """
-          Attempt to establish a Telnet CLI connection to the Z-Wave device.
+          Attempt to establish a TCP CLI connection to the Z-Wave device.
 
-          Tries up to three times to connect to the device's CLI using Telnet.
+          Tries up to three times to connect to the device's CLI on port 4901.
           If the connection is already open, logs an error and returns False.
           On each attempt, sends a CRLF and checks for the CLI prompt.
           If successful, returns True. If all attempts fail, raises DevZWaveCliError.
@@ -45,7 +122,7 @@ class DevZwaveCli(DevZwave):
           """
           self.wpk._run_admin(f"serial vcom config speed {self.wpk_serial_speed}");
 
-          if self.telnet_client is not None:
+          if self._cli_socket is not None:
                self.logger.error(f"start() was called on a running instance of {self.__class__.__name__}")
                return False
 
@@ -53,16 +130,18 @@ class DevZwaveCli(DevZwave):
           for attempt in range(max_attempts):
                time.sleep(0.5 * attempt)
                try:
-                    self.telnet_client = telnetlib.Telnet(self.wpk.ip, '4901', 1)
+                    sock = _CliTcpSocket()
+                    sock.connect(self.wpk.ip, 4901, timeout=3.0)
+                    self._cli_socket = sock
                except Exception as e:
                     self.logger.debug(f"CLI connection attempt {attempt + 1} failed: {e}")
                     continue
 
-               response = ""
+               response = b""
                try:
-                    self.telnet_client.read_very_eager()
-                    self.telnet_client.write(b'\r\n')
-                    response = self.telnet_client.read_until(b'> ', timeout=3.0)
+                    self._cli_socket.drain_buffer()
+                    self._cli_socket.write(b'\r\n')
+                    response = self._cli_socket.read_until(b'> ', timeout=3.0)
                except Exception as e:
                     self.logger.debug(f"CLI test failed on attempt {attempt + 1}: {e}")
 
@@ -71,71 +150,47 @@ class DevZwaveCli(DevZwave):
                else:
                     self.logger.debug(f"Instead of CLI the prompt got: {response} ")
 
-               if self.telnet_client:
-                    self.telnet_client.close()
-                    self.telnet_client = None
+               if self._cli_socket:
+                    self._cli_socket.close()
+                    self._cli_socket = None
 
           raise DevZWaveCliError(
             f"Failed to establish CLI connection after {max_attempts} attempts")
 
      def stop(self):
-          if self.telnet_client is None:
+          if self._cli_socket is None:
                self.logger.debug(f"stop() was called on a stopped instance of {self.__class__.__name__}")
                return
 
-          self.telnet_client.close()
-          self.telnet_client = None
+          self._cli_socket.close()
+          self._cli_socket = None
 
      def _run_cmd(self, command: str) -> str:
           """Execute a command and return the response.
 
-          1. Clears any pending data in the buffer.
-          2. Sends the command to the device.
-          3. Reads the response in 2 phases:
-               - First, wait for the command echo.
-               - Then, wait for the next prompt (">").
-          :param command: The command to execute
-          :return: The response from the command
+          Only one CLI command can run at a time (protected by _cli_lock).
+          Delegates to run_cmd() for the actual send/read.
           """
-          # clear any pending data
-          self.telnet_client.read_very_eager()
-          # Send the command
-          try:
-               self.telnet_client.write(f'{command}\r\n'.encode('ascii'))
-          except BrokenPipeError:
-               # Reconnect and retry on pipe error
-               self.stop()
-               self.start()
-
-          # Wait for initial response - command echo
-          response = ""
-          try:
-               # First read until we see our command echoed back
-               response += self.telnet_client.read_until(bytes(f'{command}\n', 'ascii'), timeout=1).decode('ascii')
-
-               # Then read until the next prompt (">")
-               response += self.telnet_client.read_until(b'> ', timeout=1).decode('ascii')
-
-               if command not in response or '> ' not in response:
-                    self.logger.warning(f'Command response not properly synchronized: {response}')
-                    # Might be reading problem, try to recover by reading all data (very_eager)
-                    extra = self.telnet_client.read_very_eager().decode('ascii', errors='ignore')
-                    if extra:
-                         response += extra
-                         self.logger.warning(f'Additional data: {extra}')
-
-          except BrokenPipeError as e:
-               # Connection closed, try to recover
-               self.stop()
-               self.start()
-
-          except UnicodeDecodeError as e:
-               raise Exception(f"UnicodeDecodeError: {e}") from e
-
-          except Exception as e:
-               raise Exception(f"Unexpected error: {e}") from e
-
-          return response
+          with self._cli_lock:
+               if self._cli_socket is None:
+                    return ""
+               try:
+                    response = run_cmd(self._cli_socket, command, read_timeout=0.3)
+                    if command not in response or "> " not in response:
+                         self.logger.warning(f"Command response not properly synchronized: {response}")
+                         extra = self._cli_socket.drain_buffer().decode("ascii", errors="ignore")
+                         if extra:
+                              response += extra
+                              self.logger.warning(f"Additional data: {extra}")
+                    return response
+               except BrokenPipeError:
+                    self.stop()
+                    self.start()
+                    return ""
+               except UnicodeDecodeError as e:
+                    raise Exception(f"UnicodeDecodeError: {e}") from e
+               except Exception as e:
+                    raise Exception(f"Unexpected error: {e}") from e
 
      def set_learn_mode(self) -> None:
           output = self._run_cmd(f'set_learn_mode')
@@ -145,9 +200,12 @@ class DevZwaveCli(DevZwave):
           self._run_cmd('factory_reset')
 
      def get_dsk(self) -> str | None:
+          response = self._run_cmd('get_dsk')
+          # Skip the first line (echoed command) to avoid matching command name instead of output
+          lines_content = '\n'.join(response.split('\n')[1:])
           match = re.search(
-               r'\[I\] (?P<dsk>(\d{5}-){7}\d{5})',
-               self._run_cmd('get_dsk')
+               r'(?:\[I\] )?(?P<dsk>(\d{5}-){7}\d{5})',
+               lines_content
           )
           if match is not None:
                dsk = match.groupdict()['dsk']
@@ -156,20 +214,26 @@ class DevZwaveCli(DevZwave):
           return None
 
      def get_region(self) -> str | None:
+          response = self._run_cmd('get_region')
+          # Skip the first line (echoed command) to avoid matching command name instead of output
+          lines_content = '\n'.join(response.split('\n')[1:])
           match = re.search(
-               r'\[I\] (?P<region>\w+)',
-               self._run_cmd('get_region')
+               r'(?:\[I\] )?(?P<region>\w+)',
+               lines_content
           )
           if match is not None:
                region = match.groupdict()['region']
-               self.logger.debug(f"region {region}")
+               self.logger.debug(f"region: {region}")
                return region
           return None
 
      def get_node_id(self) -> int:
+          response = self._run_cmd('get_node_id')
+          # Skip the first line (echoed command) to avoid matching command name instead of output
+          lines_content = '\n'.join(response.split('\n')[1:])
           match = re.search(
-               r'\[I\] (?P<node_id>[0-9A-F]{4})',
-               self._run_cmd('get_node_id')
+               r'(?:\[I\] )?(?P<node_id>[0-9A-F]{4})',
+               lines_content
           )
           if match is not None:
                self.node_id = int(match.groupdict()['node_id'], base=16)
@@ -177,9 +241,12 @@ class DevZwaveCli(DevZwave):
           return super().get_node_id()
 
      def get_home_id(self) -> str:
+          response = self._run_cmd('get_home_id')
+          # Skip the first line (echoed command) to avoid matching command name instead of output
+          lines_content = '\n'.join(response.split('\n')[1:])
           match = re.search(
-               r'\[I\] (?P<home_id>[0-9A-F]{8})',
-               self._run_cmd('get_home_id')
+               r'(?:\[I\] )?(?P<home_id>[0-9A-F]{8})',
+               lines_content
           )
           if match is not None:
                self.home_id = match.groupdict()['home_id']
@@ -198,6 +265,25 @@ class DevZwaveCli(DevZwave):
 
      def node_id_filtering_clear(self):
           self._run_cmd('node_id_filtering_clear')
+
+     def em1_lock_rtt(self, enable: bool) -> None:
+          """Active ou désactive le lock RTT EM1 (non activé par défaut).
+
+          :param enable: True pour activer, False pour désactiver.
+          """
+          self._run_cmd(f'em1_lock_rtt {"enable" if enable else "disable"}')
+
+     def press(
+          self,
+          button_index: int,
+          duration: Literal['short', 'medium', 'long', 'verylong'] | str,
+     ) -> None:
+          """Simulate a button press via the CLI.
+
+          :param button_index: Button index (e.g. 0 for BTN0).
+          :param duration: Press duration: 'short', 'medium', 'long', or 'verylong'.
+          """
+          self._run_cmd(f'press {button_index} {duration}')
 
 
 class DevZwaveDoorLockKeypad(DevZwaveCli):
