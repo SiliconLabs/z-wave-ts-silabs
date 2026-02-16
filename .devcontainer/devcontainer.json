@@ -1,0 +1,86 @@
+{
+  "name": "zwave-ts-silabs",
+  "build": {
+    "dockerfile": "Dockerfile",
+    "target": "zwave-ts-dev",
+    "context": "${localWorkspaceFolder}",
+    "args": {
+      "BUILDPLATFORM": "linux/amd64"
+    }
+  },
+  "runArgs": [
+    "--platform=linux/amd64"
+  ],
+  "customizations": {
+    "cursor": {
+      "extensions": [
+        "Anysphere.python"
+      ],
+      "settings": {
+        "python.testing.pytestEnabled": true,
+        "python.testing.pytestArgs": [
+          "z-wave/test",
+          "examples",
+          "--ignore=z-wave-test-system",
+          "--ignore=z_wave_ts_silabs",
+          "--hw-cluster=stdv2-1",
+          "--hw-config=config.json",
+          "--log-cli-level=INFO",
+          "-s",
+          "-v"
+        ],
+        "python.testing.cwd": "${workspaceFolder}",
+        "python.terminal.activateEnvironment": true,
+        "python.terminal.activateEnvInCurrentTerminal": true,
+        "http.proxy": "${containerEnv:HTTP_PROXY}",
+        "http.proxyStrictSSL": false,
+        "http.systemCertificates": true,
+        "extensions.autoCheckUpdates": true,
+        "extensions.autoUpdate": false
+      }
+    },
+    "vscode": {
+      "extensions": [
+        "ms-python.python",
+        "ms-python.vscode-pylance",
+        "ms-python.debugpy",
+        "ms-python.pytest"
+      ],
+      "settings": {
+        "python.testing.pytestEnabled": true,
+        "python.testing.pytestArgs": [
+          "z-wave/test",
+          "examples",
+          "--ignore=z-wave-test-system",
+          "--ignore=z_wave_ts_silabs",
+          "--hw-cluster=stdv2-1",
+          "--hw-config=config.json",
+          "--log-cli-level=INFO",
+          "-s",
+          "-v"
+        ],
+        "python.testing.cwd": "${workspaceFolder}",
+        "python.terminal.activateEnvironment": true,
+        "python.terminal.activateEnvInCurrentTerminal": true
+      }
+    }
+  },
+  "containerEnv": {
+    "GIT_EDITOR": "code --wait",
+    "HOST_HOME": "${localEnv:HOME}",
+    "ZWAVE_HARDWARE_TEST": "TRUE"
+  },
+  "initializeCommand": "bash .devcontainer/scripts/initialize.sh",
+  "onCreateCommand": "python3 .devcontainer/scripts/setup_tools.py --install",
+  "postStartCommand": "python3 .devcontainer/scripts/setup_zwave_repo.py && python3 .devcontainer/scripts/setup_test_environment.py && python3 .devcontainer/scripts/fetch_build_artifacts.py",
+  "workspaceMount": "source=${localWorkspaceFolder},target=/home/zwave/workspace/z-wave-ts-silabs,type=bind",
+  "workspaceFolder": "/home/zwave/workspace/z-wave-ts-silabs",
+  "remoteUser": "zwave",
+  "updateRemoteUserUID": true,
+  "mounts": [
+    "source=${localEnv:HOME}/.ssh,target=/home/zwave/.ssh,type=bind",
+    "source=${localEnv:HOME}/.zw_devcontainer_slt_cache,target=/home/zwave/.silabs,type=bind",
+    "source=${localEnv:HOME}/.local/bin/slt,target=/home/zwave/.local/bin/slt,type=bind",
+    "source=${localEnv:HOME}/.local/bin/slt_default.ini,target=/home/zwave/.local/bin/slt_default.ini,type=bind"
+  ]
+}

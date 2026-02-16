@@ -1,0 +1,24 @@
+{
+    "remotes": [
+        {
+            "name": "conan-silabs-net",
+            "url": "https://conan.silabs.net",
+            "verify_ssl": true
+        },
+        {
+            "name": "zwave-conan-dev-local",
+            "url": "https://artifactory-local.silabs.net/artifactory/api/conan/zwave-conan-dev",
+            "verify_ssl": true
+        },
+        {
+            "name": "zwave-conan-dev",
+            "url": "https://artifactory.silabs.net/artifactory/api/conan/zwave-conan-dev",
+            "verify_ssl": true
+        },
+        {
+            "name": "silabs-conan-production",
+            "url": "https://artifactory.silabs.net/artifactory/api/conan/silabs-conan-production",
+            "verify_ssl": true
+        }
+    ]
+}
