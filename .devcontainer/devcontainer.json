@@ -25,6 +25,8 @@
           "--ignore=z_wave_ts_silabs",
           "--hw-config=config.json",
           "--log-cli-level=INFO",
+          "--rtt",
+          "--pti",
           "-s",
           "-v"
         ],
@@ -54,6 +56,8 @@
           "--ignore=z_wave_ts_silabs",
           "--hw-config=config.json",
           "--log-cli-level=INFO",
+          "--rtt",
+          "--pti",
           "-s",
           "-v"
         ],

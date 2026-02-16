@@ -52,7 +52,8 @@ class SessionContext:
         # current_test_logdir is used by most classes to store logs, but also other files such as configuration files for ZPC.
         self.current_test_logdir: Path | None = None
 
-        # can be used in DevZwave devices to enable RTT logs and PTI traces. For now only enabled manually for zniffer. Disabled for others by default.
+        # can be used in DevZwave devices to enable RTT logs and PTI traces.
+        # Disabled by default, can be enabled via --rtt and --pti pytest options.
         self.current_test_rtt_enabled: bool = False
         self.current_test_pti_enabled: bool = False
 
