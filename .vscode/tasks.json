@@ -1,0 +1,49 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "Fetch Build Artifacts",
+      "type": "shell",
+      "command": "bash",
+      "args": [
+        "-c",
+        "BRANCH=\"${input:branchName}\"; if [ -n \"$BRANCH\" ]; then python3 .devcontainer/scripts/fetch_build_artifacts.py --branch \"$BRANCH\" --force; else python3 .devcontainer/scripts/fetch_build_artifacts.py --force; fi"
+      ],
+      "options": {
+        "cwd": "${workspaceFolder}"
+      },
+      "problemMatcher": [],
+      "presentation": {
+        "reveal": "always",
+        "panel": "new"
+      },
+      "group": {
+        "kind": "build",
+        "isDefault": false
+      }
+    },
+    {
+      "label": "Change HW cluster",
+      "type": "shell",
+      "command": "python3 .devcontainer/scripts/pick_hw_cluster.py",
+      "options": {
+        "cwd": "${workspaceFolder}"
+      },
+      "problemMatcher": [],
+      "presentation": {
+        "reveal": "always",
+        "panel": "shared",
+        "focus": true
+      },
+      "group": "none"
+    }
+  ],
+  "inputs": [
+    {
+      "id": "branchName",
+      "type": "promptString",
+      "description": "Enter branch name (will be sanitized)",
+      "default": "main"
+    }
+  ]
+}

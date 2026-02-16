@@ -14,17 +14,45 @@ _logger = logging.getLogger(__name__)
 
 
 def pytest_addoption(parser: pytest.Parser):
-    parser.addoption(
-        '--hw-cluster', type=str, help='Cluster to run the test session on'
-    )
-    parser.addoption(
-        '--hw-config', type=str, help='Path to configuration JSON file', default='config.json'
-    )
+    """Add command line options for hardware testing.
+    This function is idempotent - it safely handles duplicate registration attempts.
+    """
+    # Use try/except to handle cases where options are already registered
+    # This can happen when the module is loaded both as a plugin and via import
+    try:
+        parser.addoption(
+            '--hw-cluster', type=str, default=None, help='Cluster to run the test session on'
+        )
+    except ValueError:
+        # Option already registered, ignore
+        pass
+    
+    try:
+        parser.addoption(
+            '--hw-config', type=str, help='Path to configuration JSON file', default='config.json'
+        )
+    except ValueError:
+        # Option already registered, ignore
+        pass
 
 
 @pytest.fixture(scope='session')
 def hw_cluster_name(pytestconfig: pytest.Config) -> str:
-    yield pytestconfig.getoption('hw_cluster')
+    """Fixture for hardware cluster name. From --hw-cluster option, or config.json default_cluster if not set."""
+    cluster_name = pytestconfig.getoption('hw_cluster')
+    if cluster_name is None:
+        # No --hw-cluster: use default_cluster from config.json if present
+        hw_config = Path(pytestconfig.getoption('hw_config'))
+        if not hw_config.is_absolute():
+            rootdir = Path(pytestconfig.rootdir)
+            hw_config = (rootdir / hw_config).resolve()
+        if hw_config.exists():
+            with open(hw_config) as f:
+                config = json.load(f)
+            cluster_name = config.get('default_cluster') or ""
+        else:
+            cluster_name = ""
+    yield cluster_name
 
 
 @pytest.fixture(scope='session')
@@ -36,6 +64,14 @@ def hw_config_path(pytestconfig: pytest.Config) -> Path:
 def session_ctxt(hw_config_path: Path) -> SessionContext:
     if hw_config_path.exists():
         _session_ctxt = SessionContext.from_json(hw_config_path)
+        # Resolve clusters_json path - if it's relative, resolve it relative to rootdir (where pytest runs)
+        if not _session_ctxt.clusters_json.is_absolute():
+            resolved_path = Path(_session_ctxt.clusters_json).resolve()
+            if resolved_path.exists():
+                _session_ctxt.clusters_json = resolved_path
+                _logger.info(f"Resolved clusters_json to: {_session_ctxt.clusters_json}")
+            else:
+                _logger.warning(f"clusters_json path does not exist: {resolved_path}")
     else:
         _session_ctxt = SessionContext() # session context with default values.
     yield _session_ctxt
@@ -93,11 +129,60 @@ def device_factory(updated_session_ctxt: SessionContext, hw_cluster: DevCluster)
 
 
 @pytest.fixture(scope="function", autouse=True)
-def hw_cluster_free_all_wpk(hw_cluster: DevCluster):
-    hw_cluster.free_all_wpk()
-    hw_cluster.parallel_command('clear_flash')
-    yield
-    hw_cluster.free_all_wpk()
+def hw_cluster_free_all_wpk(request: pytest.FixtureRequest):
+    """Fixture to free all WPKs before and after each test.
+    Only active if hw_cluster fixture is available and has devices.
+    This fixture MUST run before device_factory to ensure WPKs are free."""
+    # Use the same cluster name as hw_cluster (from --hw-cluster or config.json default_cluster)
+    try:
+        hw_cluster_name = request.getfixturevalue('hw_cluster_name')
+    except Exception:
+        yield
+        return
+    if not hw_cluster_name:
+        # No hardware cluster specified (no option and no default in config), skip
+        yield
+        return
+    
+    # Try to get hw_cluster fixture - it may not be available for all tests
+    hw_cluster = None
+    try:
+        hw_cluster = request.getfixturevalue('hw_cluster')
+        _logger.info(f"hw_cluster_free_all_wpk: Retrieved hw_cluster fixture with {len(hw_cluster.wpk_list) if hw_cluster and hw_cluster.wpk_list else 0} WPKs")
+    except Exception as e:
+        # hw_cluster fixture not available for this test, skip this fixture
+        # Catch all exceptions to be safe (not just FixtureLookupError/KeyError)
+        _logger.debug(f"hw_cluster fixture not available for this test: {e}")
+        yield
+        return
+    
+    # Free all WPKs at the start of each test if cluster is available
+    if hw_cluster and hw_cluster.wpk_list and len(hw_cluster.wpk_list) > 0:
+        # Log the state before freeing
+        reserved_count = sum(1 for wpk in hw_cluster.wpk_list if not wpk.is_free)
+        _logger.info(f"[hw_cluster_free_all_wpk] BEFORE freeing: {reserved_count} reserved, {len(hw_cluster.wpk_list) - reserved_count} free out of {len(hw_cluster.wpk_list)} total")
+        
+        # Free all WPKs
+        hw_cluster.free_all_wpk()
+        
+        # Verify all WPKs are now free
+        free_count = sum(1 for wpk in hw_cluster.wpk_list if wpk.is_free)
+        reserved_after = sum(1 for wpk in hw_cluster.wpk_list if not wpk.is_free)
+        _logger.info(f"[hw_cluster_free_all_wpk] AFTER freeing: {free_count} free, {reserved_after} reserved out of {len(hw_cluster.wpk_list)} total")
+        
+        if reserved_after > 0:
+            _logger.error(f"[hw_cluster_free_all_wpk] ERROR: {reserved_after} WPKs are still reserved after free_all_wpk()!")
+            for i, wpk in enumerate(hw_cluster.wpk_list):
+                _logger.error(f"  WPK[{i}]: serial={wpk.serial_no}, is_free={wpk.is_free}")
+        
+        hw_cluster.parallel_command('clear_flash')
+        yield
+        # Free all WPKs at the end of each test
+        _logger.debug("[hw_cluster_free_all_wpk] Freeing WPKs after test")
+        hw_cluster.free_all_wpk()
+    else:
+        _logger.warning(f"hw_cluster has no WPKs: cluster={hw_cluster}, wpk_list={hw_cluster.wpk_list if hw_cluster else None}")
+        yield
 
 
 @pytest.fixture(scope="function", autouse=True)
