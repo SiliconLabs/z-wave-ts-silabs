@@ -1,5 +1,7 @@
+import argparse
 import re
 import socket
+import sys
 import threading
 import time
 from typing import Literal, TypedDict
@@ -463,3 +465,49 @@ class DevZwaveWallController(DevZwaveCli):
 
      def send_central_scene_key(self, key_number: Literal[1, 2, 3], key_action: Literal['press', 'hold', 'release']):
           self._run_cmd(f'send_central_scene_key {key_number} {key_action}')
+
+
+def _main() -> None:
+    """Interactive terminal: connect to CLI TCP (host:port) and send typed commands."""
+    parser = argparse.ArgumentParser(description="Z-Wave CLI terminal (type commands, exit/quit to quit)")
+    parser.add_argument("--host", required=True, help="IP or hostname of the device (e.g. WPK)")
+    parser.add_argument("--port", type=int, default=4901, help="CLI TCP port (default: 4901)")
+    parser.add_argument("--timeout", type=float, default=10.0, help="Connection and read timeout (s)")
+    args = parser.parse_args()
+
+    sock = _CliTcpSocket()
+    try:
+        sock.connect(args.host, args.port, timeout=args.timeout)
+    except (OSError, BrokenPipeError) as e:
+        sys.stderr.write(f"Cannot connect to {args.host}:{args.port}: {e}\n")
+        sys.exit(1)
+
+    sock.drain_buffer()
+    sys.stderr.write(f"Connected to {args.host}:{args.port}. Type 'exit' or 'quit' to quit.\n")
+
+    try:
+        while True:
+            try:
+                line = input("> ").strip()
+            except EOFError:
+                break
+            if line.lower() in ("exit", "quit", "q"):
+                break
+            if not line:
+                continue
+            try:
+                out = run_cmd(sock, line, read_timeout=0.3)
+                out = out.rstrip()
+                if out.endswith("> "):
+                    out = out[:-2].rstrip()
+                if out:
+                    print(out)
+            except (BrokenPipeError, ConnectionResetError) as e:
+                sys.stderr.write(f"Connection lost: {e}\n")
+                break
+    finally:
+        sock.close()
+
+
+if __name__ == "__main__":
+    _main()
