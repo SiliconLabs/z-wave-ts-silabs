@@ -105,6 +105,25 @@ def hw_cluster(session_ctxt: SessionContext, hw_clusters: Clusters, hw_cluster_n
     yield DevCluster(hw_cluster_name, dev_wpks)
 
 
+@pytest.fixture(scope='session', autouse=True)
+def last_run_symlink(request: pytest.FixtureRequest) -> None:
+    """Create or update the logs/lastRun symlink to point to the current session log directory."""
+    try:
+        session_log_dir = request.getfixturevalue('session_log_dir')
+    except pytest.FixtureLookupError:
+        yield
+        return
+    logs_base = Path.cwd() / 'logs'
+    last_run = logs_base / 'lastRun'
+    logs_base.mkdir(parents=True, exist_ok=True)
+    if last_run.exists():
+        last_run.unlink()
+    # Relative link so lastRun remains valid if the logs directory is moved
+    last_run.symlink_to(session_log_dir.name)
+    _logger.info(f'lastRun -> {session_log_dir}')
+    yield
+
+
 @pytest.fixture(scope="function", autouse=True)
 def updated_session_ctxt(session_ctxt: SessionContext, log_dir: Path) -> SessionContext:
     # the log_dir fixture MUST either be provided by another package or by a conftest.py file.
