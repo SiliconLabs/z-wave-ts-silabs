@@ -131,11 +131,19 @@ class DevWpk(object):
         """
         try:
             self.telnet_client.write(bytes(f'{command}\r\n' ,encoding='ascii'))
-        except BrokenPipeError as e: # single retry of the command
+        except (BrokenPipeError, ConnectionResetError):
             self.telnet_client.close()
             self.telnet_client = telnetlib.Telnet(self.ip, port=self.admin_port)
-            self.telnet_client.write(bytes(f'{command}\r\n' ,encoding='ascii'))
-        return self.telnet_client.read_until(bytes(f'\r\n{self.telnet_prompt}', encoding='ascii'), timeout=1).decode('ascii')
+            self.telnet_prompt = self.telnet_client.read_some().decode('ascii')
+            self.telnet_client.write(bytes(f'{command}\r\n', encoding='ascii'))
+        try:
+            return self.telnet_client.read_until(bytes(f'\r\n{self.telnet_prompt}', encoding='ascii'), timeout=1).decode('ascii')
+        except ConnectionResetError:
+            self.telnet_client.close()
+            self.telnet_client = telnetlib.Telnet(self.ip, port=self.admin_port)
+            self.telnet_prompt = self.telnet_client.read_some().decode('ascii')
+            self.telnet_client.write(bytes(f'{command}\r\n', encoding='ascii'))
+            return self.telnet_client.read_until(bytes(f'\r\n{self.telnet_prompt}', encoding='ascii'), timeout=1).decode('ascii')
 
     def reset(self):
         """Resets the WPK board itself."""
