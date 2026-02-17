@@ -153,7 +153,7 @@ def setup_test_environment():
     Path(test_path).parent.mkdir(parents=True, exist_ok=True)
 
     commands = [
-        (f"git clone git@github.com:SiliconLabs/z-wave-test-system.git {test_path} -b main", None, "Cloning test framework"),
+        (f"git clone git@github.com:SiliconLabs/z-wave-test-system.git {test_path} -b improvement/anrivoal/SWPROT-9959", None, "Cloning test framework"),
         ("python3 -m pip install --user -e .", f"{test_path}/z_wave_generator", "Installing z_wave_generator (editable)"),
         ("python3 -m pip install --user -e .", f"{test_path}/z_wave", "Installing z_wave (editable)"),
         ("python3 -m pip install --user -e .", f"{test_path}/z_wave_ts", "Installing z_wave_ts (editable)"),
