@@ -7,7 +7,8 @@ from pathlib import Path
 
 from z_wave_ts_silabs import DevWpk, DevCluster, BackgroundProcess, DevTimeServer
 from z_wave_ts_silabs.device_factory import DeviceFactory
-from z_wave_ts_silabs.session_context import SessionContext, Clusters, Wpk
+from z_wave_ts_silabs.clusters_json import load_clusters_json
+from z_wave_ts_silabs.session_context import SessionContext, Clusters
 
 
 _logger = logging.getLogger(__name__)
@@ -93,19 +94,12 @@ def session_ctxt(hw_config_path: Path) -> SessionContext:
 
 @pytest.fixture(scope='session')
 def hw_clusters(session_ctxt: SessionContext) -> Clusters:
-    # loads the cluster dict from the JSON file.
-    _hw_clusters: Clusters = {}
-
+    # Legacy flat JSON or schema_version 1 (nested ``clusters`` + ``devices`` per cluster).
     try:
-        with open(session_ctxt.clusters_json, 'r') as f:
-            clusters_dict = json.load(f)
-
-            for name, wpk_list in clusters_dict.items():
-                _hw_clusters[name] = Wpk.from_json_list(wpk_list)
+        _hw_clusters = load_clusters_json(session_ctxt.clusters_json)
     except FileNotFoundError:
-        # this fixture will return an empty Clusters object if the file is not found,
-        # this is on purpose to be able to interface with z_wave_ts from the z-wave-test-system without breaking it.
-        pass
+        # Empty Clusters if the file is not found (e.g. z_wave_ts without hardware layout).
+        _hw_clusters = {}
 
     yield _hw_clusters
 
