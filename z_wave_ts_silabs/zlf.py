@@ -23,8 +23,8 @@ _ZLF_HEADER: bytes = bytes([0x68] + [0x00] * (_ZLF_HEADER_SIZE-3) + [0x23, 0x12]
 _ZLF_DATACHUNK_HEADER_SIZE: int = 5
 _ZLF_API_TYPE_ZNIFFER: int = 0xF5 #  0xF5 is for PTI
 
-# Default max ZLF file size before rotation (50 MiB). Set to None to disable rotation.
-DEFAULT_ZLF_MAX_SIZE_BYTES: int | None = 50 * 1024 * 1024
+# Suggested max size when enabling rotation on long-running captures (50 MiB).
+PTI_ZLF_MAX_SIZE_BYTES: int = 50 * 1024 * 1024
 
 # Minimum size to consider a file as valid ZLF (at least the header)
 _MIN_VALID_ZLF_SIZE = _ZLF_HEADER_SIZE
@@ -193,10 +193,16 @@ class ZlfFileWriter(object):
         self,
         file_path: Path,
         *,
-        max_size_bytes: int | None = DEFAULT_ZLF_MAX_SIZE_BYTES,
+        max_size_bytes: int | None = None,
         keep_count: int = 0,
         compress_rotated: bool = True,
     ) -> None:
+        """
+        Write Zniffer-compatible ZLF files.
+
+        Rotation is opt-in: pass max_size_bytes (e.g. PTI_ZLF_MAX_SIZE_BYTES) for
+        long-running captures. Short-lived tools and converters can omit it.
+        """
         self.file_path = file_path
         self._max_size_bytes = max_size_bytes
         self._keep_count = keep_count
@@ -228,7 +234,7 @@ class ZlfFileWriter(object):
         self._create()
 
     def write_datachunk(self, dch_packet: bytes) -> None:
-        """Dumps frame to ZLF file. Rotates when file size exceeds max_size_bytes (default 50 MiB).
+        """Dumps frame to ZLF file. Rotates when max_size_bytes was set and the file exceeds it.
         :param dch_packet: DCH packet directly from WSTK/WPK/TB
         """
         self._rotate_if_needed()

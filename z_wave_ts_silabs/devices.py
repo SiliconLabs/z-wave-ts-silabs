@@ -16,7 +16,7 @@ from .parsers import DchPacket
 from .processes import CommanderCli
 from .definitions import AppName, ZwaveAppProductType, ZwaveRegion, ZpalRadioRegion
 from .pcap import PcapFileWriter
-from .zlf import ZlfFileWriter
+from .zlf import PTI_ZLF_MAX_SIZE_BYTES, ZlfFileWriter
 
 
 @dataclass
@@ -330,7 +330,10 @@ class DevWpk(object):
         # Redirect DCH output from port 4905; store zniffer (zlf) and pcap in device folder.
         device_dir = self._ctxt.current_test_logdir / logger_name
         device_dir.mkdir(parents=True, exist_ok=True)
-        zlf_file = ZlfFileWriter(device_dir / "trace.zlf")
+        zlf_file = ZlfFileWriter(
+            device_dir / "trace.zlf",
+            max_size_bytes=PTI_ZLF_MAX_SIZE_BYTES,
+        )
         pcap_file = PcapFileWriter(device_dir / "trace.pcap")
         dch_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         dch_socket.connect((self.ip, self.dch_port))
