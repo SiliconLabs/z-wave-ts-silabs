@@ -53,8 +53,10 @@ def _list_rotated_files(base: Path, compressed: bool) -> list[tuple[int, Path]]:
             continue
         try:
             idx_str = name[len(stem_name) + 1 :]
-            it ValueError:
+            idx = int(idx_str)
+        except ValueError:
             continue
+        result.append((idx, f))
     result.sort(key=lambda x: x[0], reverse=True)
     return result
 
