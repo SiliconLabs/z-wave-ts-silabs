@@ -52,7 +52,7 @@ Release v0.5.1
 
 - ``hw_clusters`` accepts ``clusters.json`` with ``schema_version`` 1 (metadata keys such as ``$schema``, plus a ``clusters`` object with per-cluster ``devices`` arrays). The legacy top-level ``name -> [wpk, ...]`` map remains supported. Serial and board fields are validated on load (see ``clusters_json.load_clusters_json``).
 - Z-Wave sample-app CLI communication uses TCP on port 4901 instead of Telnet (``_CliTcpSocket``, ``run_cmd``). CLI parsers accept an optional ``[I] `` log prefix. ``DevZwaveCli`` adds ``press()`` and ``em1_lock_rtt()``; WPK admin Telnet reconnects on pipe or connection reset.
-- Traces and RTT logs are stored under a per-device subdirectory (``N_FriendlyName``). Zniffer and Railtest skip automatic capture folders. ``ZlfFileWriter`` supports size-based rotation with optional gzip and helpers to list rotated files.
+- Traces and RTT logs are stored under a per-device subdirectory (``N_FriendlyName``). Zniffer and Railtest skip automatic capture folders. ``ZlfFileWriter`` supports optional size-based rotation (enabled for PTI capture via ``max_size_bytes``); standalone tools use the writer without rotation by default.
 - Root ``config.json``, ``conftest.py``, ``pytest.ini``, and ``setup_dev_environment.py`` support local runs. Dev Container, Conan remotes, artifact fetch scripts, ``pick_hw_cluster.py``, and VS Code tasks are included for development setup.
 - Pytest options ``--pti`` and ``--rtt`` enable PTI and RTT capture per test (disabled by default in ``SessionContext``).
 - SOC devices support ``wpk_serial_speed="auto"``: baud rate is read from WPK admin TCP port 4902 (``serial vcom``). NCP device types reject ``"auto"``.

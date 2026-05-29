@@ -72,7 +72,7 @@ class _CliTcpSocket:
         return buffer
 
 
-def run_cmd(sock: _CliTcpSocket, command: str, read_timeout: float = 0.3) -> str:
+def run_cmd(sock: _CliTcpSocket, command: str, read_timeout: float = 1.0) -> str:
     """Execute a command on an open CLI socket and return the response.
 
     Drains any pending data, sends the command, then reads until the prompt ("> ").
@@ -175,7 +175,7 @@ class DevZwaveCli(DevZwave):
                if self._cli_socket is None:
                     return ""
                try:
-                    response = run_cmd(self._cli_socket, command, read_timeout=0.3)
+                    response = run_cmd(self._cli_socket, command, read_timeout=1.0)
                     if command not in response or "> " not in response:
                          self.logger.warning(f"Command response not properly synchronized: {response}")
                          extra = self._cli_socket.drain_buffer().decode("ascii", errors="ignore")
