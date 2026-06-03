@@ -136,7 +136,7 @@ class CommanderCli(object):
         self._commander_cli_path = ctxt.commander_cli
         self._rtt_logger_background_process: BackgroundProcess | None = None
 
-    def _run_commander_cli(self, cmd) -> str:
+    def _run_commander_cli(self, cmd, ignore_errors: bool = False) -> str:
         cmd_output = ''
         cmd_line = f"{self._commander_cli_path} {cmd} --ip {self.ip}"  # TODO: the --device should be provided to CommanderCli when instantiated to provide help on some intermittent issues
         p = Popen(
@@ -149,7 +149,7 @@ class CommanderCli(object):
         for line in p.stdout:
             cmd_output += line
         p.wait()
-        if p.returncode != 0:
+        if p.returncode != 0 and not ignore_errors:
             _logger.error(f'+ {cmd_line}')
             _logger.error(cmd_output)
             raise Exception(f'commander-cli FAILED with exit code {p.returncode}\n{cmd_line}\n{cmd_output}')
@@ -164,6 +164,9 @@ class CommanderCli(object):
 
     def device_pageerase(self, region: str):
         return self._run_commander_cli(f'device pageerase --region {region}')
+
+    def adapter_power_on(self):
+        return self._run_commander_cli('adapter power on', ignore_errors=True)
 
     def flash(self, firmware_path):
         return self._run_commander_cli(f'flash {firmware_path}')

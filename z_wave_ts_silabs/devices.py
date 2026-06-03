@@ -79,6 +79,7 @@ class DevWpk(object):
         self.logger = logging.getLogger(f"{self.__class__.__name__}-{self.serial_no}")
         self._pti_thread: threading.Thread | None = None
         self._pti_thread_stop_event: threading.Event = threading.Event()
+        self.commander_cli.adapter_power_on()
         self.target_devinfo: TargetDevInfo = self._get_target_devinfo()
 
         # set dch version to 3
