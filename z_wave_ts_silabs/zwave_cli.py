@@ -121,7 +121,7 @@ class DevZwaveCli(DevZwave):
           :raises DevZWaveCliError: If unable to establish CLI connection after all attempts.
           """
           if self._cli_socket is not None:
-               self.logger.error(f"start() was called on a running instance of {self.__class__.__name__}")
+               self.logger.debug(f"start() was called on a running instance of {self.__class__.__name__}")
                return False
 
           self.wpk._run_admin(f"serial vcom config speed {self.wpk_serial_speed}")
