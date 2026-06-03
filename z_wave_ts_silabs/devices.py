@@ -405,6 +405,9 @@ class DevWpk(object):
 
     def is_target_status_ok(self) -> bool:
         target_status = self._run_admin("target status")
+        if re.search(r'ERROR: Command not found', target_status):
+            # 'target status' command not supported on latest WPK firmware
+            return True
         if re.search(r'OK', target_status):
             return True
         return False
