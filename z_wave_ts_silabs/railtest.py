@@ -14,6 +14,10 @@ class DevRailtest(Device):
         super().__init__(ctxt, device_number, wpk, region)
         self.telnet_client: telnetlib.Telnet | None = None
         self.wpk_serial_speed = wpk_serial_speed
+        self.tone_state = {
+            'active': False,
+            'debug_mode': False,
+        }
 
         self.region_id = self.rail_region_id(region)
 
@@ -80,6 +84,9 @@ class DevRailtest(Device):
         return chunk_list
 
     def tx(self, payload: bytes, region: str, channel: int, break_crc: bool = False):
+        if self.tone_state['active']:
+            raise Exception("Cannot send a frame while the tone is active. Please disable the tone before sending a frame.")
+
         region_id = self.rail_region_id(region)
         self.setup_zwave(region_id)
 
@@ -98,3 +105,35 @@ class DevRailtest(Device):
 
         if break_crc:
             self._run_cmd(f'resetCrcInitVal')
+
+    def set_tx_tone(self, tone: bool, region: str, channel: int, power_dbm: float = 0.0, frequency_Hz: int = 0):
+        if self.tone_state['active']:
+            # Need to disable the tone before changing any settings
+            self._run_cmd('setTxTone 0')
+            self.tone_state['active'] = False
+
+        if self.tone_state['debug_mode']:
+            if frequency_Hz == 0 or not tone:
+                # next not is on channel frequency, or no more tone, so we can disable debug mode
+                self._run_cmd('setDebugMode 0')
+                self.tone_state['debug_mode'] = False
+
+        if not tone:
+            # No more tone, so we can return early without changing any settings
+            return
+
+        # configure the tone with the new settings
+        region_id = self.rail_region_id(region)
+        self.setup_zwave(region_id)
+        self._run_cmd(f'setChannel {channel}')
+        self._run_cmd(f'setPower {power_dbm}')
+        #enable custom frequency if specified, otherwise the tone will be on the channel frequency
+        if frequency_Hz != 0:
+            if not self.tone_state['debug_mode']:
+                self._run_cmd('setDebugMode 1')
+                self.tone_state['debug_mode'] = True
+            self._run_cmd(f'freqOverride {frequency_Hz}')
+
+        # Finally, we can enable the tone
+        self._run_cmd('setTxTone 1')
+        self.tone_state['active'] = True

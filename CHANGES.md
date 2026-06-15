@@ -56,3 +56,8 @@ Release v0.5.1
 - Root ``config.json``, ``conftest.py``, ``pytest.ini``, and ``setup_dev_environment.py`` support local runs. Dev Container, Conan remotes, artifact fetch scripts, ``pick_hw_cluster.py``, and VS Code tasks are included for development setup.
 - Pytest options ``--pti`` and ``--rtt`` enable PTI and RTT capture per test (disabled by default in ``SessionContext``).
 - SOC devices support ``wpk_serial_speed="auto"``: baud rate is read from WPK admin TCP port 4902 (``serial vcom``). NCP device types reject ``"auto"``.
+
+Release v0.6.0
+------------
+
+- Create an API to send a tone with Railtest.
