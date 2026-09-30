@@ -59,14 +59,14 @@ class DevWpk(object):
     ADMIN_PORT_OFFSET = 2
     DCH_PORT_OFFSET = 5
 
-    def __init__(self, ctxt: SessionContext, serial_no: str, ip: str, time_server: DevTimeServer, vuart_port: int = 4900):
+    def __init__(self, ctxt: SessionContext, serial_no: str | None, ip: str, time_server: DevTimeServer, vuart_port: int = 4900):
         """Initializes the WPK board.
-        :param serial_no: J-Link serial number
+        :param serial_no: J-Link serial number, if available
         :param ip: Device's IP address
         :param vuart_port: VUART port number (VCOM, admin and DCH port numbers are offsets)
         """
         self._ctxt = ctxt
-        self.serial_no = int(serial_no)
+        self.serial_no = int(serial_no) if serial_no is not None else ip
         self.ip = ip
         self.time_server = time_server
         self.vuart_port = vuart_port
