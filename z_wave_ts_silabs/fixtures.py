@@ -7,7 +7,7 @@ from pathlib import Path
 
 from z_wave_ts_silabs import DevWpk, DevCluster, BackgroundProcess, DevTimeServer
 from z_wave_ts_silabs.device_factory import DeviceFactory
-from z_wave_ts_silabs.clusters_json import load_clusters_json
+from z_wave_ts_silabs.clusters_json import load_cluster_domain, load_clusters_json
 from z_wave_ts_silabs.session_context import SessionContext, Clusters
 
 
@@ -112,12 +112,16 @@ def hw_cluster(session_ctxt: SessionContext, hw_clusters: Clusters, hw_cluster_n
 
     if hw_clusters.get(hw_cluster_name) is not None:
         for wpk in hw_clusters[hw_cluster_name]:
-            wpk_hostname = f"jlink{wpk.serial}.{session_ctxt.domain_name}"
-            wpk_ip = socket.gethostbyname(wpk_hostname)
-            _logger.info(f"wpk hostname: {wpk_hostname}, ip: {wpk_ip}")
-            dev_wpks.append(
-                DevWpk(session_ctxt, wpk.serial, wpk_ip, time_server=time_server)
-            )
+            if wpk.ip:
+                wpk_ip = wpk.ip
+                _logger.info(f"wpk ip: {wpk_ip}")
+            else:
+                cluster_domain_name = load_cluster_domain(session_ctxt.clusters_json, hw_cluster_name)
+                domain_name = cluster_domain_name or session_ctxt.domain_name
+                wpk_hostname = f"jlink{wpk.serial}.{domain_name}"
+                wpk_ip = socket.gethostbyname(wpk_hostname)
+                _logger.info(f"wpk hostname: {wpk_hostname}, ip: {wpk_ip}")
+            dev_wpks.append(DevWpk(session_ctxt, wpk.serial, wpk_ip, time_server=time_server))
     yield DevCluster(hw_cluster_name, dev_wpks)
 
 

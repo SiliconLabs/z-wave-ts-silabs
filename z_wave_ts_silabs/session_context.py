@@ -7,13 +7,13 @@ type Clusters = dict[str, list[Wpk]]
 
 @dataclass
 class Wpk:
-    serial: str
+    serial: str | None
     board: str
-    ip: bool = True # we consider that the WPK can be accessed through IP by default
+    ip: str | None = None
 
     @staticmethod
     def from_json_list(wpk_list: list[dict]) -> list[Wpk]:
-        return [ Wpk(elt['serial'], elt['board'], bool(elt['ip']) if elt.get('ip') else False) for elt in wpk_list ]
+        return [ Wpk(elt.get('serial'), elt['board'], elt.get('ip')) for elt in wpk_list ]
 
 
 @dataclass
@@ -56,4 +56,3 @@ class SessionContext:
         # Disabled by default, can be enabled via --rtt and --pti pytest options.
         self.current_test_rtt_enabled: bool = False
         self.current_test_pti_enabled: bool = False
-
