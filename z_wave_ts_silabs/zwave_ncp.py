@@ -55,6 +55,7 @@ class DevZwaveNcpSerialApiEndDevice(DevZwaveNcp):
 class DevZwaveNcpZniffer(DevZwave):
     def __init__(self, ctxt: SessionContext, device_number: int, wpk: DevWpk, region: ZwaveRegion, wpk_serial_speed=115200) -> None:
         super().__init__(ctxt, device_number, wpk, region)
+        self.wpk_serial_speed = wpk_serial_speed
         self.tcp_socket: socket.socket | None = None
         self.tcp_port = 4901
 
@@ -65,6 +66,11 @@ class DevZwaveNcpZniffer(DevZwave):
         self._io_lock = threading.Lock()
 
     def start(self):
+        if self.tcp_socket is not None:
+            self.logger.debug(f"start() was called on a running instance of {self.__class__.__name__}")
+            return
+
+        self.wpk._run_admin(f"serial vcom config speed {self.wpk_serial_speed}")
         self._reconnect_tcp_with_retry("start")
 
     def stop(self):
