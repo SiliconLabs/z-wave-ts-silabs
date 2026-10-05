@@ -6,6 +6,10 @@ testing coverage can be factorized among ZWA members.
 
 ## Setup
 
+WPKs used by this package must run application version 2.0 or newer. The framework
+checks the application version reported by `sys ver` on connection and rejects older or
+unidentifiable versions.
+
 ```bash
 virtualenv .venv # or: python -m venv .venv
 .venv/bin/pip wheel --no-deps -w dist . && .venv/bin/pip install z_wave_ts_silabs -f ./dist # or: .venv/bin/pip install -r requirements.txt
