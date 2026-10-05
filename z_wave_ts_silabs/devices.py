@@ -79,6 +79,7 @@ class DevWpk(object):
         self.logger = logging.getLogger(f"{self.__class__.__name__}-{self.serial_no}")
         self._pti_thread: threading.Thread | None = None
         self._pti_thread_stop_event: threading.Event = threading.Event()
+        self._require_minimum_firmware_version()
         self.commander_cli.adapter_power_on()
         self.target_devinfo: TargetDevInfo = self._get_target_devinfo()
 
@@ -146,6 +147,28 @@ class DevWpk(object):
             self.telnet_client.write(bytes(f'{command}\r\n', encoding='ascii'))
             return self.telnet_client.read_until(bytes(f'\r\n{self.telnet_prompt}', encoding='ascii'), timeout=1).decode('ascii')
 
+    def _require_minimum_firmware_version(self) -> None:
+        """Require WPK application version 2v0 or newer."""
+        output = self._run_admin("sys ver")
+        match = re.search(
+            r'^Application:\s*(\d+)(?:\.(\d+)|v(\d+))',
+            output,
+            re.MULTILINE | re.IGNORECASE,
+        )
+        if not match:
+            raise RuntimeError(
+                f"Could not determine WPK application version for {self.serial_no} "
+                f"from 'sys ver' response {output!r}; version 2.0 or newer is required"
+            )
+        major = int(match.group(1))
+        minor = int(match.group(2) or match.group(3))
+        version = (major, minor)
+        if version < (2, 0):
+            raise RuntimeError(
+                f"WPK {self.serial_no} application version {major}.{minor} "
+                "is unsupported; version 2.0 or newer is required"
+            )
+
     def get_serial_vcom_speed(self) -> int:
         """Query the WPK admin (TCP 4902) for 'serial vcom' and parse the port speed.
 
@@ -186,8 +209,8 @@ class DevWpk(object):
         """Resets the radio board plugged into the WPK."""
         self._run_admin("target reset 1")
         # Make sure the radio board (target) connected to the WPK is powered on before leaving target_reset()
-        if not self.is_target_status_ok():
-            self.logger.debug("target status is not ok after target reset")
+        if not self.is_target_power_on():
+            self.logger.debug("target power is off after target reset")
         time.sleep(0.01) # wait 10ms before returning to leave enough time for the chip to boot up
 
     @property
@@ -288,11 +311,15 @@ class DevWpk(object):
             raise Exception("Could not set up time client")
 
     def clear_flash(self):
-        if not self.is_target_status_ok():
-            self.logger.warning(
-                "target is not OK. Will reset before attempt to clear the flash"
-            )
-            self.reset()
+        target_power_on = self.is_target_power_on()
+        if not target_power_on:
+            self.logger.warning("target power is off. Powering on before clearing the flash")
+            self.target_power_on()
+            time.sleep(0.01)
+            target_power_on = self.is_target_power_on()
+
+        if target_power_on is False:
+            raise RuntimeError("radio board is still powered off; cannot clear flash")
 
         self.logger.debug("clearing flash")
         try:
@@ -404,14 +431,14 @@ class DevWpk(object):
     def target_power_off(self):
         self._run_admin("target power off")
 
-    def is_target_status_ok(self) -> bool:
-        target_status = self._run_admin("target status")
-        if re.search(r'ERROR: Command not found', target_status):
-            # 'target status' command not supported on latest WPK firmware
+    def is_target_power_on(self) -> bool:
+        """Returns the target power state reported by WPK firmware 2.0+."""
+        target_power = self._run_admin("target power")
+        if re.search(r'Target power is on', target_power, re.IGNORECASE):
             return True
-        if re.search(r'OK', target_status):
-            return True
-        return False
+        if re.search(r'Target power is off', target_power, re.IGNORECASE):
+            return False
+        raise RuntimeError(f"Could not read target power state from WPK response: {target_power!r}")
 
     def target_retrieve_average_current(self) -> float:
         """Returns the average current consumption as reported reported by the WSTK.
@@ -516,7 +543,7 @@ class Device(metaclass=ABCMeta):
             raise Exception(f'No suitable firmware was found for {self._name}')
 
         # Make sure the radio board (target) connected to the WPK is powered on before leaving Device.__init__()
-        if not self.wpk.is_target_status_ok():
+        if not self.wpk.is_target_power_on():
             self.wpk.target_power_on()
             time.sleep(0.01) # wait 10ms to be sure that the board has boot up
 
