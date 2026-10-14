@@ -59,7 +59,8 @@ class DevZwaveNcpZniffer(DevZwave):
         self.tcp_socket: socket.socket | None = None
         self.tcp_port = 4901
 
-        # CI-safe defaults
+        self.ready_probe_interval_s = 0.5
+        self.ready_timeout_s = 5.0
         self.cmd_timeout_s = 3.0
 
         # IMPORTANT: protect against concurrent calls from different threads/tests
@@ -71,7 +72,7 @@ class DevZwaveNcpZniffer(DevZwave):
             return
 
         self.wpk._run_admin(f"serial vcom config speed {self.wpk_serial_speed}")
-        self._reconnect_tcp_with_retry("start")
+        self._connect_tcp_and_probe("start")
 
     def stop(self):
         self.close_tcp_socket()
@@ -104,29 +105,38 @@ class DevZwaveNcpZniffer(DevZwave):
         finally:
             self.tcp_socket = None
 
-    def _reconnect_tcp_with_retry(self, context: str):
-        reconnect_attempts = 30
-        reconnect_sleep_s = 0.5
-        last_err = None
-        for i in range(1, reconnect_attempts + 1):
-            try:
-                self.open_tcp_socket()
-                # readiness probe: get version and require ACK
-                if self._probe_ready():
-                    self.logger.info(f"Zniffer TCP ready ({context}) attempt {i}/{reconnect_attempts}")
-                    return
-                else:
-                    raise ValueError(f"Communication error with Zniffer after socket open.")
-            except Exception as e:
-                last_err = e
-                self.logger.warning(f"Zniffer TCP not ready ({context}) attempt {i}/{reconnect_attempts}: {e}")
-                self.close_tcp_socket()
-                time.sleep(reconnect_sleep_s)
-        raise TimeoutError(f"Zniffer TCP never became ready ({context}) {self.wpk.ip}:{self.tcp_port}: {last_err}")
+    def _connect_tcp_and_probe(self, context: str):
+        try:
+            self.open_tcp_socket()
+            start_time = time.monotonic()
+            attempts = int(self.ready_timeout_s / self.ready_probe_interval_s)
+            last_err = None
+            for attempt in range(1, attempts + 1):
+                next_probe_time = start_time + (attempt - 1) * self.ready_probe_interval_s
+                delay = next_probe_time - time.monotonic()
+                if delay > 0:
+                    time.sleep(delay)
 
-    def _probe_ready(self) -> bool:
+                try:
+                    if self._probe_ready(timeout_s=self.ready_probe_interval_s):
+                        self.logger.info(f"Zniffer TCP ready ({context}) probe {attempt}/{attempts}")
+                        return
+                    last_err = ValueError("Communication error with Zniffer after socket open.")
+                except Exception as e:
+                    last_err = e
+            error = (
+                f"Zniffer TCP never became ready ({context}) "
+                f"{self.wpk.ip}:{self.tcp_port} within {self.ready_timeout_s}s: {last_err}"
+            )
+            self.logger.error(error)
+            raise TimeoutError(error)
+        except Exception:
+            self.close_tcp_socket()
+            raise
+
+    def _probe_ready(self, timeout_s: float) -> bool:
         # get version to check that the zniffer is running
-        return self.send_cmd(bytes([0x23, 0x01, 0x00]), 7)
+        return self._send_cmd_locked(bytes([0x23, 0x01, 0x00]), 7, timeout_s)
 
     def send_cmd(self, command: bytes, response_length: int = 3) -> bool:
         if self.tcp_socket is None:
@@ -143,14 +153,16 @@ class DevZwaveNcpZniffer(DevZwave):
             time.sleep(0.1)
         return False
 
-    def _send_cmd_locked(self, command: bytes, response_length: int = 3) -> bool:
+    def _send_cmd_locked(
+        self, command: bytes, response_length: int = 3, timeout_s: float | None = None
+    ) -> bool:
         with self._io_lock:
             s = self.tcp_socket
             if s is None:
                 raise Exception("TCP socket is not open. Call open_tcp_socket() first.")
 
             # bounded wait always
-            s.settimeout(self.cmd_timeout_s)
+            s.settimeout(timeout_s if timeout_s is not None else self.cmd_timeout_s)
 
             # don't "flush forever"; just drain whatever is already queued quickly
             self._drain_rx_nonblocking()
